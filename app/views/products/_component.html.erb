@@ -1,10 +1,10 @@
-<%# 구성요소 버전 타임라인 — 노드=인허가 스크리닝, 연결선 ▾=변경사유 펼침(패널 내 비교 열기) %>
+<%# 구성요소 버전 타임라인 — 노드=슬롯 선택, 연결점=빨강, ▾=변경사유 펼침(콜아웃) %>
 <% versions = component.component_versions.sort_by(&:version_number) %>
 <% cur = component.current_version %>
 <div class="border-b border-line-soft py-4 last:border-0">
   <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
     <%# 구성요소명 + 현재 버전 %>
-    <div class="flex shrink-0 items-center gap-2 sm:w-[132px] sm:pt-1">
+    <div class="flex shrink-0 items-center gap-2 sm:w-[132px] sm:pt-2.5">
       <%= ui_icon "layers", size: 16, klass: "shrink-0 text-cooa" %>
       <span class="text-sm font-bold text-ink"><%= component.type_label %></span>
       <% if cur %><span class="rounded bg-tint px-1.5 py-0.5 text-[10px] font-bold text-line">현재 <%= cur.vlabel.upcase %></span><% end %>
@@ -13,12 +13,13 @@
     <%# 타임라인 %>
     <% if versions.any? %>
       <div data-controller="version-timeline" class="min-w-0 flex-1">
-        <div class="flex items-center overflow-x-auto pb-1">
+        <%# 위/아래·좌측 여유로 호버 ring 안 잘리게 + 슬림 스크롤바 %>
+        <div class="flex items-center overflow-x-auto scrollbar-slim px-1 py-2">
           <% versions.each_with_index do |v, i| %>
             <% if i.positive? %>
-              <%# 연결선 + (변경사유 있으면) 펼침 토글 %>
+              <%# 연결선 + (변경사유 있으면) ▾ 토글 / 없으면 빨간 점 %>
               <div class="flex shrink-0 items-center">
-                <span class="h-px w-3 bg-line sm:w-5"></span>
+                <span class="h-px w-3 bg-line-soft sm:w-5"></span>
                 <% if v.change_reason.present? %>
                   <button type="button"
                           data-action="version-timeline#toggle" data-version-timeline-index-param="<%= i %>"
@@ -30,31 +31,34 @@
                     <%= ui_icon "caret", size: 14 %>
                   </button>
                 <% else %>
-                  <span class="h-1.5 w-1.5 rounded-full bg-line"></span>
+                  <span class="h-2 w-2 rounded-full bg-cooa/70"></span>
                 <% end %>
-                <span class="h-px w-3 bg-line sm:w-5"></span>
+                <span class="h-px w-3 bg-line-soft sm:w-5"></span>
               </div>
             <% end %>
-            <%# 버전 노드 = 인허가 스크리닝 %>
-            <%= link_to screening_component_version_path(v), title: "#{v.vlabel.upcase} 인허가 스크리닝",
-                  class: "shrink-0 rounded-lg p-0.5 transition hover:bg-accent hover:ring-2 hover:ring-cooa/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/40" do %>
+            <%# 버전 노드 = 슬롯 선택(비교/스크리닝) %>
+            <button type="button" data-version-select-target="version"
+                    data-vid="<%= v.id %>" data-vlabel="<%= v.vlabel.upcase %>" data-comp="<%= component.id %>"
+                    data-action="version-select#pick" title="<%= v.vlabel.upcase %> 선택"
+                    class="shrink-0 rounded-lg p-0.5 transition hover:bg-accent hover:ring-2 hover:ring-cooa/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/40">
               <%= version_chip(v.vlabel.upcase, size: 30, active: v.current?) %>
-            <% end %>
+            </button>
           <% end %>
         </div>
 
-        <%# 변경사유 펼침 패널 (연결선별, 기본 숨김) %>
+        <%# 변경사유 펼침 콜아웃 (연결선별, 기본 숨김) — 포인터 삼각형 + accent 톤 %>
         <% versions.each_with_index do |v, i| %>
           <% next unless i.positive? && v.change_reason.present? %>
           <div data-version-timeline-target="panel" data-index="<%= i %>" id="reason-<%= component.id %>-<%= i %>" class="hidden">
-            <div class="mt-2.5 max-w-xl rounded-xl border border-line-soft bg-tint-2 p-3">
+            <div class="relative ml-1 mt-3 max-w-xl rounded-xl border border-cooa/30 bg-accent p-3">
+              <span class="absolute -top-1.5 left-6 h-3 w-3 rotate-45 border-l border-t border-cooa/30 bg-accent"></span>
               <div class="flex items-center gap-2">
                 <span class="rounded-md bg-cooa px-1.5 py-0.5 text-[10px] font-bold text-white"><%= versions[i - 1].vlabel.upcase %> → <%= v.vlabel.upcase %></span>
-                <span class="text-[11px] font-bold text-line">변경사유</span>
+                <span class="text-[11px] font-bold text-cooa">변경사유</span>
               </div>
               <p class="mt-2 text-[13px] leading-relaxed text-ink/85"><%= v.change_reason %></p>
               <%= link_to comparison_path(from_id: versions[i - 1].id, to_id: v.id),
-                    class: "mt-2.5 inline-flex items-center gap-1.5 rounded-lg border border-cooa px-3 py-1.5 text-[12px] font-bold text-cooa transition hover:bg-cooa hover:text-white" do %>
+                    class: "mt-2.5 inline-flex items-center gap-1.5 rounded-lg border border-cooa bg-white px-3 py-1.5 text-[12px] font-bold text-cooa transition hover:bg-cooa hover:text-white" do %>
                 <%= ui_icon "layers", size: 13 %> 비교 열기
               <% end %>
             </div>
@@ -62,7 +66,7 @@
         <% end %>
       </div>
     <% else %>
-      <span class="text-[13px] text-line sm:pt-1">버전 없음</span>
+      <span class="text-[13px] text-line sm:pt-2.5">버전 없음</span>
     <% end %>
   </div>
 </div>

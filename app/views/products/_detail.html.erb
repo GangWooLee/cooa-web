@@ -1,6 +1,6 @@
-<%# 우측 드로어 상세 콘텐츠 — 닫기 + 헤더 + 하위(폴더)/구성요소 타임라인(리프). product 로컬 사용 %>
+<%# 우측 드로어 상세 — 닫기 + 블러시 헤더(라벨형 메타) + 슬롯 액션바 + 타임라인. product 로컬 %>
 <div class="flex h-full min-h-0 flex-col bg-white">
-  <%# 드로어 헤더: 브레드크럼 + 닫기 %>
+  <%# 상단: 브레드크럼 + 닫기 %>
   <div class="flex items-center justify-between gap-2 border-b border-line-soft px-5 py-3">
     <div class="min-w-0 truncate text-[13px]"><%= node_breadcrumb(product) %></div>
     <button type="button" data-action="detail-drawer#close" aria-label="닫기"
@@ -9,82 +9,102 @@
     </button>
   </div>
 
-  <div class="min-h-0 flex-1 overflow-auto px-5 py-4">
-    <%# 제품 헤더 %>
-    <div class="flex flex-wrap items-start justify-between gap-4">
-      <div class="min-w-0">
-        <div class="flex flex-wrap items-center gap-2">
-          <% if product.code.present? %>
-            <span class="bg-cooa-gradient rounded-md px-2 py-0.5 text-[13px] font-bold text-white">[<%= product.code %>]</span>
-          <% else %>
-            <%= ui_icon "folder", size: 22, klass: "text-cooa" %>
-          <% end %>
-          <h1 class="min-w-0 break-words text-xl font-bold text-ink"><%= product.name %></h1>
-          <span class="rounded-full bg-tint px-2 py-0.5 text-xs text-ink/70"><%= product.folder? ? "그룹" : product.product_type %></span>
-        </div>
-        <div class="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px] text-ink/80">
-          <% if product.country.present? %><span>국가 · <b class="text-ink"><%= product.country_label %></b></span><% end %>
-          <% if product.channel.present? %><span>채널 · <b class="text-ink"><%= product.channel %></b></span><% end %>
-          <% if product.deadline %><span class="inline-flex items-center gap-1"><%= ui_icon "calendar", size: 14 %> <%= product.deadline.strftime("%Y.%m.%d") %></span><% end %>
-          <% if product.notion_url.present? %>
+  <%# 스크롤 본문 (version-select 스코프) %>
+  <div data-controller="version-select" class="min-h-0 flex-1 overflow-auto scrollbar-slim">
+    <%# 블러시 헤더 %>
+    <div class="border-b border-line-soft bg-accent/40 px-5 py-4">
+      <div class="flex flex-wrap items-center gap-2">
+        <% if product.code.present? %>
+          <span class="bg-cooa-gradient rounded-md px-2 py-0.5 text-[12px] font-bold text-white">[<%= product.code %>]</span>
+        <% end %>
+        <h1 class="min-w-0 break-words text-xl font-bold text-ink"><%= product.name %></h1>
+        <span class="rounded-full bg-white/70 px-2 py-0.5 text-[11px] text-ink/70"><%= product.folder? ? "그룹" : product.product_type %></span>
+      </div>
+      <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13px]">
+        <% if product.notion_url.present? %>
+          <dt class="font-bold text-line">기획</dt>
+          <dd class="min-w-0 truncate">
             <%= link_to product.notion_url, target: "_blank", rel: "noopener", class: "inline-flex items-center gap-1 text-cooa hover:underline" do %>
               <%= ui_icon "external", size: 14 %> Notion 기획문서
             <% end %>
-          <% end %>
-        </div>
-      </div>
+          </dd>
+        <% end %>
+        <% if product.country.present? %><dt class="font-bold text-line">국가</dt><dd class="text-ink"><%= product.country_label %></dd><% end %>
+        <% if product.channel.present? %><dt class="font-bold text-line">채널</dt><dd class="text-ink"><%= product.channel %></dd><% end %>
+        <% if product.deadline %><dt class="font-bold text-line">기한</dt><dd class="text-ink"><%= product.deadline.strftime("%Y.%m.%d") %></dd><% end %>
+        <% if product.product_members.any? %>
+          <dt class="font-bold text-line">담당자</dt>
+          <dd class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <% product.product_members.sort_by { |m| %w[designer pm ra scm].index(m.role) || 9 }.each do |pm| %>
+              <span class="inline-flex items-center gap-1"><%= avatar(pm.user, size: 22) %><span class="text-[12px] font-bold text-ink"><%= pm.user.name %></span><span class="text-[10px] text-line"><%= pm.role_short %></span></span>
+            <% end %>
+          </dd>
+        <% end %>
+      </dl>
+    </div>
 
-      <% if product.product_members.any? %>
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <% product.product_members.sort_by { |m| %w[designer pm ra scm].index(m.role) || 9 }.each do |pm| %>
-            <div class="flex items-center gap-1.5">
-              <%= avatar(pm.user, size: 28) %>
-              <div class="leading-tight">
-                <div class="text-[12px] font-bold text-ink"><%= pm.user.name %></div>
-                <div class="text-[10px] text-line"><%= pm.role_short %></div>
+    <%# 슬롯 액션바 (구성요소 있을 때 = 리프) %>
+    <% if product.components.any? %>
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft px-5 py-3">
+        <%# 버전 비교 (슬롯 2) %>
+        <div class="flex items-center gap-1.5 rounded-xl bg-accent px-2.5 py-1.5">
+          <span class="flex shrink-0 items-center gap-1 text-[12px] font-bold text-cooa"><%= ui_icon "layers", size: 14 %> 버전 비교</span>
+          <% %w[a b].each do |s| %>
+            <button type="button" data-version-select-target="slot" data-slot="<%= s %>" data-action="version-select#activate"
+                    class="flex h-7 min-w-[34px] items-center justify-center rounded-md border border-line-soft bg-white px-1.5 text-[12px] font-bold text-line transition">
+              <span data-label>+</span>
+            </button>
+          <% end %>
+          <button type="button" data-version-select-target="compareBtn" data-action="version-select#compare" disabled
+                  class="shrink-0 rounded-lg bg-cooa px-3 py-1.5 text-[12px] font-bold text-white transition disabled:bg-line-soft disabled:opacity-70">비교 열기</button>
+        </div>
+        <%# 인허가 스크리닝 (슬롯 1) %>
+        <div class="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5" style="background:#f1ecfb">
+          <span class="flex shrink-0 items-center gap-1 text-[12px] font-bold" style="color:#6b4ea8"><%= ui_icon "spark", size: 14 %> 인허가 스크리닝</span>
+          <button type="button" data-version-select-target="slot" data-slot="c" data-action="version-select#activate"
+                  class="flex h-7 min-w-[34px] items-center justify-center rounded-md border border-line-soft bg-white px-1.5 text-[12px] font-bold text-line transition">
+            <span data-label>+</span>
+          </button>
+          <button type="button" data-version-select-target="screenBtn" data-action="version-select#screen" disabled
+                  class="shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-bold text-white transition disabled:bg-line-soft disabled:opacity-70" style="background:#6b4ea8">스크리닝</button>
+        </div>
+        <span class="text-[11px] text-line">버전을 눌러 슬롯을 채우세요</span>
+      </div>
+    <% end %>
+
+    <%# 본문 %>
+    <div class="px-5 py-4">
+      <%# 하위 항목 (폴더) — 클릭 시 같은 드로어에서 펼침 %>
+      <% if product.children.any? %>
+        <h2 class="mb-2 text-base font-bold text-ink">하위 항목</h2>
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <% product.children.each do |child| %>
+            <%= link_to product_path(child), data: { turbo_frame: "detail", turbo_action: "advance" },
+                  class: "flex items-center gap-3 rounded-xl border border-line-soft bg-white p-3 shadow-sm hover:border-cooa" do %>
+              <%= ui_icon(child.leaf? ? "doc" : "folder", size: 20, klass: "text-cooa") %>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="truncate text-sm font-bold text-ink"><%= child.name %></span>
+                  <% if child.code.present? %><span class="text-[11px] text-line"><%= child.code %></span><% end %>
+                </div>
+                <div class="text-[12px] text-line">
+                  <% if child.leaf? %><%= [child.country_label, child.channel].compact.join(" · ") if child.country.present? %>
+                  <% else %><%= child.children.size %>개 하위<% end %>
+                </div>
               </div>
-            </div>
+              <%= ui_icon "caret", size: 16, klass: "-rotate-90 text-line" %>
+            <% end %>
           <% end %>
         </div>
       <% end %>
-    </div>
 
-    <%# 하위 항목 (폴더 노드) — 클릭 시 같은 드로어에서 펼침 %>
-    <% if product.children.any? %>
-      <h2 class="mb-2 mt-5 text-base font-bold text-ink">하위 항목</h2>
-      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <% product.children.each do |child| %>
-          <%= link_to product_path(child), data: { turbo_frame: "detail", turbo_action: "advance" },
-                class: "flex items-center gap-3 rounded-xl border border-line-soft bg-white p-3 shadow-sm hover:border-cooa" do %>
-            <%= ui_icon(child.leaf? ? "doc" : "folder", size: 20, klass: "text-cooa") %>
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <span class="truncate text-sm font-bold text-ink"><%= child.name %></span>
-                <% if child.code.present? %><span class="text-[11px] text-line"><%= child.code %></span><% end %>
-              </div>
-              <div class="text-[12px] text-line">
-                <% if child.leaf? %><%= [child.country_label, child.channel].compact.join(" · ") if child.country.present? %>
-                <% else %><%= child.children.size %>개 하위<% end %>
-              </div>
-            </div>
-            <%= ui_icon "caret", size: 16, klass: "-rotate-90 text-line" %>
-          <% end %>
-        <% end %>
-      </div>
-    <% end %>
-
-    <%# 구성요소 · 버전 타임라인 (리프 노드) %>
-    <% if product.components.any? %>
-      <div class="mb-3 mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h2 class="text-base font-bold text-ink">구성요소 · 버전</h2>
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-line">
-          <span class="inline-flex items-center gap-1.5"><%= version_chip("V", size: 18, active: true) %> 버전 클릭 = 인허가 스크리닝</span>
-          <span class="inline-flex items-center gap-1.5"><span class="flex h-5 w-5 items-center justify-center rounded-full border border-line-soft text-line"><%= ui_icon "caret", size: 12 %></span> 변경사유 펼치기 · 비교</span>
+      <%# 구성요소 · 버전 타임라인 (리프) %>
+      <% if product.components.any? %>
+        <h2 class="mb-2 text-base font-bold text-ink">구성요소 · 버전</h2>
+        <div class="rounded-2xl border border-line-soft bg-white px-4 shadow-sm">
+          <%= render partial: "products/component", collection: product.components.sort_by { |c| [c.position || 0, c.id] }, as: :component %>
         </div>
-      </div>
-      <div class="rounded-2xl border border-line-soft bg-white px-4 shadow-sm">
-        <%= render partial: "products/component", collection: product.components.sort_by { |c| [c.position || 0, c.id] }, as: :component %>
-      </div>
-    <% end %>
+      <% end %>
+    </div>
   </div>
 </div>

@@ -24,3 +24,10 @@
 details:not([open]) > summary .tree-caret { transform: rotate(-90deg); }
 summary::-webkit-details-marker { display: none; }
 
+/* 가늘고 존재감 옅은 스크롤바 */
+.scrollbar-slim { scrollbar-width: thin; scrollbar-color: var(--color-line-soft) transparent; }
+.scrollbar-slim::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-slim::-webkit-scrollbar-thumb { background: var(--color-line-soft); border-radius: 9999px; }
+.scrollbar-slim::-webkit-scrollbar-thumb:hover { background: var(--color-line); }
+.scrollbar-slim::-webkit-scrollbar-track { background: transparent; }
+
