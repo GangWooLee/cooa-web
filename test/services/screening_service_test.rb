@@ -21,7 +21,7 @@ class ScreeningServiceTest < ActiveSupport::TestCase
 
   test "retinol over structured JP limit => violation, niacinamide ok, anti-aging unable, missing recycle warning" do
     r = ScreeningService.new(@v, "JP").call
-    assert_equal "violation", r.decision, "종합 판정은 명백한위반이어야 함"
+    assert_equal "violation", r.decision, "종합 판정은 위반(violation)이어야 함"
 
     assert_equal "violation", finding(r, "Retinol")[:decision]
     assert_equal "ok",        finding(r, "Niacinamide")[:decision]

@@ -3,10 +3,10 @@ module Decidable
   extend ActiveSupport::Concern
 
   DECISIONS = {
-    "ok"        => { label: "적합",       color: "#84b733", bg: "#eef6e3", icon: "check" },
-    "warning"   => { label: "위험신호",   color: "#e6a700", bg: "#fff7e0", icon: "warn" },
-    "violation" => { label: "명백한위반", color: "#8e0300", bg: "#fdeceb", icon: "x" },
-    "unable"    => { label: "판단불가",   color: "#6b7280", bg: "#f1f1f1", icon: "question" }
+    "ok"        => { label: "적합",     color: "#84b733", bg: "#eef6e3", icon: "check" },
+    "warning"   => { label: "주의",     color: "#e6a700", bg: "#fff7e0", icon: "warn" },
+    "violation" => { label: "위반",     color: "#8e0300", bg: "#fdeceb", icon: "x" },
+    "unable"    => { label: "판단불가", color: "#6b7280", bg: "#f1f1f1", icon: "question" }
   }.freeze
 
   # 여러 판정 중 최악(가장 심각) 하나를 고른다 — 종합 판정 계산용

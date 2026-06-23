@@ -225,7 +225,7 @@ seed_ingredients(us5)
 ].each { |a| us5.label_texts.create!(a) }
 
 # ── 사전 스크리닝 ───────────────────────────────────────────────────────────
-ScreeningService.new(v5,  "JP").run!(requested_by: lee)   # 일본: 명백한위반
+ScreeningService.new(v5,  "JP").run!(requested_by: lee)   # 일본: 위반
 ScreeningService.new(us5, "US").run!(requested_by: lee)   # 미국: 적합
 
 puts "Seed done: users=#{User.count} products=#{Product.count}(roots=#{Product.roots.count}) " \
