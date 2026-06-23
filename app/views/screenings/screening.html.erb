@@ -26,7 +26,7 @@
           <h3 class="text-base font-bold text-ink">스크리닝 결과</h3>
           <span class="rounded-full bg-tint px-2 py-0.5 text-xs text-ink/70"><%= @country_label %></span>
         </div>
-        <% if @run %><div class="mt-2 flex items-center gap-2"><%= decision_pill(@run.decision) %><span class="text-xs text-ink/70"><%= @run.summary %></span></div><% end %>
+        <% if @run %><div class="mt-2 flex items-center gap-2"><span class="text-xs text-line">종합 판정</span><%= decision_pill(@run.decision) %></div><% end %>
       </div>
 
       <div class="min-h-0 flex-1 space-y-2 overflow-auto p-3">
@@ -58,6 +58,22 @@
           <div class="py-12 text-center text-sm text-line">아직 스크리닝을 실행하지 않았습니다.<br>아래 <b>‘인허가 스크리닝’</b>을 눌러 실행하세요.</div>
         <% end %>
       </div>
+
+      <%# 종합 정리 — 판정별 카운트(적합·주의·위반·판단불가 순, 색 일관) %>
+      <% if @run && @run.screening_findings.any? %>
+        <% counts = @run.screening_findings.group(:decision).count %>
+        <div class="border-t border-line-soft p-3">
+          <div class="mb-2 text-[11px] font-bold text-line">종합 정리 · 총 <%= @run.screening_findings.size %>건</div>
+          <div class="flex flex-wrap gap-1.5">
+            <% Decidable::DECISIONS.each do |key, meta| %>
+              <span class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[13px] font-bold" style="color:<%= meta[:color] %>;background:<%= meta[:bg] %>">
+                <%= meta[:label] %>
+                <span class="flex h-[18px] min-w-[18px] items-center justify-center rounded px-1 text-xs text-white" style="background:<%= meta[:color] %>"><%= counts[key] || 0 %></span>
+              </span>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
 
       <% if @run&.status == "approved" %>
         <div class="border-t border-line-soft p-3 text-center text-[13px] font-bold" style="color:#5f8f2e;background:#eef6e3">✓ <%= @run.approved_by&.name %> (RA) 승인 완료 · <%= @run.approved_at&.strftime("%Y.%m.%d %H:%M") %></div>
