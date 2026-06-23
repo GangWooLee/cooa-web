@@ -11,7 +11,7 @@
   <div data-controller="screening" data-action="artwork-viewer:focus->screening#onFocus"
        class="flex min-h-0 flex-1 flex-col lg:flex-row">
     <%# 좌: 아트워크 + finding 박스 %>
-    <div class="min-h-0 flex-1 p-3" style="min-height:380px">
+    <div class="min-h-0 min-w-0 flex-1 p-3" style="min-height:380px">
       <% if @version.image_name.present? %>
         <%= render "shared/artwork_viewer", image_src: image_path(@version.image_name), boxes: fboxes %>
       <% else %>

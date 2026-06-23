@@ -21,7 +21,7 @@
        data-action="artwork-viewer:focus->comparison#onFocus artwork-viewer:draw->comparison#onDraw"
        class="flex min-h-0 flex-1 flex-col xl:flex-row">
     <%# 좌: 검토(현재) 버전 아트워크 + 이전 버전 피드백 박스 %>
-    <div class="min-h-0 flex-1 p-3" style="min-height:380px">
+    <div class="min-h-0 min-w-0 flex-1 p-3" style="min-height:380px">
       <% if @from.image_name.present? && @to.image_name.present? %>
         <% anns = annotation_boxes(@from.annotations.ordered) %>
         <%= render "shared/artwork_viewer",

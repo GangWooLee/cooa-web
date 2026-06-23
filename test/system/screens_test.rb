@@ -47,14 +47,22 @@ class ScreensTest < ApplicationSystemTestCase
     save_screenshot(dir.join("5_compare_focus.png"))
     assert_text "이전"
 
-    # 반응형 — 1366px 노트북 폭
+    # 반응형 + 가로 오버플로 0 검증 (1366·1280px)
     page.driver.browser.manage.window.resize_to(1366, 900)
     visit root_path
     assert_text "레티놀 3% 세럼"
     sleep 0.5
     save_screenshot(dir.join("6_dashboard_1366.png"))
-    visit comparison_path(from_id: v5.id, to_id: v6.id)
-    sleep 0.8
-    save_screenshot(dir.join("7_compare_1366.png"))
+
+    [1366, 1280].each do |w|
+      page.driver.browser.manage.window.resize_to(w, 860)
+      visit comparison_path(from_id: v5.id, to_id: v6.id)
+      assert_text "피드백"
+      sleep 0.9
+      sw = page.evaluate_script("document.querySelector('main').scrollWidth")
+      cw = page.evaluate_script("document.querySelector('main').clientWidth")
+      assert sw <= cw + 1, "#{w}px: main 가로 오버플로 (scrollWidth #{sw} > clientWidth #{cw})"
+      save_screenshot(dir.join("compare_#{w}.png"))
+    end
   end
 end

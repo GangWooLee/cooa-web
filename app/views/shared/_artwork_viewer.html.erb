@@ -10,7 +10,7 @@
 <div data-controller="artwork-viewer"
      data-artwork-viewer-drawable-value="<%= drawable %>"
      data-artwork-viewer-autofocus-value="<%= autofocus %>"
-     class="flex <%= local_assigns[:height_class] || 'h-full' %> w-full select-none flex-col">
+     class="flex <%= local_assigns[:height_class] || 'h-full' %> w-full min-w-0 select-none flex-col">
 
   <%# ── 상단 바: 줌(좌) + 피드백 번호(우) ── %>
   <div class="av-ui flex items-center justify-between gap-2 px-0.5 pb-2">
@@ -33,19 +33,26 @@
     <% end %>
   </div>
 
+  <%# ── 버전 라벨 띠 (각 pane 우측 상단·바깥) ── %>
+  <% if panes.any? { |pn| pn[:label].present? } %>
+    <div class="av-ui flex pb-1.5">
+      <% panes.each_with_index do |pn, pi| %>
+        <div class="flex min-w-0 flex-1 justify-end pr-1 <%= 'pl-2' if pi.positive? %>">
+          <% if pn[:label].present? %>
+            <span class="rounded-md bg-tint px-2 py-0.5 text-[12px] font-bold text-ink/75"><%= pn[:label] %></span>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
   <%# ── 캔버스 (깨끗) ── %>
   <div data-artwork-viewer-target="canvas"
        class="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-line bg-tint-2"
        style="touch-action:none">
     <div class="flex h-full w-full">
       <% panes.each_with_index do |pn, pi| %>
-        <div class="flex h-full min-w-0 flex-1 <%= 'border-l-2 border-line' if pi.positive? %>">
-          <% if pn[:label].present? %>
-            <div class="flex w-6 shrink-0 items-center justify-center border-r border-line-soft bg-white">
-              <span class="text-[12px] font-bold tracking-wider text-line" style="writing-mode:vertical-rl"><%= pn[:label] %></span>
-            </div>
-          <% end %>
-          <div data-artwork-viewer-target="pane" class="relative min-w-0 flex-1 overflow-hidden">
+        <div data-artwork-viewer-target="pane" class="relative h-full min-w-0 flex-1 overflow-hidden <%= 'border-l-2 border-line' if pi.positive? %>">
             <div data-artwork-viewer-target="stage" class="absolute left-0 top-0 origin-top-left">
               <img data-artwork-viewer-target="image" src="<%= pn[:image_src] %>" class="block max-w-none" draggable="false" alt="아트워크">
               <% (pn[:boxes] || []).each do |b| %>
@@ -61,7 +68,6 @@
                 <div data-artwork-viewer-target="draftBox" class="pointer-events-none absolute hidden rounded-[3px] border-2 border-dashed border-cooa" style="background:#8e030022"></div>
               <% end %>
             </div>
-          </div>
         </div>
       <% end %>
     </div>
