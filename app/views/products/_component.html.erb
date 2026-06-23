@@ -1,4 +1,4 @@
-<%# 구성요소 버전 타임라인 — 노드=슬롯 선택, 연결점=빨강, ▾=변경사유 펼침(콜아웃) %>
+<%# 구성요소 버전 타임라인 — 노드=슬롯 선택(드래그/클릭), 연결점=빨강, ▾=변경사유(담당자별) %>
 <% versions = component.component_versions.sort_by(&:version_number) %>
 <% cur = component.current_version %>
 <div class="border-b border-line-soft py-4 last:border-0">
@@ -13,7 +13,7 @@
     <%# 타임라인 %>
     <% if versions.any? %>
       <div data-controller="version-timeline" class="min-w-0 flex-1">
-        <%# 위/아래·좌측 여유로 호버 ring 안 잘리게 + 슬림 스크롤바 %>
+        <%# 호버 ring 안 잘리게 패딩 + 슬림 스크롤바 %>
         <div class="flex items-center overflow-x-auto scrollbar-slim px-1 py-2">
           <% versions.each_with_index do |v, i| %>
             <% if i.positive? %>
@@ -36,27 +36,39 @@
                 <span class="h-px w-3 bg-line-soft sm:w-5"></span>
               </div>
             <% end %>
-            <%# 버전 노드 = 슬롯 선택(비교/스크리닝) %>
-            <button type="button" data-version-select-target="version"
+            <%# 버전 노드 = 슬롯 선택(드래그 또는 클릭) %>
+            <button type="button" draggable="true" data-version-select-target="version"
                     data-vid="<%= v.id %>" data-vlabel="<%= v.vlabel.upcase %>" data-comp="<%= component.id %>"
-                    data-action="version-select#pick" title="<%= v.vlabel.upcase %> 선택"
-                    class="shrink-0 rounded-lg p-0.5 transition hover:bg-accent hover:ring-2 hover:ring-cooa/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/40">
+                    data-action="click->version-select#pick dragstart->version-select#dragstart"
+                    title="<%= v.vlabel.upcase %> — 슬롯으로 드래그(또는 클릭)"
+                    class="shrink-0 cursor-grab rounded-lg p-0.5 transition hover:bg-accent hover:ring-2 hover:ring-cooa/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/40 active:cursor-grabbing">
               <%= version_chip(v.vlabel.upcase, size: 30, active: v.current?) %>
             </button>
           <% end %>
         </div>
 
-        <%# 변경사유 펼침 콜아웃 (연결선별, 기본 숨김) — 포인터 삼각형 + accent 톤 %>
+        <%# 변경사유 콜아웃 (연결선별, 기본 숨김) — 담당자별 피드백(어노테이션) %>
         <% versions.each_with_index do |v, i| %>
           <% next unless i.positive? && v.change_reason.present? %>
+          <% anns = versions[i - 1].annotations.sort_by { |a| [a.seq || 0, a.position || 0, a.id] } %>
           <div data-version-timeline-target="panel" data-index="<%= i %>" id="reason-<%= component.id %>-<%= i %>" class="hidden">
-            <div class="relative ml-1 mt-3 max-w-xl rounded-xl border border-cooa/30 bg-accent p-3">
-              <span class="absolute -top-1.5 left-6 h-3 w-3 rotate-45 border-l border-t border-cooa/30 bg-accent"></span>
+            <div class="ml-1 mt-3 max-w-xl rounded-xl border border-cooa/30 bg-accent p-3">
               <div class="flex items-center gap-2">
                 <span class="rounded-md bg-cooa px-1.5 py-0.5 text-[10px] font-bold text-white"><%= versions[i - 1].vlabel.upcase %> → <%= v.vlabel.upcase %></span>
                 <span class="text-[11px] font-bold text-cooa">변경사유</span>
               </div>
-              <p class="mt-2 text-[13px] leading-relaxed text-ink/85"><%= v.change_reason %></p>
+              <% if anns.any? %>
+                <ul class="mt-2 space-y-1.5">
+                  <% anns.each do |a| %>
+                    <li class="flex items-center gap-2">
+                      <%= avatar(a.created_by, size: 18) %>
+                      <span class="min-w-0 flex-1 truncate text-[12.5px] text-ink/85"><%= a.comments.first&.body.presence || [a.before_text, a.after_text].compact.join(" → ").presence || a.category %></span>
+                    </li>
+                  <% end %>
+                </ul>
+              <% else %>
+                <p class="mt-2 text-[13px] leading-relaxed text-ink/85"><%= v.change_reason %></p>
+              <% end %>
               <%= link_to comparison_path(from_id: versions[i - 1].id, to_id: v.id),
                     class: "mt-2.5 inline-flex items-center gap-1.5 rounded-lg border border-cooa bg-white px-3 py-1.5 text-[12px] font-bold text-cooa transition hover:bg-cooa hover:text-white" do %>
                 <%= ui_icon "layers", size: 13 %> 비교 열기

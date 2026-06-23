@@ -42,25 +42,28 @@ class ScreensTest < ApplicationSystemTestCase
 
     visit product_path(Product.find_by(code: "CO0001"))
     assert_text "구성요소"
+    assert_selector "[data-vs-ready]" # version-select 컨트롤러 연결 대기
     assert_no_selector "a[href*='/compare/']" # 변경사유 콜아웃 기본 접힘
     # 슬롯 액션바: 같은 구성요소 두 버전 선택 → [비교 열기] 활성
+    # (노드가 draggable이라 Selenium 네이티브 클릭은 불안정 → JS로 click 디스패치)
     nodes = all("button[data-version-select-target='version']")
-    nodes[0].click
-    nodes[1].click
-    sleep 0.3
+    nodes[0].execute_script("this.click()")
+    nodes[1].execute_script("this.click()")
     assert_selector "button[data-version-select-target='compareBtn']:not([disabled])"
     save_screenshot(dir.join("2_product.png"))
     # 다른 구성요소 버전 선택 → 비교쌍 리셋(데드엔드 방지)
-    nodes[6].click # 용기 v1 (다른 구성요소)
-    sleep 0.2
+    nodes[6].execute_script("this.click()") # 용기 v1 (다른 구성요소)
     assert_selector "button[data-version-select-target='compareBtn'][disabled]"
-    nodes[7].click # 용기 v2 (같은 구성요소) → 다시 활성
-    sleep 0.2
+    nodes[7].execute_script("this.click()") # 용기 v2 (같은 구성요소) → 다시 활성
     assert_selector "button[data-version-select-target='compareBtn']:not([disabled])"
-    # ▾ 변경사유 펼침 → 콜아웃 비교 링크
-    first("button[data-version-timeline-target='dot']").click
+    # ▾ 변경사유(담당자별 어노테이션) 펼침 — 단상자 v5→v6 = 5건
+    find("button[aria-controls='reason-#{hero.id}-5']").click
     sleep 0.3
-    assert_selector "a[href*='/compare/']", minimum: 1
+    assert_selector "button[data-version-timeline-target='dot'].dot-on", minimum: 1 # 선택 상태 보임(①)
+    within("#reason-#{hero.id}-5") do
+      assert_selector "li", minimum: 2       # 담당자별 항목(②)
+      assert_selector "a[href*='/compare/']" # 비교 열기
+    end
     save_screenshot(dir.join("2b_product_reason.png"))
 
     visit screening_component_version_path(v5)

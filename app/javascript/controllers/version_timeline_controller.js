@@ -12,7 +12,7 @@ export default class extends Controller {
 
     this.panelTargets.forEach((p) => p.classList.add("hidden"))
     this.dotTargets.forEach((d) => {
-      d.classList.remove("rotate-180", "border-cooa", "bg-cooa", "text-white")
+      d.classList.remove("rotate-180", "dot-on")
       d.setAttribute("aria-expanded", "false")
     })
 
@@ -20,7 +20,7 @@ export default class extends Controller {
       panel.classList.remove("hidden")
       const dot = this.dotTargets.find((d) => d.dataset.index === idx)
       if (dot) {
-        dot.classList.add("rotate-180", "border-cooa", "bg-cooa", "text-white")
+        dot.classList.add("rotate-180", "dot-on")
         dot.setAttribute("aria-expanded", "true")
       }
     }

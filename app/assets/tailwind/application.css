@@ -31,3 +31,6 @@ summary::-webkit-details-marker { display: none; }
 .scrollbar-slim::-webkit-scrollbar-thumb:hover { background: var(--color-line); }
 .scrollbar-slim::-webkit-scrollbar-track { background: transparent; }
 
+/* 변경사유 ▾ 토글 선택(열림) 상태 — 호버와 동일 계열(명시 속성으로 확실 적용) */
+.dot-on { border-color: var(--color-cooa); background-color: var(--color-accent); color: var(--color-cooa); }
+
