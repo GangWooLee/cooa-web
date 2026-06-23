@@ -26,6 +26,9 @@ class ScreensTest < ApplicationSystemTestCase
 
     visit product_path(Product.find_by(code: "CO0001"))
     assert_text "구성요소"
+    # 버전 타임라인: 연결선=비교 링크, 노드=스크리닝 링크 (통합 진입)
+    assert_selector "a[href*='/compare/']", minimum: 1
+    assert_selector "a[href*='/screening']", minimum: 1
     sleep 0.3
     save_screenshot(dir.join("2_product.png"))
 

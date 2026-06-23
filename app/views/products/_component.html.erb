@@ -1,48 +1,37 @@
-<% cur = component.current_version %>
-<% from, to = component.default_compare_pair %>
-<% reasons = component.component_versions.select { |v| v.change_reason.present? }.sort_by(&:version_number).reverse %>
-<div class="rounded-2xl border border-line-soft bg-white p-4 shadow-sm">
-  <div class="flex flex-wrap items-center justify-between gap-2">
-    <div class="flex min-w-0 items-center gap-2">
-      <%= ui_icon "layers", size: 20, klass: "text-cooa" %>
-      <h3 class="truncate text-[16px] font-bold text-ink"><%= component.type_label %></h3>
-      <% if cur %><span class="text-[12px] text-line">현 위치 <%= cur.vlabel.upcase %></span><% end %>
-    </div>
-    <div class="flex items-center gap-2">
-      <% if from && to && from.id != to.id %>
-        <%= link_to comparison_path(from_id: from.id, to_id: to.id),
-              class: "rounded-lg border border-cooa px-3 py-1.5 text-[13px] font-bold text-cooa hover:bg-accent" do %>
-          버전 비교
-        <% end %>
-      <% end %>
-      <% if cur %>
-        <%= link_to screening_component_version_path(cur),
-              class: "bg-cooa-gradient rounded-lg px-3 py-1.5 text-[13px] font-bold text-white" do %>
-          인허가 스크리닝
-        <% end %>
-      <% end %>
-    </div>
+<%# 구성요소 버전 타임라인 한 행 — 노드 클릭=인허가 스크리닝, 연결선(변경사유)=두 버전 비교 %>
+<% versions = component.component_versions.sort_by(&:version_number) %>
+<div class="flex flex-col gap-1.5 border-b border-line-soft py-3 last:border-0 sm:flex-row sm:items-center sm:gap-4">
+  <%# 구성요소 이름 %>
+  <div class="flex shrink-0 items-center gap-2 sm:w-[110px]">
+    <%= ui_icon "layers", size: 16, klass: "shrink-0 text-cooa" %>
+    <span class="text-sm font-bold text-ink"><%= component.type_label %></span>
   </div>
 
-  <%# 버전 칩 (현재=채움) %>
-  <div class="mt-3 flex flex-wrap gap-1.5">
-    <% component.component_versions.sort_by(&:version_number).each do |v| %>
-      <%= version_chip(v.vlabel.upcase, size: 30, active: v.current?) %>
-    <% end %>
-  </div>
-
-  <%# 변경사유 로그 %>
-  <% if reasons.any? %>
-    <div class="mt-3 border-t border-line-soft pt-3">
-      <div class="mb-1.5 text-[12px] font-bold text-line">변경사유</div>
-      <ul class="space-y-1.5">
-        <% reasons.first(4).each do |v| %>
-          <li class="flex items-center gap-2 text-[13px] text-ink/80">
-            <%= version_chip(v.vlabel.upcase, size: 22, active: false) %>
-            <span><%= v.change_reason %></span>
-          </li>
+  <%# 타임라인 %>
+  <% if versions.any? %>
+    <div class="flex min-w-0 flex-1 items-center overflow-x-auto pb-1">
+      <% versions.each_with_index do |v, i| %>
+        <% if i.positive? %>
+          <%# 연결선 = versions[i-1] ↔ v 비교 (변경사유 = v.change_reason) %>
+          <%= link_to comparison_path(from_id: versions[i - 1].id, to_id: v.id),
+                title: "#{versions[i - 1].vlabel.upcase} ↔ #{v.vlabel.upcase} 비교",
+                class: "group flex shrink-0 items-center" do %>
+            <span class="h-px w-2.5 bg-line transition group-hover:bg-cooa"></span>
+            <span class="max-w-[150px] truncate rounded-full border border-line-soft bg-white px-2 py-0.5 text-[11px] text-ink/65 transition group-hover:border-cooa group-hover:bg-accent group-hover:text-cooa">
+              <%= v.change_reason.presence || "비교" %>
+            </span>
+            <span class="h-px w-2.5 bg-line transition group-hover:bg-cooa"></span>
+          <% end %>
         <% end %>
-      </ul>
+        <%# 노드 = 인허가 스크리닝 %>
+        <%= link_to screening_component_version_path(v),
+              title: "#{v.vlabel.upcase} 인허가 스크리닝",
+              class: "shrink-0 rounded-lg p-0.5 transition hover:bg-accent hover:ring-2 hover:ring-cooa/40" do %>
+          <%= version_chip(v.vlabel.upcase, size: 30, active: v.current?) %>
+        <% end %>
+      <% end %>
     </div>
+  <% else %>
+    <span class="text-[13px] text-line">버전 없음</span>
   <% end %>
 </div>
