@@ -36,11 +36,11 @@
                 <span class="h-px w-3 bg-line-soft sm:w-5"></span>
               </div>
             <% end %>
-            <%# 버전 노드 = 슬롯 선택(드래그 또는 클릭) %>
+            <%# 버전 노드 = 슬롯으로 드래그(채움 전용) %>
             <button type="button" draggable="true" data-version-select-target="version"
                     data-vid="<%= v.id %>" data-vlabel="<%= v.vlabel.upcase %>" data-comp="<%= component.id %>"
-                    data-action="click->version-select#pick dragstart->version-select#dragstart"
-                    title="<%= v.vlabel.upcase %> — 슬롯으로 드래그(또는 클릭)"
+                    data-action="dragstart->version-select#dragstart"
+                    title="<%= v.vlabel.upcase %> — 슬롯으로 드래그"
                     class="shrink-0 cursor-grab rounded-lg p-0.5 transition hover:bg-accent hover:ring-2 hover:ring-cooa/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/40 active:cursor-grabbing">
               <%= version_chip(v.vlabel.upcase, size: 30, active: v.current?) %>
             </button>

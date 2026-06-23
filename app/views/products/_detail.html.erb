@@ -50,8 +50,8 @@
         <div class="flex items-center gap-1.5 rounded-xl bg-accent px-2.5 py-1.5">
           <span class="flex shrink-0 items-center gap-1 text-[12px] font-bold text-cooa"><%= ui_icon "layers", size: 14 %> 버전 비교</span>
           <% %w[a b].each do |s| %>
-            <button type="button" data-version-select-target="slot" data-slot="<%= s %>" data-action="click->version-select#activate dragover->version-select#dragover dragleave->version-select#dragleave drop->version-select#drop"
-                    class="flex h-7 min-w-[34px] items-center justify-center rounded-md border border-dashed border-line bg-white px-1.5 text-[12px] font-bold text-line transition">
+            <button type="button" data-version-select-target="slot" data-slot="<%= s %>" data-action="click->version-select#clear dragover->version-select#dragover dragleave->version-select#dragleave drop->version-select#drop"
+                    class="flex h-7 min-w-[34px] cursor-pointer items-center justify-center rounded-md border border-dashed border-line bg-white px-1.5 text-[12px] font-bold text-line transition hover:border-cooa">
               <span data-label>+</span>
             </button>
           <% end %>
@@ -61,14 +61,14 @@
         <%# 인허가 스크리닝 (슬롯 1) %>
         <div class="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5" style="background:#f1ecfb">
           <span class="flex shrink-0 items-center gap-1 text-[12px] font-bold" style="color:#6b4ea8"><%= ui_icon "spark", size: 14 %> 인허가 스크리닝</span>
-          <button type="button" data-version-select-target="slot" data-slot="c" data-action="click->version-select#activate dragover->version-select#dragover dragleave->version-select#dragleave drop->version-select#drop"
-                  class="flex h-7 min-w-[34px] items-center justify-center rounded-md border border-dashed border-line bg-white px-1.5 text-[12px] font-bold text-line transition">
+          <button type="button" data-version-select-target="slot" data-slot="c" data-action="click->version-select#clear dragover->version-select#dragover dragleave->version-select#dragleave drop->version-select#drop"
+                  class="flex h-7 min-w-[34px] cursor-pointer items-center justify-center rounded-md border border-dashed border-line bg-white px-1.5 text-[12px] font-bold text-line transition hover:border-cooa">
             <span data-label>+</span>
           </button>
           <button type="button" data-version-select-target="screenBtn" data-action="version-select#screen" disabled
                   class="shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-bold text-white transition disabled:bg-line-soft disabled:opacity-70" style="background:#6b4ea8">스크리닝</button>
         </div>
-        <span class="text-[11px] text-line">버전을 끌어다 슬롯에 놓으세요 (또는 클릭)</span>
+        <span class="text-[11px] text-line">버전을 끌어다 슬롯에 놓기 · 슬롯을 클릭하면 비움</span>
       </div>
     <% end %>
 
