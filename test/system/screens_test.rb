@@ -26,7 +26,7 @@ class ScreensTest < ApplicationSystemTestCase
 
     visit screening_component_version_path(v5)
     assert_text "스크리닝 결과"
-    assert_selector "button", text: "전체" # 스크리닝엔 줌 버튼 유지
+    assert_no_selector "button", text: "전체" # 스크리닝도 줌 버튼 제거(일관성)
     sleep 0.8
     save_screenshot(dir.join("3_screening.png"))
 
