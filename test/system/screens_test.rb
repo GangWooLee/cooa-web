@@ -26,20 +26,16 @@ class ScreensTest < ApplicationSystemTestCase
 
     visit screening_component_version_path(v5)
     assert_text "스크리닝 결과"
+    assert_selector "button", text: "전체" # 스크리닝엔 줌 버튼 유지
     sleep 0.8
     save_screenshot(dir.join("3_screening.png"))
 
-    # ③ 버전 비교 v4 — 듀얼 + 캔버스 밖 크롬
+    # ③ 버전 비교 — 듀얼 + 상단 정리(줌 버튼 제거·라벨 좌상단)
     visit comparison_path(from_id: v5.id, to_id: v6.id)
     assert_text "피드백"
-    sleep 1.0 # 이미지 로드 + autofocus 박스#1 (힌트 토스트 보임)
+    assert_no_selector "button", text: "전체" # 비교엔 줌 버튼 없음
+    sleep 1.0 # 이미지 로드 + autofocus 박스#1
     save_screenshot(dir.join("4_compare.png"))
-
-    # 힌트 사라진 뒤 fit → 깨끗한 듀얼 전체 보기 (v5/v6 라벨·필름스트립)
-    sleep 2.7
-    find("button", text: "전체").click
-    sleep 0.6
-    save_screenshot(dir.join("4b_compare_fit.png"))
 
     # 썸네일 클릭 → 해당 피드백 포커스(양쪽 동시)
     find(".av-thumb[data-seq='3']").click

@@ -29,7 +29,7 @@
                 { image_src: image_path(@from.image_name), label: @from.vlabel, boxes: anns },
                 { image_src: image_path(@to.image_name),   label: @to.vlabel,   boxes: anns }
               ],
-              autofocus: true, drawable: true %>
+              autofocus: true, drawable: true, zoom: false %>
       <% else %>
         <div class="flex h-full items-center justify-center rounded-xl border border-line bg-tint-2 text-line">이 구성요소는 아트워크 이미지가 없습니다.</div>
       <% end %>
