@@ -19,21 +19,24 @@
   <%# 본문: 뷰어 + 우측 패널 %>
   <div data-controller="comparison"
        data-action="artwork-viewer:focus->comparison#onFocus artwork-viewer:draw->comparison#onDraw"
-       class="flex min-h-0 flex-1 flex-col lg:flex-row">
+       class="flex min-h-0 flex-1 flex-col xl:flex-row">
     <%# 좌: 검토(현재) 버전 아트워크 + 이전 버전 피드백 박스 %>
     <div class="min-h-0 flex-1 p-3" style="min-height:380px">
-      <% if @to.image_name.present? %>
+      <% if @from.image_name.present? && @to.image_name.present? %>
+        <% anns = annotation_boxes(@from.annotations.ordered) %>
         <%= render "shared/artwork_viewer",
-              image_src: image_path(@to.image_name),
-              boxes: annotation_boxes(@from.annotations.ordered),
-              drawable: true %>
+              panes: [
+                { image_src: image_path(@from.image_name), label: "이전 #{@from.vlabel}", boxes: anns },
+                { image_src: image_path(@to.image_name),   label: "현재 #{@to.vlabel}",   boxes: anns }
+              ],
+              autofocus: true, drawable: true %>
       <% else %>
         <div class="flex h-full items-center justify-center rounded-xl border border-line bg-tint-2 text-line">이 구성요소는 아트워크 이미지가 없습니다.</div>
       <% end %>
     </div>
 
     <%# 우: 피드백 목록 / 상세 / 새 박스 %>
-    <aside class="flex w-full shrink-0 flex-col border-t border-line bg-white lg:w-[360px] lg:border-l lg:border-t-0">
+    <aside class="flex w-full shrink-0 flex-col border-t border-line bg-white xl:w-[360px] xl:border-l xl:border-t-0">
       <%# 목록 %>
       <div data-comparison-target="list" class="flex min-h-0 flex-1 flex-col">
         <div class="border-b border-line-soft p-3">
@@ -67,17 +70,7 @@
             <span class="ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold" style="color:<%= a.status_meta[:color] %>;background:<%= a.status_meta[:bg] %>"><%= a.status_meta[:label] %></span>
           </div>
           <div class="min-h-0 flex-1 overflow-auto p-3">
-            <%# 이전|현재 크롭 %>
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <div class="mb-1 text-[11px] font-bold text-line"><%= @from.vlabel %> · 이전</div>
-                <div class="w-full rounded border border-line-soft" style="<%= crop_style(@from.image_name, a.box_x, a.box_y, a.box_w, a.box_h) %>"></div>
-              </div>
-              <div>
-                <div class="mb-1 text-[11px] font-bold text-cooa"><%= @to.vlabel %> · 현재</div>
-                <div class="w-full rounded border-2" style="border-color:#fc7976;<%= crop_style(@to.image_name, a.box_x, a.box_y, a.box_w, a.box_h) %>"></div>
-              </div>
-            </div>
+            <p class="mb-2 text-[11px] text-line">← 좌(이전)·우(현재) 캔버스에서 이 영역이 확대됩니다.</p>
             <% if a.before_text.present? %>
               <div class="mt-2 rounded-lg bg-tint px-2 py-1.5 text-xs">
                 <span class="text-line line-through"><%= a.before_text %></span><span class="px-1 text-line">→</span><span class="font-bold text-ink"><%= a.after_text %></span>
