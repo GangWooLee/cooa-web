@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html class="h-full">
+  <head>
+    <title><%= content_for(:title) || "COOA" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="h-full bg-tint text-ink font-sans antialiased">
+    <div class="flex h-screen flex-col overflow-hidden">
+      <%= render "shared/topbar" %>
+      <div class="flex min-h-0 flex-1">
+        <%= render "shared/sidebar" %>
+        <main class="min-w-0 flex-1 overflow-auto"><%= yield %></main>
+      </div>
+    </div>
+  </body>
+</html>

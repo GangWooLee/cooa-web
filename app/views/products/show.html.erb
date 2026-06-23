@@ -1,0 +1,79 @@
+<% content_for :title, "#{@product.name}#{@product.code ? " · #{@product.code}" : ""}" %>
+<div class="p-6">
+  <%# 브레드크럼 (조상 경로) %>
+  <div class="text-[13px]"><%= node_breadcrumb(@product) %></div>
+
+  <%# 제품 헤더 %>
+  <div class="mt-3 rounded-2xl border border-line-soft bg-white p-5 shadow-sm">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2">
+          <% if @product.code.present? %>
+            <span class="bg-cooa-gradient rounded-md px-2 py-0.5 text-[13px] font-bold text-white">[<%= @product.code %>]</span>
+          <% else %>
+            <%= ui_icon "folder", size: 22, klass: "text-cooa" %>
+          <% end %>
+          <h1 class="text-2xl font-bold text-ink"><%= @product.name %></h1>
+          <span class="rounded-full bg-tint px-2 py-0.5 text-xs text-ink/70"><%= @product.folder? ? "그룹" : @product.product_type %></span>
+        </div>
+        <div class="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-[14px] text-ink/80">
+          <% if @product.country.present? %><span>국가 · <b class="text-ink"><%= @product.country_label %></b></span><% end %>
+          <% if @product.channel.present? %><span>채널 · <b class="text-ink"><%= @product.channel %></b></span><% end %>
+          <% if @product.deadline %><span class="inline-flex items-center gap-1"><%= ui_icon "calendar", size: 15 %> <%= @product.deadline.strftime("%Y.%m.%d") %></span><% end %>
+          <% if @product.notion_url.present? %>
+            <%= link_to @product.notion_url, target: "_blank", rel: "noopener",
+                  class: "inline-flex items-center gap-1 text-cooa hover:underline" do %>
+              <%= ui_icon "external", size: 15 %> Notion 기획문서
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <% if @product.product_members.any? %>
+        <div class="flex items-center gap-4">
+          <% @product.product_members.sort_by { |m| %w[designer pm ra scm].index(m.role) || 9 }.each do |pm| %>
+            <div class="flex items-center gap-1.5">
+              <%= avatar(pm.user, size: 30) %>
+              <div class="leading-tight">
+                <div class="text-[13px] font-bold text-ink"><%= pm.user.name %></div>
+                <div class="text-[11px] text-line"><%= pm.role_short %></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# 하위 항목 (그룹/폴더 노드) %>
+  <% if @product.children.any? %>
+    <h2 class="mb-3 mt-6 text-[17px] font-bold text-ink">하위 항목</h2>
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <% @product.children.each do |child| %>
+        <%= link_to product_path(child),
+              class: "flex items-center gap-3 rounded-xl border border-line-soft bg-white p-3 shadow-sm hover:border-cooa" do %>
+          <%= ui_icon(child.leaf? ? "doc" : "folder", size: 22, klass: "text-cooa") %>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <span class="truncate font-bold text-ink"><%= child.name %></span>
+              <% if child.code.present? %><span class="text-[11px] text-line"><%= child.code %></span><% end %>
+            </div>
+            <div class="text-[12px] text-line">
+              <% if child.leaf? %><%= [child.country_label, child.channel].compact.join(" · ") if child.country.present? %>
+              <% else %><%= child.children.size %>개 하위<% end %>
+            </div>
+          </div>
+          <%= ui_icon "caret", size: 16, klass: "-rotate-90 text-line" %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# 구성요소 · 버전 (leaf) %>
+  <% if @product.components.any? %>
+    <h2 class="mb-3 mt-6 text-[17px] font-bold text-ink">구성요소 · 버전</h2>
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <%= render partial: "products/component", collection: @product.components.ordered, as: :component %>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,28 @@
+class ApplicationController < ActionController::Base
+  # Only allow modern browsers supporting webp images, web push, badges, import maps, CSS nesting, and CSS :has.
+  allow_browser versions: :modern
+
+  # Changes to the importmap will invalidate the etag for HTML responses
+  stale_when_importmap_changes
+
+  before_action :set_current_user
+  before_action :set_nav
+  helper_method :current_user
+
+  private
+
+  # 데모: 고정 사용자 자동 로그인 (인증 생략)
+  def set_current_user
+    Current.user = User.find_by(name: "김쿠아") || User.first
+  end
+
+  def current_user = Current.user
+
+  # 모든 화면 공통 셸 데이터 (사이드바 브랜드, 상단 열린 품목 탭)
+  def set_nav
+    return unless ActiveRecord::Base.connection.schema_cache.data_source_exists?("products")
+
+    @tree_roots = Product.roots.includes(:children)
+    @open_tabs  = Product.where.not(code: nil).order(:position, :id).includes(:components).limit(2)
+  end
+end

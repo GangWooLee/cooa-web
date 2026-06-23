@@ -1,0 +1,23 @@
+<% current = (current_id && current_id == node.id) %>
+<% if node.children.any? %>
+  <details open>
+    <summary class="flex cursor-pointer list-none items-center gap-1 rounded-md px-2 py-1.5 hover:bg-tint <%= 'bg-accent/60' if active_ids.include?(node.id) %>">
+      <%= ui_icon "caret", size: 15, klass: "tree-caret shrink-0 text-line" %>
+      <%= ui_icon "folder", size: 16, klass: "shrink-0 text-cooa" %>
+      <%= link_to node.name, product_path(node),
+            class: "flex-1 truncate text-[14px] #{current ? 'font-bold text-cooa' : 'font-semibold text-ink'}" %>
+    </summary>
+    <div class="ml-3 border-l border-line-soft pl-1">
+      <% node.children.each do |child| %>
+        <%= render "shared/tree_node", node: child, active_ids: active_ids, current_id: current_id %>
+      <% end %>
+    </div>
+  </details>
+<% else %>
+  <%= link_to product_path(node),
+        class: "flex items-center gap-1.5 rounded-md py-1.5 pl-[30px] pr-2 hover:bg-tint #{current ? 'bg-accent/60 font-bold text-cooa' : 'text-ink'}" do %>
+    <%= ui_icon "doc", size: 15, klass: "shrink-0 text-line" %>
+    <span class="flex-1 truncate text-[14px]"><%= node.name %></span>
+    <% if node.code.present? %><span class="shrink-0 text-[10px] text-line"><%= node.code %></span><% end %>
+  <% end %>
+<% end %>

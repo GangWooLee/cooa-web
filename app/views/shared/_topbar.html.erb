@@ -1,0 +1,26 @@
+<%# 공통 상단바: 로고 · 열린 품목 탭 · 전역 검색 %>
+<header class="flex h-[43px] shrink-0 items-center border-b border-line-soft bg-tint-2">
+  <%= link_to root_path, class: "flex h-full items-center pl-3 pr-3" do %>
+    <%= image_tag "cooa/logo.png", class: "h-[26px] w-auto", alt: "COOA" %>
+  <% end %>
+  <div class="h-full w-px bg-line/70"></div>
+
+  <nav class="flex h-full items-center">
+    <% (@open_tabs || []).each do |p| %>
+      <%= link_to product_path(p), class: "flex h-full items-center gap-2 px-3 hover:bg-white/60" do %>
+        <span class="text-[15px] font-medium text-ink">[<%= p.code %>]</span>
+        <% p.components.first(2).each do |c| %>
+          <% if (v = c.current_version) %><%= version_chip(v.vlabel.upcase, size: 26) %><% end %>
+        <% end %>
+      <% end %>
+      <div class="h-full w-px bg-line/70"></div>
+    <% end %>
+  </nav>
+
+  <div class="ml-auto pr-4">
+    <div class="flex h-[33px] w-[440px] items-center gap-2 rounded-[11px] border-[1.5px] border-line bg-white px-3 text-line">
+      <%= ui_icon "search", size: 18 %>
+      <span class="text-[14px]">전체 검색</span>
+    </div>
+  </div>
+</header>

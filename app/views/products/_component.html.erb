@@ -1,0 +1,48 @@
+<% cur = component.current_version %>
+<% from, to = component.compare_pair %>
+<% reasons = component.component_versions.select { |v| v.change_reason.present? }.sort_by(&:version_number).reverse %>
+<div class="rounded-2xl border border-line-soft bg-white p-4 shadow-sm">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <div class="flex items-center gap-2">
+      <%= ui_icon "layers", size: 20, klass: "text-cooa" %>
+      <h3 class="text-[16px] font-bold text-ink"><%= component.type_label %></h3>
+      <% if cur %><span class="text-[12px] text-line">현 위치 <%= cur.vlabel.upcase %></span><% end %>
+    </div>
+    <div class="flex items-center gap-2">
+      <% if from && to && from.id != to.id %>
+        <%= link_to comparison_path(from_id: from.id, to_id: to.id),
+              class: "rounded-lg border border-cooa px-3 py-1.5 text-[13px] font-bold text-cooa hover:bg-accent" do %>
+          버전 비교
+        <% end %>
+      <% end %>
+      <% if cur %>
+        <%= link_to screening_component_version_path(cur),
+              class: "bg-cooa-gradient rounded-lg px-3 py-1.5 text-[13px] font-bold text-white" do %>
+          인허가 스크리닝
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <%# 버전 칩 (현재=채움) %>
+  <div class="mt-3 flex flex-wrap gap-1.5">
+    <% component.component_versions.sort_by(&:version_number).each do |v| %>
+      <%= version_chip(v.vlabel.upcase, size: 30, active: v.current?) %>
+    <% end %>
+  </div>
+
+  <%# 변경사유 로그 %>
+  <% if reasons.any? %>
+    <div class="mt-3 border-t border-line-soft pt-3">
+      <div class="mb-1.5 text-[12px] font-bold text-line">변경사유</div>
+      <ul class="space-y-1.5">
+        <% reasons.first(4).each do |v| %>
+          <li class="flex items-center gap-2 text-[13px] text-ink/80">
+            <%= version_chip(v.vlabel.upcase, size: 22, active: false) %>
+            <span><%= v.change_reason %></span>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+</div>

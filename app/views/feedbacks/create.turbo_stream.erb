@@ -1,0 +1,6 @@
+<%= turbo_stream.append "feedback-list" do %>
+  <%= render "feedbacks/feedback", feedback: @feedback %>
+<% end %>
+<%= turbo_stream.replace "feedback-form" do %>
+  <%= render "comparisons/feedback_form", version: @version %>
+<% end %>

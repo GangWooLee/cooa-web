@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+/* === COOA 디자인 토큰 (Figma 추출 기준) === */
+@theme {
+  --color-cooa: #8e0300;        /* 브랜드 메인(버건디) */
+  --color-cooa-dark: #280100;   /* 그라데이션 끝 */
+  --color-ink: #3d3d3d;         /* 본문 텍스트 */
+  --color-line: #a3a3a3;        /* 보더 */
+  --color-line-soft: #d9d9d9;   /* 연한 보더/배경 */
+  --color-tint: #f5f5f5;        /* 배경 틴트 */
+  --color-tint-2: #e9e9e9;      /* 상단바 배경 */
+  --color-tint-3: #d3d3d3;      /* 탭 배경 */
+  --color-accent: #ffeeee;      /* 강조 연틴트(#fee) */
+  --color-warn: #e6a700;        /* 위험신호 */
+  --color-ok: #84b733;          /* 적합 */
+  --font-sans: "Pretendard Variable", Pretendard, ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+/* 브랜드 그라데이션 뱃지 (버전 칩 등) */
+.bg-cooa-gradient { background-image: linear-gradient(to bottom, #8e0300, #280100); }
+
+/* 사이드바 트리: <details> 캐럿 회전 (열림=아래, 닫힘=오른쪽) */
+.tree-caret { transition: transform .15s ease; }
+details:not([open]) > summary .tree-caret { transform: rotate(-90deg); }
+summary::-webkit-details-marker { display: none; }
+
