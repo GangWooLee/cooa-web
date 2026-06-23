@@ -1,25 +1,36 @@
 <tr data-tree-table-target="row" data-node-id="<%= node.id %>" data-parent-id="<%= node.parent_id %>" data-depth="<%= depth %>"
     data-controller="row-link" data-row-link-url-value="<%= product_path(node) %>" data-action="click->row-link#go"
     class="group cursor-pointer border-b border-line-soft hover:bg-accent/30">
-  <td class="whitespace-nowrap py-2.5 pr-3" style="padding-left: <%= 12 + depth * 22 %>px">
-    <div class="flex items-center gap-1.5">
+  <td class="whitespace-nowrap py-2.5 pr-3" style="padding-left: <%= 10 + depth * 20 %>px">
+    <div class="flex items-center gap-1">
+      <%# └ 트리 커넥터 (루트 외) %>
+      <% if depth > 0 %>
+        <span class="relative mr-0.5 inline-block h-[18px] w-3.5 shrink-0">
+          <span class="absolute left-0 top-0 h-1/2 border-l border-line-soft"></span>
+          <span class="absolute left-0 top-1/2 w-3 border-t border-line-soft"></span>
+        </span>
+      <% end %>
+
       <% if node.folder? %>
         <button type="button" data-action="click->tree-table#toggle"
                 class="shrink-0 text-line transition-transform" aria-label="펼치기/접기">
-          <%= ui_icon "caret", size: 16 %>
+          <%= ui_icon "caret", size: 15 %>
         </button>
         <%= ui_icon "folder", size: 16, klass: "shrink-0 text-cooa" %>
         <span class="text-[14px] font-bold text-ink"><%= node.name %></span>
+        <span class="ml-1 text-[12px] text-line">· 하위 <%= node.children.size %></span>
       <% else %>
-        <span class="w-4 shrink-0"></span>
+        <span class="inline-block w-[15px] shrink-0"></span>
         <%= ui_icon "doc", size: 15, klass: "shrink-0 text-line" %>
         <span class="text-[14px] text-ink"><%= node.name %></span>
       <% end %>
     </div>
   </td>
+
+  <%# SKU 컬럼은 리프(leaf)만 채움 — 폴더 행은 비움 %>
   <td class="whitespace-nowrap px-3 py-2.5 font-medium text-ink"><%= node.code %></td>
-  <td class="px-3 py-2.5 text-ink"><%= node.country_label if node.country.present? %></td>
-  <td class="px-3 py-2.5 text-ink"><%= node.channel %></td>
+  <td class="px-3 py-2.5 text-ink"><%= node.country_label if node.leaf? && node.country.present? %></td>
+  <td class="px-3 py-2.5 text-ink"><%= node.channel if node.leaf? %></td>
   <td class="px-3 py-2.5">
     <% if node.leaf? %>
       <div class="flex -space-x-1.5"><% node.product_members.includes(:user).each do |pm| %><%= avatar(pm.user, size: 22) %><% end %></div>
@@ -33,6 +44,8 @@
     </td>
   <% end %>
   <td class="whitespace-nowrap px-3 py-2.5 text-ink/80">
-    <% if node.deadline %><span class="inline-flex items-center gap-1"><%= ui_icon "calendar", size: 15 %> <%= node.deadline.strftime("%Y.%m.%d") %></span><% end %>
+    <% if node.leaf? && node.deadline %>
+      <span class="inline-flex items-center gap-1"><%= ui_icon "calendar", size: 15 %> <%= node.deadline.strftime("%Y.%m.%d") %></span>
+    <% end %>
   </td>
 </tr>
