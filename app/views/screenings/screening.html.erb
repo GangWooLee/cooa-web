@@ -22,10 +22,7 @@
     <%# 우: 결과 패널 %>
     <aside class="flex w-full shrink-0 flex-col border-t border-line bg-white lg:w-[400px] lg:border-l lg:border-t-0">
       <div class="border-b border-line-soft p-3">
-        <div class="flex items-center justify-between">
-          <h3 class="text-base font-bold text-ink">스크리닝 결과</h3>
-          <span class="rounded-full bg-tint px-2 py-0.5 text-xs text-ink/70"><%= @country_label %></span>
-        </div>
+        <h3 class="text-base font-bold text-ink">스크리닝 결과</h3>
         <% if @run %>
           <% counts = @run.screening_findings.group(:decision).count %>
           <div class="mt-2 flex flex-wrap items-center gap-1.5">
