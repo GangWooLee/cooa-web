@@ -1,0 +1,16 @@
+<%# 대시보드 셸 = 트리 리스트 + 우측 상세 드로어(비모달 슬라이드오버).
+     locals: detail_product (nil이면 빈 프레임 = 드로어 닫힘) %>
+<% detail_product = local_assigns[:detail_product] %>
+<div data-controller="detail-drawer" class="relative h-full min-w-0 overflow-hidden">
+  <%= render "dashboard/list" %>
+
+  <%# 우측 상세 드로어 — 기본 화면 밖(translate-x-full), 콘텐츠 로드 시 슬라이드 인 %>
+  <aside data-detail-drawer-target="panel"
+         class="absolute right-0 top-0 z-20 flex h-full w-full max-w-[680px] translate-x-full flex-col border-l border-line bg-white shadow-2xl transition-transform duration-300 ease-out">
+    <%= turbo_frame_tag "detail", class: "flex min-h-0 flex-1 flex-col" do %>
+      <% if detail_product %>
+        <%= render "products/detail", product: detail_product %>
+      <% end %>
+    <% end %>
+  </aside>
+</div>

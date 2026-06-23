@@ -9,9 +9,11 @@ export default class extends Controller {
   }
 
   toggle(event) {
-    const id = event.currentTarget.closest("tr").dataset.nodeId
+    const tr = event.currentTarget.closest("tr")
+    if (!tr) return
+    const id = tr.dataset.nodeId
     this.collapsed.has(id) ? this.collapsed.delete(id) : this.collapsed.add(id)
-    event.currentTarget.classList.toggle("-rotate-90")
+    tr.querySelector(".tree-caret")?.classList.toggle("-rotate-90")
     this.update()
   }
 

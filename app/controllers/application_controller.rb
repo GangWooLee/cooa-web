@@ -25,4 +25,10 @@ class ApplicationController < ActionController::Base
     @tree_roots = Product.roots.includes(:children)
     @open_tabs  = Product.where.not(code: nil).order(:position, :id).includes(:components).limit(2)
   end
+
+  # 대시보드 셸의 제품 트리 행 (대시보드 index / 상세 풀요청 공용)
+  def load_dashboard_rows
+    @rows = Product.tree_preorder(Product.roots.includes(:children, :owner, { product_members: :user },
+                                                          { components: :component_versions }))
+  end
 end

@@ -4,8 +4,7 @@
     <summary class="flex cursor-pointer list-none items-center gap-1 rounded-md px-2 py-1.5 hover:bg-tint <%= 'bg-accent/60' if active_ids.include?(node.id) %>">
       <%= ui_icon "caret", size: 15, klass: "tree-caret shrink-0 text-line" %>
       <%= ui_icon "folder", size: 16, klass: "shrink-0 text-cooa" %>
-      <%= link_to node.name, product_path(node),
-            class: "flex-1 truncate text-[14px] #{current ? 'font-bold text-cooa' : 'font-semibold text-ink'}" %>
+      <span class="flex-1 truncate text-[14px] <%= current ? 'font-bold text-cooa' : 'font-semibold text-ink' %>"><%= node.name %></span>
     </summary>
     <div class="ml-3 border-l border-line-soft pl-1">
       <% node.children.each do |child| %>

@@ -24,6 +24,22 @@ class ScreensTest < ApplicationSystemTestCase
     sleep 0.4
     save_screenshot(dir.join("1_dashboard.png"))
 
+    # ── 마스터-디테일: 리프 행(셀) 클릭 → 우측 드로어 상세 ──
+    within("table") { find("td", text: "CO0001").click }
+    sleep 0.7
+    assert_selector "[data-detail-drawer-target='panel']"
+    assert_text "구성요소" # 드로어에 상세 로드
+    save_screenshot(dir.join("1b_dashboard_detail.png"))
+    # 닫기 → 드로어 닫힘 + URL 정리(/)
+    find("button[aria-label='닫기']").click
+    sleep 0.4
+    assert_equal "/", URI.parse(current_url).path, "닫기 후 URL은 대시보드(/)"
+
+    # ── 폴더 클릭 = 트리 토글(별도 페이지 이동 없음) ──
+    within("table") { find("td", text: "레티놀 3% 세럼").click }
+    sleep 0.3
+    assert_equal "/", URI.parse(current_url).path, "폴더 클릭은 페이지 이동 없어야 함"
+
     visit product_path(Product.find_by(code: "CO0001"))
     assert_text "구성요소"
     # 노드=스크리닝 링크(보임). 변경사유는 기본 접힘이라 비교 링크 숨김.

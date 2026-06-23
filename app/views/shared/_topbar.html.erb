@@ -7,7 +7,8 @@
 
   <nav class="flex h-full min-w-0 flex-1 items-center overflow-x-auto">
     <% (@open_tabs || []).each do |p| %>
-      <%= link_to product_path(p), class: "flex h-full w-[180px] shrink-0 items-center gap-2 px-3 hover:bg-white/60" do %>
+      <%= link_to product_path(p),
+            class: "flex h-full w-[180px] shrink-0 items-center gap-2 px-3 hover:bg-white/60" do %>
         <span class="text-[15px] font-medium text-ink">[<%= p.code %>]</span>
         <% p.components.first(2).each do |c| %>
           <% if (v = c.current_version) %><%= version_chip(v.vlabel.upcase, size: 26) %><% end %>
