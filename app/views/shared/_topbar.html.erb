@@ -1,13 +1,13 @@
 <%# 공통 상단바: 로고 · 열린 품목 탭 %>
 <header class="flex h-[43px] shrink-0 items-center border-b border-line-soft bg-tint-2">
-  <%= link_to root_path, class: "flex h-full shrink-0 items-center pl-3 pr-3" do %>
+  <%= link_to root_path, class: "flex h-full w-[100px] shrink-0 items-center pl-3" do %>
     <%= image_tag "cooa/logo.png", class: "h-[26px] w-auto", alt: "COOA" %>
   <% end %>
   <div class="h-full w-px shrink-0 bg-line/70"></div>
 
   <nav class="flex h-full min-w-0 flex-1 items-center overflow-x-auto">
     <% (@open_tabs || []).each do |p| %>
-      <%= link_to product_path(p), class: "flex h-full shrink-0 items-center gap-2 px-3 hover:bg-white/60" do %>
+      <%= link_to product_path(p), class: "flex h-full w-[180px] shrink-0 items-center gap-2 px-3 hover:bg-white/60" do %>
         <span class="text-[15px] font-medium text-ink">[<%= p.code %>]</span>
         <% p.components.first(2).each do |c| %>
           <% if (v = c.current_version) %><%= version_chip(v.vlabel.upcase, size: 26) %><% end %>

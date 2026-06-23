@@ -16,6 +16,11 @@ class ScreensTest < ApplicationSystemTestCase
 
     visit root_path
     assert_text "레티놀 3% 세럼"
+    # 상단바 정합: 첫 히스토리 탭 우측 ≈ 사이드바 우측 (격자 일치)
+    assert_selector "header nav a", minimum: 1
+    tab_r  = page.evaluate_script("document.querySelector('header nav a').getBoundingClientRect().right")
+    side_r = page.evaluate_script("document.querySelector('aside').getBoundingClientRect().right")
+    assert_in_delta tab_r, side_r, 2, "첫 탭 우측(#{tab_r})이 사이드바 우측(#{side_r})과 정합해야 함"
     sleep 0.4
     save_screenshot(dir.join("1_dashboard.png"))
 
