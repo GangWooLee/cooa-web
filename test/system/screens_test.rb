@@ -26,11 +26,16 @@ class ScreensTest < ApplicationSystemTestCase
 
     visit product_path(Product.find_by(code: "CO0001"))
     assert_text "구성요소"
-    # 버전 타임라인: 연결선=비교 링크, 노드=스크리닝 링크 (통합 진입)
-    assert_selector "a[href*='/compare/']", minimum: 1
+    # 노드=스크리닝 링크(보임). 변경사유는 기본 접힘이라 비교 링크 숨김.
     assert_selector "a[href*='/screening']", minimum: 1
+    assert_no_selector "a[href*='/compare/']"
     sleep 0.3
     save_screenshot(dir.join("2_product.png"))
+    # ▾ 토글 클릭 → 변경사유 패널 + 비교 링크 노출(펼침)
+    first("button[data-version-timeline-target='dot']").click
+    sleep 0.3
+    assert_selector "a[href*='/compare/']", minimum: 1
+    save_screenshot(dir.join("2b_product_reason.png"))
 
     visit screening_component_version_path(v5)
     assert_text "스크리닝 결과"

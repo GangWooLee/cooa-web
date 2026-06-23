@@ -75,12 +75,12 @@
       <h2 class="text-lg font-bold text-ink">구성요소 · 버전</h2>
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-line">
         <span class="inline-flex items-center gap-1.5">
-          <span class="rounded-full border border-line-soft px-1.5 py-0.5 text-[10px] text-ink/65">변경사유</span>
-          연결선 클릭 = 두 버전 비교
-        </span>
-        <span class="inline-flex items-center gap-1.5">
           <%= version_chip("V", size: 18, active: true) %>
           버전 클릭 = 인허가 스크리닝
+        </span>
+        <span class="inline-flex items-center gap-1.5">
+          <span class="flex h-5 w-5 items-center justify-center rounded-full border border-line-soft text-line"><%= ui_icon "caret", size: 12 %></span>
+          변경사유 펼치기 · 비교
         </span>
       </div>
     </div>
