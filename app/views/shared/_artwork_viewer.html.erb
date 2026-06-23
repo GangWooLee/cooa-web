@@ -1,4 +1,4 @@
-<%# 재사용 아트워크 뷰어 (단일/듀얼 pane).
+<%# 재사용 아트워크 뷰어 (단일/듀얼 pane). 3구역: 상단 바 / 캔버스 / 하단 바.
      locals: panes [{image_src,label,boxes}]  또는  image_src + boxes(단일).  drawable, autofocus, height_class %>
 <%
   panes     = local_assigns[:panes] || [{ image_src: local_assigns[:image_src], boxes: local_assigns.fetch(:boxes, []) }]
@@ -10,66 +10,93 @@
 <div data-controller="artwork-viewer"
      data-artwork-viewer-drawable-value="<%= drawable %>"
      data-artwork-viewer-autofocus-value="<%= autofocus %>"
-     class="relative <%= local_assigns[:height_class] || 'h-full' %> w-full select-none overflow-hidden rounded-xl border border-line bg-tint-2"
-     style="touch-action:none">
+     class="flex <%= local_assigns[:height_class] || 'h-full' %> w-full select-none flex-col">
 
-  <%# pane들 (1개=단일, 2개=이전|현재) %>
-  <div class="flex h-full w-full">
-    <% panes.each_with_index do |pn, pi| %>
-      <div data-artwork-viewer-target="pane" class="relative min-w-0 flex-1 overflow-hidden <%= 'border-l-2 border-line' if pi.positive? %>">
-        <% if pn[:label].present? %>
-          <div class="av-ui pointer-events-none absolute left-2 top-2 z-10 rounded-md bg-white/85 px-2 py-0.5 text-xs font-bold <%= pi == panes.size - 1 ? 'text-cooa' : 'text-ink' %>"><%= pn[:label] %></div>
-        <% end %>
-        <div data-artwork-viewer-target="stage" class="absolute left-0 top-0 origin-top-left">
-          <img data-artwork-viewer-target="image" src="<%= pn[:image_src] %>" class="block max-w-none" draggable="false" alt="아트워크">
-          <% (pn[:boxes] || []).each do |b| %>
-            <button type="button" data-artwork-viewer-target="box"
-                    data-seq="<%= b[:seq] %>" data-x="<%= b[:x] %>" data-y="<%= b[:y] %>" data-w="<%= b[:w] %>" data-h="<%= b[:h] %>"
-                    data-action="click->artwork-viewer#focusBox"
-                    class="absolute rounded-[3px] border-2 transition-[opacity,box-shadow]"
-                    style="left:<%= b[:x] %>%;top:<%= b[:y] %>%;width:<%= b[:w] %>%;height:<%= b[:h] %>%;border-color:<%= b[:color] %>;background:<%= b[:color] %>1f">
-              <span class="absolute -left-2.5 -top-2.5 flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold leading-none text-white shadow" style="background:<%= b[:color] %>"><%= b[:label] || b[:seq] %></span>
-            </button>
-          <% end %>
-          <% if drawable && pi == panes.size - 1 %>
-            <div data-artwork-viewer-target="draftBox" class="pointer-events-none absolute hidden rounded-[3px] border-2 border-dashed border-cooa" style="background:#8e030022"></div>
+  <%# ── 상단 바: 줌(좌) + 피드백 번호(우) ── %>
+  <div class="av-ui flex items-center justify-between gap-2 px-0.5 pb-2">
+    <div class="flex shrink-0 items-center overflow-hidden rounded-lg border border-line bg-white text-ink shadow-sm">
+      <button type="button" data-action="artwork-viewer#zoomOut" class="flex h-7 w-8 items-center justify-center hover:bg-tint">－</button>
+      <button type="button" data-action="artwork-viewer#zoomIn"  class="flex h-7 w-8 items-center justify-center border-l border-line-soft hover:bg-tint">＋</button>
+      <button type="button" data-action="artwork-viewer#fit"     class="flex h-7 items-center justify-center border-l border-line-soft px-2 text-[12px] hover:bg-tint" title="전체 보기">전체</button>
+    </div>
+    <% if all_boxes.any? %>
+      <div class="flex min-w-0 items-center gap-1.5">
+        <span class="shrink-0 text-[11px] font-bold text-line">피드백</span>
+        <div class="flex flex-wrap items-center justify-end gap-1">
+          <% all_boxes.each do |b| %>
+            <button type="button" data-seq="<%= b[:seq] %>" data-action="artwork-viewer#focusSeq"
+                    class="av-seq flex h-7 w-7 items-center justify-center rounded-full border-2 text-[13px] font-bold transition"
+                    style="border-color:<%= b[:color] %>;color:<%= b[:color] %>"><%= b[:label] || b[:seq] %></button>
           <% end %>
         </div>
       </div>
     <% end %>
   </div>
 
-  <%# 줌 툴바 (1개) %>
-  <div class="av-ui absolute right-3 top-3 flex flex-col overflow-hidden rounded-lg border border-line bg-white/95 text-ink shadow">
-    <button type="button" data-action="artwork-viewer#zoomIn"  class="flex h-8 w-8 items-center justify-center hover:bg-tint">＋</button>
-    <button type="button" data-action="artwork-viewer#zoomOut" class="flex h-8 w-8 items-center justify-center border-t border-line-soft hover:bg-tint">－</button>
-    <button type="button" data-action="artwork-viewer#fit"     class="flex h-8 w-8 items-center justify-center border-t border-line-soft text-[11px] hover:bg-tint" title="전체 보기">fit</button>
+  <%# ── 캔버스 (깨끗) ── %>
+  <div data-artwork-viewer-target="canvas"
+       class="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-line bg-tint-2"
+       style="touch-action:none">
+    <div class="flex h-full w-full">
+      <% panes.each_with_index do |pn, pi| %>
+        <div class="flex h-full min-w-0 flex-1 <%= 'border-l-2 border-line' if pi.positive? %>">
+          <% if pn[:label].present? %>
+            <div class="flex w-6 shrink-0 items-center justify-center border-r border-line-soft bg-white">
+              <span class="text-[12px] font-bold tracking-wider text-line" style="writing-mode:vertical-rl"><%= pn[:label] %></span>
+            </div>
+          <% end %>
+          <div data-artwork-viewer-target="pane" class="relative min-w-0 flex-1 overflow-hidden">
+            <div data-artwork-viewer-target="stage" class="absolute left-0 top-0 origin-top-left">
+              <img data-artwork-viewer-target="image" src="<%= pn[:image_src] %>" class="block max-w-none" draggable="false" alt="아트워크">
+              <% (pn[:boxes] || []).each do |b| %>
+                <button type="button" data-artwork-viewer-target="box"
+                        data-seq="<%= b[:seq] %>" data-x="<%= b[:x] %>" data-y="<%= b[:y] %>" data-w="<%= b[:w] %>" data-h="<%= b[:h] %>"
+                        data-action="click->artwork-viewer#focusBox"
+                        class="absolute rounded-[3px] border-2 transition-[opacity,box-shadow]"
+                        style="left:<%= b[:x] %>%;top:<%= b[:y] %>%;width:<%= b[:w] %>%;height:<%= b[:h] %>%;border-color:<%= b[:color] %>;background:<%= b[:color] %>1f">
+                  <span class="absolute -left-2.5 -top-2.5 flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold leading-none text-white shadow" style="background:<%= b[:color] %>"><%= b[:label] || b[:seq] %></span>
+                </button>
+              <% end %>
+              <% if drawable && pi == panes.size - 1 %>
+                <div data-artwork-viewer-target="draftBox" class="pointer-events-none absolute hidden rounded-[3px] border-2 border-dashed border-cooa" style="background:#8e030022"></div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <% if drawable %>
+      <div data-artwork-viewer-target="hint"
+           class="av-ui pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-ink/80 px-3 py-1 text-xs text-white shadow transition-opacity duration-500">현재 뷰에서 Shift+드래그로 영역 표시</div>
+    <% end %>
   </div>
 
-  <%# 미니맵 (1개) %>
-  <div class="av-ui absolute bottom-3 left-3 rounded-lg border border-line bg-white/95 p-1 shadow">
-    <div data-artwork-viewer-target="minimap" data-action="click->artwork-viewer#minimapClick"
-         class="relative w-[150px] cursor-crosshair overflow-hidden rounded">
-      <img src="<%= mini[:image_src] %>" class="block w-full" draggable="false" alt="">
-      <% (mini[:boxes] || []).each do |b| %>
-        <span class="absolute" style="left:<%= b[:x] %>%;top:<%= b[:y] %>%;width:<%= b[:w] %>%;height:<%= b[:h] %>%;background:<%= b[:color] %>"></span>
-      <% end %>
-      <div data-artwork-viewer-target="viewport" class="pointer-events-none absolute border-2 border-cooa" style="background:#8e030018"></div>
+  <%# ── 하단 바: 미니맵(좌) + 썸네일 필름스트립(우) ── %>
+  <div class="av-ui mt-2 flex items-stretch gap-2">
+    <div class="shrink-0 rounded-lg border border-line bg-white p-1 shadow-sm">
+      <div data-artwork-viewer-target="minimap" data-action="click->artwork-viewer#minimapClick"
+           class="relative w-[140px] cursor-crosshair overflow-hidden rounded">
+        <%# 미니맵 이미지는 첫 pane(=컨트롤러 nat 기준)과 일치시켜 뷰포트 정렬 보장 %>
+        <img src="<%= panes.first[:image_src] %>" class="block w-full" draggable="false" alt="">
+        <% (panes.first[:boxes] || []).each do |b| %>
+          <span class="absolute" style="left:<%= b[:x] %>%;top:<%= b[:y] %>%;width:<%= b[:w] %>%;height:<%= b[:h] %>%;background:<%= b[:color] %>"></span>
+        <% end %>
+        <div data-artwork-viewer-target="viewport" class="pointer-events-none absolute border-2 border-cooa" style="background:#8e030018"></div>
+      </div>
     </div>
+
+    <% if all_boxes.any? %>
+      <div class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto rounded-lg border border-line bg-white px-2 shadow-sm">
+        <% all_boxes.each do |b| %>
+          <button type="button" data-seq="<%= b[:seq] %>" data-action="artwork-viewer#focusSeq"
+                  class="av-thumb relative shrink-0 overflow-hidden rounded border-2 transition"
+                  style="height:54px;aspect-ratio:<%= box_aspect(b[:w], b[:h]) %>;border-color:<%= b[:color] %>;<%= crop_bg(mini[:image_src], b[:x], b[:y], b[:w], b[:h]) %>"
+                  title="피드백 <%= b[:label] || b[:seq] %>">
+            <span class="absolute left-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold leading-none text-white shadow" style="background:<%= b[:color] %>"><%= b[:label] || b[:seq] %></span>
+          </button>
+        <% end %>
+      </div>
+    <% end %>
   </div>
-
-  <%# 번호 버튼 (1개) %>
-  <% if all_boxes.any? %>
-    <div class="av-ui absolute bottom-3 left-1/2 flex max-w-[55%] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-full border border-line bg-white/95 px-2 py-1 shadow">
-      <% all_boxes.each do |b| %>
-        <button type="button" data-seq="<%= b[:seq] %>" data-action="artwork-viewer#focusSeq"
-                class="av-seq flex h-7 w-7 items-center justify-center rounded-full border-2 text-[13px] font-bold transition"
-                style="border-color:<%= b[:color] %>;color:<%= b[:color] %>"><%= b[:label] || b[:seq] %></button>
-      <% end %>
-    </div>
-  <% end %>
-
-  <% if drawable %>
-    <div class="av-ui absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-ink/75 px-3 py-1 text-xs text-white">현재 뷰에서 Shift+드래그로 영역 표시</div>
-  <% end %>
 </div>

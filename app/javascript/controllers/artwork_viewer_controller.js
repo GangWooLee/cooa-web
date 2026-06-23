@@ -6,7 +6,7 @@ import { Controller } from "@hotwired/stimulus"
 //  · autofocus: 첫 박스로 시작. fit: 전체 보기(선택·흐림 해제).
 //  · drawable: 마지막 pane(현재)에서 Shift+드래그 → "artwork-viewer:draw"(%좌표) 디스패치.
 export default class extends Controller {
-  static targets = ["pane", "stage", "image", "minimap", "viewport", "box", "draftBox"]
+  static targets = ["canvas", "pane", "stage", "image", "minimap", "viewport", "box", "draftBox", "hint"]
   static values = {
     drawable: { type: Boolean, default: false },
     autofocus: { type: Boolean, default: false },
@@ -18,8 +18,9 @@ export default class extends Controller {
     this.nat = { w: 0, h: 0 }; this.activeSeq = null
     this._resize = () => this.refit()
     window.addEventListener("resize", this._resize)
-    this.element.addEventListener("pointerdown", this.onDown)
-    this.element.addEventListener("wheel", this.onWheel, { passive: false })
+    this.surface = this.hasCanvasTarget ? this.canvasTarget : this.element
+    this.surface.addEventListener("pointerdown", this.onDown)
+    this.surface.addEventListener("wheel", this.onWheel, { passive: false })
     const img = this.imageTargets[0]
     if (img && img.complete && img.naturalWidth) this.ready()
     else if (img) img.addEventListener("load", () => this.ready(), { once: true })
@@ -27,8 +28,8 @@ export default class extends Controller {
 
   disconnect() {
     window.removeEventListener("resize", this._resize)
-    this.element.removeEventListener("pointerdown", this.onDown)
-    this.element.removeEventListener("wheel", this.onWheel)
+    this.surface.removeEventListener("pointerdown", this.onDown)
+    this.surface.removeEventListener("wheel", this.onWheel)
   }
 
   ready() {
@@ -38,6 +39,10 @@ export default class extends Controller {
     if (this.autofocusValue) {
       const first = this.firstSeq()
       if (first != null) this.focus(first)
+    }
+    if (this.hasHintTarget) {
+      setTimeout(() => { if (this.hasHintTarget) this.hintTarget.style.opacity = "0" }, 2500)
+      setTimeout(() => { if (this.hasHintTarget) this.hintTarget.style.display = "none" }, 3050)
     }
   }
 
@@ -176,6 +181,12 @@ export default class extends Controller {
       const on = btn.dataset.seq == seq
       btn.style.background = on ? btn.style.borderColor : "transparent"
       btn.style.color = on ? "#fff" : btn.style.borderColor
+    })
+    this.element.querySelectorAll(".av-thumb").forEach((t) => {
+      const on = t.dataset.seq == seq
+      t.style.outline = on ? "2px solid #111827" : "none"
+      t.style.outlineOffset = "1px"
+      t.style.opacity = seq != null && !on ? "0.5" : "1"
     })
   }
 

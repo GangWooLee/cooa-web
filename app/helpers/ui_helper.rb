@@ -100,4 +100,22 @@ module UiHelper
       "background-position:#{posx}% #{posy}%;background-repeat:no-repeat;" \
       "aspect-ratio:#{(w * IMG_RATIO / h).round(3)};min-height:84px"
   end
+
+  # 박스 영역 크롭 배경(경로 직접) — 썸네일 필름스트립용. size/position만 반환.
+  def crop_bg(image_src, x, y, w, h)
+    w = w.to_f; h = h.to_f; x = x.to_f; y = y.to_f
+    return "" if w <= 0 || h <= 0
+    posx = w >= 100 ? 0 : (x / (100 - w) * 100).round(2)
+    posy = h >= 100 ? 0 : (y / (100 - h) * 100).round(2)
+    "background-image:url('#{image_src}');" \
+      "background-size:#{(10000.0 / w).round(2)}% #{(10000.0 / h).round(2)}%;" \
+      "background-position:#{posx}% #{posy}%;background-repeat:no-repeat"
+  end
+
+  # 박스 종횡비 (썸네일 width 계산용)
+  def box_aspect(w, h)
+    h = h.to_f
+    return 1.0 if h <= 0
+    (w.to_f * IMG_RATIO / h).round(3)
+  end
 end

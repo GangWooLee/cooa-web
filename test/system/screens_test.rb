@@ -29,14 +29,20 @@ class ScreensTest < ApplicationSystemTestCase
     sleep 0.8
     save_screenshot(dir.join("3_screening.png"))
 
-    # ③ 버전 비교 v2 — 뷰어 개요
+    # ③ 버전 비교 v4 — 듀얼 + 캔버스 밖 크롬
     visit comparison_path(from_id: v5.id, to_id: v6.id)
     assert_text "피드백"
-    sleep 0.8 # 이미지 로드 + fit
+    sleep 1.0 # 이미지 로드 + autofocus 박스#1 (힌트 토스트 보임)
     save_screenshot(dir.join("4_compare.png"))
 
-    # 번호 버튼 #2 클릭 → 포커스(줌) + 이전|현재 크롭 패널
-    find(".av-seq", text: "2").click
+    # 힌트 사라진 뒤 fit → 깨끗한 듀얼 전체 보기 (v5/v6 라벨·필름스트립)
+    sleep 2.7
+    find("button", text: "전체").click
+    sleep 0.6
+    save_screenshot(dir.join("4b_compare_fit.png"))
+
+    # 썸네일 클릭 → 해당 피드백 포커스(양쪽 동시)
+    find(".av-thumb[data-seq='3']").click
     sleep 0.8
     save_screenshot(dir.join("5_compare_focus.png"))
     assert_text "이전"

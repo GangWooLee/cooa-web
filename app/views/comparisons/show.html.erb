@@ -26,8 +26,8 @@
         <% anns = annotation_boxes(@from.annotations.ordered) %>
         <%= render "shared/artwork_viewer",
               panes: [
-                { image_src: image_path(@from.image_name), label: "이전 #{@from.vlabel}", boxes: anns },
-                { image_src: image_path(@to.image_name),   label: "현재 #{@to.vlabel}",   boxes: anns }
+                { image_src: image_path(@from.image_name), label: @from.vlabel, boxes: anns },
+                { image_src: image_path(@to.image_name),   label: @to.vlabel,   boxes: anns }
               ],
               autofocus: true, drawable: true %>
       <% else %>
