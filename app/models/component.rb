@@ -14,14 +14,12 @@ class Component < ApplicationRecord
 
   def type_label = TYPES[component_type]
   def current_version = component_versions.detect(&:current) || component_versions.max_by(&:version_number)
-  def versions_desc = component_versions.sort_by(&:version_number).reverse
+  def versions_asc  = component_versions.sort_by(&:version_number)
+  def versions_desc = versions_asc.reverse
 
-  # 비교쌍 [from(현 위치/이전), to(비교 대상/최신)] — 비교 화면 진입용
-  def compare_pair
-    return [nil, nil] if component_versions.size < 2
-    cur   = current_version
-    newer = component_versions.select { |v| v.version_number > cur.version_number }.min_by(&:version_number)
-    older = component_versions.select { |v| v.version_number < cur.version_number }.max_by(&:version_number)
-    newer ? [cur, newer] : [older, cur]
+  # 비교 진입 기본 쌍 [이전, 최신] — 가치 라벨 없이 단순 버전쌍. 사용자가 선택기로 변경 가능.
+  def default_compare_pair
+    vs = versions_asc
+    vs.size < 2 ? [nil, nil] : [vs[-2], vs[-1]]
   end
 end

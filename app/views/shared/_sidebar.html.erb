@@ -1,36 +1,27 @@
-<%# 공통 좌측 사이드바: 사용자 · 검색 · 최근 본 파일 · 제품 디렉터리 트리(노션형) %>
-<aside class="flex w-[281px] shrink-0 flex-col border-r border-line bg-white">
+<%# 공통 좌측 사이드바: 사용자 · 아트워크 찾기(트리 필터) · 제품 디렉터리 트리(노션형) %>
+<aside class="hidden w-[260px] min-w-0 shrink-0 flex-col border-r border-line bg-white lg:flex xl:w-[281px]">
   <%# 사용자 %>
-  <div class="flex items-center gap-2 px-3 pb-3 pt-4">
-    <%= ui_icon "user", size: 24, klass: "text-ink" %>
-    <span class="text-[18px] font-bold text-ink"><%= current_user&.name %></span>
-    <%= ui_icon "caret", size: 20, klass: "text-ink" %>
-    <span class="ml-auto text-ink"><%= ui_icon "bell", size: 22 %></span>
+  <div class="flex min-w-0 items-center gap-2 px-3 pb-3 pt-4">
+    <%= ui_icon "user", size: 24, klass: "shrink-0 text-ink" %>
+    <span class="truncate text-[18px] font-bold text-ink"><%= current_user&.name %></span>
+    <span class="ml-auto rounded bg-tint px-1.5 py-0.5 text-[10px] text-line">데모</span>
   </div>
 
-  <%# 검색 %>
-  <div class="px-[23px]">
-    <div class="flex h-9 items-center gap-2 rounded-lg bg-tint px-3 text-line">
-      <%= ui_icon "search", size: 18 %>
-      <span class="text-[15px]">아트워크 찾기 (품목코드, 품목명)</span>
+  <%# 제품 디렉터리 트리 + 아트워크 찾기(클라이언트 필터) %>
+  <nav class="mt-1 flex min-w-0 flex-1 flex-col overflow-hidden px-2 pb-6" data-controller="tree-filter">
+    <%# 검색(트리 필터) %>
+    <div class="px-[15px] pb-3">
+      <input data-tree-filter-target="input" data-action="input->tree-filter#filter" placeholder="아트워크 찾기 (품목코드, 품목명)" class="w-full rounded-lg bg-tint px-3 py-2 text-[15px] outline-none">
     </div>
-  </div>
 
-  <%# 최근 본 파일 %>
-  <div class="mt-5 flex items-center gap-2 border-b border-line-soft px-3 pb-3">
-    <%= ui_icon "clock", size: 20, klass: "text-ink" %>
-    <span class="text-[15px] font-bold text-ink">최근 본 파일</span>
-  </div>
-
-  <%# 제품 디렉터리 트리 %>
-  <nav class="mt-3 flex-1 overflow-auto px-2 pb-6">
-    <div class="mb-1 flex items-center justify-between px-2">
-      <span class="text-[12px] font-bold text-line">제품</span>
-      <%= ui_icon "plus", size: 15, klass: "text-line" %>
+    <div class="flex-1 overflow-auto">
+      <div class="mb-1 px-2">
+        <span class="text-[12px] font-bold text-line">제품</span>
+      </div>
+      <% active_ids = (@product&.self_and_ancestors&.map(&:id) || []) %>
+      <% (@tree_roots || []).each do |node| %>
+        <%= render "shared/tree_node", node: node, active_ids: active_ids, current_id: @product&.id %>
+      <% end %>
     </div>
-    <% active_ids = (@product&.self_and_ancestors&.map(&:id) || []) %>
-    <% (@tree_roots || []).each do |node| %>
-      <%= render "shared/tree_node", node: node, active_ids: active_ids, current_id: @product&.id %>
-    <% end %>
   </nav>
 </aside>

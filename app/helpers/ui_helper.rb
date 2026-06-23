@@ -73,4 +73,31 @@ module UiHelper
       concat m[:label]
     end
   end
+
+  IMG_RATIO = 2048.0 / 1118.0 # 박스 전개도 가로/세로 비
+
+  # 어노테이션 → 아트워크 뷰어 박스 배열
+  def annotation_boxes(annotations)
+    annotations.map { |a| { seq: a.seq, x: a.box_x, y: a.box_y, w: a.box_w, h: a.box_h, color: a.box_color, label: a.seq } }
+  end
+
+  # 스크리닝 finding → 박스 배열 (박스 지정된 것만)
+  def finding_boxes(findings)
+    findings.select(&:boxed?).each_with_index.map do |f, i|
+      { seq: i + 1, finding_id: f.id, x: f.box_x, y: f.box_y, w: f.box_w, h: f.box_h, color: f.decision_meta[:color], label: i + 1 }
+    end
+  end
+
+  # 박스 영역만 확대해 보여주는 크롭 배경 스타일 (이전|현재 비교용)
+  def crop_style(image_name, x, y, w, h)
+    return "" if image_name.blank?
+    w = w.to_f; h = h.to_f; x = x.to_f; y = y.to_f
+    return "" if w <= 0 || h <= 0
+    posx = w >= 100 ? 0 : (x / (100 - w) * 100).round(2)
+    posy = h >= 100 ? 0 : (y / (100 - h) * 100).round(2)
+    "background-image:url('#{image_path(image_name)}');" \
+      "background-size:#{(10000.0 / w).round(2)}% #{(10000.0 / h).round(2)}%;" \
+      "background-position:#{posx}% #{posy}%;background-repeat:no-repeat;" \
+      "aspect-ratio:#{(w * IMG_RATIO / h).round(3)};min-height:84px"
+  end
 end

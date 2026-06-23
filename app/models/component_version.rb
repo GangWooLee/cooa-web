@@ -4,10 +4,8 @@ class ComponentVersion < ApplicationRecord
 
   has_many :ingredients, -> { order(:position, :id) }, dependent: :destroy
   has_many :label_texts, dependent: :destroy
-  has_many :feedbacks, -> { order(:created_at) }, dependent: :destroy
-  has_many :check_items, -> { order(:position, :id) }, dependent: :destroy
+  has_many :annotations, -> { order(:seq, :position) }, dependent: :destroy
   has_many :screening_runs, dependent: :destroy
-  has_many :diffs_from_here, class_name: "VersionDiff", foreign_key: :from_version_id, dependent: :destroy
 
   def vlabel = "v#{version_number}"
   def product = component.product

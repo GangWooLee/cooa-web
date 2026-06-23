@@ -74,37 +74,33 @@ class CreateCooaSchema < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    # 피드백 아카이빙 (코멘트 + 답글)
-    create_table :feedbacks do |t|
-      t.references :component_version, null: false, foreign_key: true
+    # 어노테이션 = 아트워크 위 바운딩박스 피드백 (위치 + 카테고리 + 해소상태)
+    create_table :annotations do |t|
+      t.references :component_version, null: false, foreign_key: true       # 제기된 버전
+      t.references :created_by, foreign_key: { to_table: :users }
+      t.references :resolved_in_version, foreign_key: { to_table: :component_versions } # 반영 확인된 버전
+      t.references :resolved_by, foreign_key: { to_table: :users }
+      t.integer :seq                          # 순번 1,2,3...
+      t.float :box_x                          # 바운딩박스 % 좌표(0~100)
+      t.float :box_y
+      t.float :box_w
+      t.float :box_h
+      t.string :category                      # 오탈자/인허가/디자인/기타
+      t.string :before_text                   # (선택) 이전 표기
+      t.string :after_text                    # (선택) 수정 표기
+      t.string :status, default: "open"       # open/resolved/dismissed
+      t.datetime :resolved_at
+      t.integer :position, default: 0
+      t.timestamps
+    end
+
+    # 어노테이션 코멘트 스레드 (담당자 피드백 + 답글)
+    create_table :annotation_comments do |t|
+      t.references :annotation, null: false, foreign_key: true
       t.references :author, null: false, foreign_key: { to_table: :users }
-      t.references :parent, foreign_key: { to_table: :feedbacks }
+      t.references :parent, foreign_key: { to_table: :annotation_comments }
       t.text :body
       t.string :attachment_name
-      t.timestamps
-    end
-
-    # AI 수정 여부 체크 (상태칩)
-    create_table :check_items do |t|
-      t.references :component_version, null: false, foreign_key: true
-      t.string :label
-      t.string :status, default: "needs_check"  # missing/needs_check/done
-      t.string :element_type
-      t.integer :position, default: 0
-      t.timestamps
-    end
-
-    # 버전 비교 — 두 버전 간 텍스트 변경 + 아트워크 마커 좌표
-    create_table :version_diffs do |t|
-      t.references :from_version, null: false, foreign_key: { to_table: :component_versions }
-      t.references :to_version, null: false, foreign_key: { to_table: :component_versions }
-      t.integer :marker_label                 # 1,2,3...
-      t.string :before_text
-      t.string :after_text
-      t.float :marker_x                       # % 좌표 (아트워크 위)
-      t.float :marker_y
-      t.string :category                      # 오탈자/인허가 등
-      t.integer :position, default: 0
       t.timestamps
     end
 
@@ -133,6 +129,10 @@ class CreateCooaSchema < ActiveRecord::Migration[8.1]
       t.string :citation
       t.integer :confidence, default: 80
       t.boolean :human_review_required, default: false
+      t.float :box_x                          # 아트워크 위 finding 위치(% 좌표)
+      t.float :box_y
+      t.float :box_w
+      t.float :box_h
       t.integer :position, default: 0
       t.timestamps
     end
@@ -181,5 +181,6 @@ class CreateCooaSchema < ActiveRecord::Migration[8.1]
     add_index :label_requirements, :country
     add_index :components, [:product_id, :position]
     add_index :component_versions, [:component_id, :version_number]
+    add_index :annotations, [:component_version_id, :seq]
   end
 end

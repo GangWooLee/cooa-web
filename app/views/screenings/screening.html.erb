@@ -1,67 +1,78 @@
 <% content_for :title, "인허가 스크리닝 · #{@product.code}" %>
-<div class="flex h-full flex-col bg-tint">
+<% fboxes = @run ? finding_boxes(@run.screening_findings) : [] %>
+<% box_seq = {}; fboxes.each { |b| box_seq[b[:finding_id]] = b[:seq] } %>
+<div class="flex h-full flex-col">
   <%# 헤더 + 주의문 %>
-  <div class="flex flex-wrap items-center justify-between gap-2 px-6 pt-4">
-    <div class="text-[13px]"><%= node_breadcrumb(@product, trailing: "#{@version.component.type_label} #{@version.vlabel.upcase}") %></div>
-    <div class="text-[13px] text-line">AI의 답변은 완벽하지 않으니 꼭 RA 담당자의 검토를 권합니다.</div>
+  <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-5 py-3">
+    <div class="text-sm"><%= node_breadcrumb(@product, trailing: "#{@version.component.type_label} #{@version.vlabel.upcase} 인허가 스크리닝") %></div>
+    <div class="text-xs text-line">AI의 답변은 완벽하지 않으니 꼭 RA 담당자의 검토를 권합니다.</div>
   </div>
 
-  <div class="flex min-h-0 flex-1 gap-4 px-6 py-4">
-    <%# 좌: 아트워크 %>
-    <div class="flex min-w-0 flex-1 items-center justify-center rounded-2xl border border-line bg-white p-4 shadow-sm">
+  <div data-controller="screening" data-action="artwork-viewer:focus->screening#onFocus"
+       class="flex min-h-0 flex-1 flex-col lg:flex-row">
+    <%# 좌: 아트워크 + finding 박스 %>
+    <div class="min-h-0 flex-1 p-3" style="min-height:380px">
       <% if @version.image_name.present? %>
-        <%= image_tag @version.image_name, class: "max-h-full max-w-full rounded-lg object-contain", alt: "아트워크" %>
+        <%= render "shared/artwork_viewer", image_src: image_path(@version.image_name), boxes: fboxes %>
       <% else %>
-        <div class="text-center text-line"><%= ui_icon "layers", size: 40, klass: "mx-auto mb-2" %>아트워크 미리보기 없음<br><span class="text-[12px]"><%= @version.component.type_label %> <%= @version.vlabel.upcase %></span></div>
+        <div class="flex h-full items-center justify-center rounded-xl border border-line bg-tint-2 text-line">아트워크 이미지 없음 · <%= @version.component.type_label %> <%= @version.vlabel.upcase %></div>
       <% end %>
     </div>
 
     <%# 우: 결과 패널 %>
-    <div class="flex w-[440px] shrink-0 flex-col rounded-2xl border border-line bg-white shadow-sm">
-      <div class="border-b border-line-soft p-4">
+    <aside class="flex w-full shrink-0 flex-col border-t border-line bg-white lg:w-[400px] lg:border-l lg:border-t-0">
+      <div class="border-b border-line-soft p-3">
         <div class="flex items-center justify-between">
-          <h2 class="text-[16px] font-bold text-ink">인허가 스크리닝 결과</h2>
-          <span class="rounded-full bg-tint px-2 py-0.5 text-[12px] text-ink/70"><%= @country_label %></span>
+          <h3 class="text-base font-bold text-ink">스크리닝 결과</h3>
+          <span class="rounded-full bg-tint px-2 py-0.5 text-xs text-ink/70"><%= @country_label %></span>
         </div>
-        <% if @run %>
-          <div class="mt-2 flex items-center gap-2">
-            <%= decision_pill(@run.decision) %>
-            <span class="text-[12px] text-ink/70"><%= @run.summary %></span>
-          </div>
-        <% end %>
+        <% if @run %><div class="mt-2 flex items-center gap-2"><%= decision_pill(@run.decision) %><span class="text-xs text-ink/70"><%= @run.summary %></span></div><% end %>
       </div>
 
-      <div class="min-h-0 flex-1 space-y-2 overflow-auto p-4">
+      <div class="min-h-0 flex-1 space-y-2 overflow-auto p-3">
         <% if @run && @run.screening_findings.any? %>
-          <%= render partial: "screenings/finding", collection: @run.screening_findings, as: :finding %>
+          <% @run.screening_findings.each do |f| %>
+            <% seq = box_seq[f.id] %>
+            <div data-screening-target="finding" <%= ("data-seq=#{seq}").html_safe if seq %>
+                 class="rounded-lg border border-line-soft p-3 <%= "cursor-pointer hover:border-cooa" if seq %>"
+                 style="border-left:4px solid <%= f.decision_meta[:color] %>"
+                 <%= ("data-action=click->screening#focusFinding").html_safe if seq %>>
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex min-w-0 items-center gap-2">
+                  <% if seq %><span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white" style="background:<%= f.decision_meta[:color] %>"><%= seq %></span><% end %>
+                  <span class="shrink-0 rounded bg-tint px-1.5 py-0.5 text-[11px] text-ink/60"><%= f.element_label %></span>
+                  <span class="truncate text-sm font-bold text-ink"><%= f.subject %></span>
+                </div>
+                <%= decision_pill(f.decision) %>
+              </div>
+              <p class="mt-1.5 text-[13px] text-ink/80"><%= f.issue_description %></p>
+              <% if f.recommended_action.present? %><p class="mt-1 text-[13px] text-cooa">→ <%= f.recommended_action %></p><% end %>
+              <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-line">
+                <% if f.citation.present? %><span class="inline-flex items-center gap-1"><%= ui_icon "external", size: 12 %><%= f.citation %></span><% end %>
+                <span>신뢰도 <%= f.confidence %>%</span>
+                <% if f.human_review_required? %><span class="font-bold text-warn">· RA 검토 필요</span><% end %>
+              </div>
+            </div>
+          <% end %>
         <% else %>
-          <div class="py-12 text-center text-[14px] text-line">
-            아직 스크리닝을 실행하지 않았습니다.<br>아래 <b>‘인허가 스크리닝’</b>을 눌러 실행하세요.
-          </div>
+          <div class="py-12 text-center text-sm text-line">아직 스크리닝을 실행하지 않았습니다.<br>아래 <b>‘인허가 스크리닝’</b>을 눌러 실행하세요.</div>
         <% end %>
       </div>
 
       <% if @run&.status == "approved" %>
-        <div class="border-t border-line-soft p-3 text-center text-[13px] font-bold" style="color:#5f8f2e;background:#eef6e3">
-          ✓ <%= @run.approved_by&.name %> (RA) 승인 완료 · <%= @run.approved_at&.strftime("%Y.%m.%d %H:%M") %>
-        </div>
+        <div class="border-t border-line-soft p-3 text-center text-[13px] font-bold" style="color:#5f8f2e;background:#eef6e3">✓ <%= @run.approved_by&.name %> (RA) 승인 완료 · <%= @run.approved_at&.strftime("%Y.%m.%d %H:%M") %></div>
       <% end %>
-    </div>
+    </aside>
   </div>
 
   <%# 하단 액션바 %>
   <div class="flex items-center justify-center gap-3 border-t border-line-soft bg-white px-6 py-3">
-    <%= button_to run_screening_component_version_path(@version),
-          class: "rounded-lg px-6 py-2.5 text-[15px] font-bold text-ink",
-          style: "background-image:linear-gradient(to right,#fdd5d4,#e6caff)" do %>
-      <%= @run ? "인허가 스크리닝 다시 실행" : "인허가 스크리닝" %>
-    <% end %>
+    <%= button_to (@run ? "인허가 스크리닝 다시 실행" : "인허가 스크리닝"), run_screening_component_version_path(@version),
+          class: "rounded-lg px-6 py-2.5 text-[15px] font-bold text-ink", style: "background-image:linear-gradient(to right,#fdd5d4,#e6caff)" %>
     <% if @run %>
-      <%= button_to approve_screening_component_version_path(@version),
+      <%= button_to "승인하기", approve_screening_component_version_path(@version),
             class: "bg-cooa-gradient rounded-lg px-6 py-2.5 text-[15px] font-bold text-white",
-            form: { data: { turbo_confirm: "이 버전을 RA 승인 처리할까요?" } } do %>
-        승인하기
-      <% end %>
+            form: { data: { turbo_confirm: "이 버전을 RA 승인 처리할까요?" } } %>
     <% end %>
   </div>
 </div>

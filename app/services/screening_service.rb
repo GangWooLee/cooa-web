@@ -14,6 +14,7 @@ class ScreeningService
   # 판정만 계산 (미저장)
   def call
     findings = ingredient_findings + ad_findings + label_findings
+    assign_boxes(findings)
     decision = ScreeningFinding.worst_decision(findings.map { |f| f[:decision] })
     Result.new(decision, findings, build_summary(findings, decision))
   end
@@ -94,6 +95,24 @@ class ScreeningService
   end
 
   # ── helpers ──
+  # finding 위치(아트워크 위 바운딩박스, 데모 큐레이션 — 실제 CV 아님)
+  def assign_boxes(findings)
+    findings.each do |f|
+      next if f[:decision] == "ok"
+      box =
+        case f[:element_type]
+        when "ingredient" then ([48.0, 34.0, 12.0, 4.5] if f[:subject].to_s.upcase == "RETINOL")
+        when "ad"         then [22.0, 46.5, 16.0, 4.5]   # 전면 패널 Anti-Aging Formula
+        when "label"
+          s = f[:subject].to_s
+          if s.include?("재활용") then [69.5, 70.5, 9.0, 6.0]
+          elsif s.include?("製造販売業者") || s.include?("DMAH") then [62.5, 63.5, 17.0, 6.0]
+          end
+        end
+      f[:box_x], f[:box_y], f[:box_w], f[:box_h] = box if box
+    end
+  end
+
   def over_limit?(ing, limit)
     limit.max_pct.present? && ing.declared_pct.present? && ing.declared_pct > limit.max_pct
   end

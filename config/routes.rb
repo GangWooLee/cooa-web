@@ -21,10 +21,17 @@ Rails.application.routes.draw do
       post :run_screening,     to: "screenings#run_screening"      # 스크리닝 실행(룰엔진)
       post :approve_screening, to: "screenings#approve_screening"  # RA 승인
     end
-    resources :feedbacks, only: [:create]                          # ③ 피드백 코멘트
+    resources :annotations, only: [:create]                        # 바운딩박스 피드백 생성
   end
 
-  # ③ 버전 비교: from(현 위치) vs to(비교 대상)
-  get  "versions/:from_id/compare/:to_id",         to: "comparisons#show",    as: :comparison
-  post "versions/:from_id/compare/:to_id/recheck", to: "comparisons#recheck", as: :recheck_comparison
+  resources :annotations, only: [] do
+    member do
+      patch :resolve   # 다음 버전 반영 확인
+      patch :reopen
+    end
+    resources :comments, only: [:create], controller: "annotation_comments"
+  end
+
+  # ③ 버전 비교 (가치 라벨 없는 버전쌍 선택)
+  get "versions/:from_id/compare/:to_id", to: "comparisons#show", as: :comparison
 end

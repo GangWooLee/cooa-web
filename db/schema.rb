@@ -24,15 +24,42 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_140000) do
     t.index ["country"], name: "index_ad_risk_expressions_on_country"
   end
 
-  create_table "check_items", force: :cascade do |t|
+  create_table "annotation_comments", force: :cascade do |t|
+    t.integer "annotation_id", null: false
+    t.string "attachment_name"
+    t.integer "author_id", null: false
+    t.text "body"
+    t.datetime "created_at", null: false
+    t.integer "parent_id"
+    t.datetime "updated_at", null: false
+    t.index ["annotation_id"], name: "index_annotation_comments_on_annotation_id"
+    t.index ["author_id"], name: "index_annotation_comments_on_author_id"
+    t.index ["parent_id"], name: "index_annotation_comments_on_parent_id"
+  end
+
+  create_table "annotations", force: :cascade do |t|
+    t.string "after_text"
+    t.string "before_text"
+    t.float "box_h"
+    t.float "box_w"
+    t.float "box_x"
+    t.float "box_y"
+    t.string "category"
     t.integer "component_version_id", null: false
     t.datetime "created_at", null: false
-    t.string "element_type"
-    t.string "label"
+    t.integer "created_by_id"
     t.integer "position", default: 0
-    t.string "status", default: "needs_check"
+    t.datetime "resolved_at"
+    t.integer "resolved_by_id"
+    t.integer "resolved_in_version_id"
+    t.integer "seq"
+    t.string "status", default: "open"
     t.datetime "updated_at", null: false
-    t.index ["component_version_id"], name: "index_check_items_on_component_version_id"
+    t.index ["component_version_id", "seq"], name: "index_annotations_on_component_version_id_and_seq"
+    t.index ["component_version_id"], name: "index_annotations_on_component_version_id"
+    t.index ["created_by_id"], name: "index_annotations_on_created_by_id"
+    t.index ["resolved_by_id"], name: "index_annotations_on_resolved_by_id"
+    t.index ["resolved_in_version_id"], name: "index_annotations_on_resolved_in_version_id"
   end
 
   create_table "component_versions", force: :cascade do |t|
@@ -58,19 +85,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_140000) do
     t.datetime "updated_at", null: false
     t.index ["product_id", "position"], name: "index_components_on_product_id_and_position"
     t.index ["product_id"], name: "index_components_on_product_id"
-  end
-
-  create_table "feedbacks", force: :cascade do |t|
-    t.string "attachment_name"
-    t.integer "author_id", null: false
-    t.text "body"
-    t.integer "component_version_id", null: false
-    t.datetime "created_at", null: false
-    t.integer "parent_id"
-    t.datetime "updated_at", null: false
-    t.index ["author_id"], name: "index_feedbacks_on_author_id"
-    t.index ["component_version_id"], name: "index_feedbacks_on_component_version_id"
-    t.index ["parent_id"], name: "index_feedbacks_on_parent_id"
   end
 
   create_table "ingredient_limits", force: :cascade do |t|
@@ -155,6 +169,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_140000) do
   end
 
   create_table "screening_findings", force: :cascade do |t|
+    t.float "box_h"
+    t.float "box_w"
+    t.float "box_x"
+    t.float "box_y"
     t.string "citation"
     t.integer "confidence", default: 80
     t.datetime "created_at", null: false
@@ -196,29 +214,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_140000) do
     t.datetime "updated_at", null: false
   end
 
-  create_table "version_diffs", force: :cascade do |t|
-    t.string "after_text"
-    t.string "before_text"
-    t.string "category"
-    t.datetime "created_at", null: false
-    t.integer "from_version_id", null: false
-    t.integer "marker_label"
-    t.float "marker_x"
-    t.float "marker_y"
-    t.integer "position", default: 0
-    t.integer "to_version_id", null: false
-    t.datetime "updated_at", null: false
-    t.index ["from_version_id"], name: "index_version_diffs_on_from_version_id"
-    t.index ["to_version_id"], name: "index_version_diffs_on_to_version_id"
-  end
-
-  add_foreign_key "check_items", "component_versions"
+  add_foreign_key "annotation_comments", "annotation_comments", column: "parent_id"
+  add_foreign_key "annotation_comments", "annotations"
+  add_foreign_key "annotation_comments", "users", column: "author_id"
+  add_foreign_key "annotations", "component_versions"
+  add_foreign_key "annotations", "component_versions", column: "resolved_in_version_id"
+  add_foreign_key "annotations", "users", column: "created_by_id"
+  add_foreign_key "annotations", "users", column: "resolved_by_id"
   add_foreign_key "component_versions", "components"
   add_foreign_key "component_versions", "users", column: "created_by_id"
   add_foreign_key "components", "products"
-  add_foreign_key "feedbacks", "component_versions"
-  add_foreign_key "feedbacks", "feedbacks", column: "parent_id"
-  add_foreign_key "feedbacks", "users", column: "author_id"
   add_foreign_key "ingredients", "component_versions"
   add_foreign_key "label_texts", "component_versions"
   add_foreign_key "product_members", "products"
@@ -229,6 +234,4 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_140000) do
   add_foreign_key "screening_runs", "component_versions"
   add_foreign_key "screening_runs", "users", column: "approved_by_id"
   add_foreign_key "screening_runs", "users", column: "requested_by_id"
-  add_foreign_key "version_diffs", "component_versions", column: "from_version_id"
-  add_foreign_key "version_diffs", "component_versions", column: "to_version_id"
 end

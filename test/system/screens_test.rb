@@ -1,14 +1,16 @@
 require "application_system_test_case"
 
-# 4개 화면을 헤드리스 브라우저로 캡처 (tmp/screens/*.png)
+# 화면 캡처 + 핵심 인터랙션(뷰어 포커스) 검증
 class ScreensTest < ApplicationSystemTestCase
   setup { Rails.application.load_seed }
 
-  test "capture 4 screens" do
+  def hero
+    Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box")
+  end
+
+  test "capture screens" do
     dir = Rails.root.join("tmp/screens")
     FileUtils.mkdir_p(dir)
-
-    hero = Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box")
     v5 = hero.component_versions.find_by(version_number: 5)
     v6 = hero.component_versions.find_by(version_number: 6)
 
@@ -23,13 +25,30 @@ class ScreensTest < ApplicationSystemTestCase
     save_screenshot(dir.join("2_product.png"))
 
     visit screening_component_version_path(v5)
-    assert_text "인허가 스크리닝 결과"
-    sleep 0.4
+    assert_text "스크리닝 결과"
+    sleep 0.8
     save_screenshot(dir.join("3_screening.png"))
 
+    # ③ 버전 비교 v2 — 뷰어 개요
     visit comparison_path(from_id: v5.id, to_id: v6.id)
-    assert_text "피드백 아카이빙"
-    sleep 0.4
+    assert_text "피드백"
+    sleep 0.8 # 이미지 로드 + fit
     save_screenshot(dir.join("4_compare.png"))
+
+    # 번호 버튼 #2 클릭 → 포커스(줌) + 이전|현재 크롭 패널
+    find(".av-seq", text: "2").click
+    sleep 0.8
+    save_screenshot(dir.join("5_compare_focus.png"))
+    assert_text "이전"
+
+    # 반응형 — 1366px 노트북 폭
+    page.driver.browser.manage.window.resize_to(1366, 900)
+    visit root_path
+    assert_text "레티놀 3% 세럼"
+    sleep 0.5
+    save_screenshot(dir.join("6_dashboard_1366.png"))
+    visit comparison_path(from_id: v5.id, to_id: v6.id)
+    sleep 0.8
+    save_screenshot(dir.join("7_compare_1366.png"))
   end
 end

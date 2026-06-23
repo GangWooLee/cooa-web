@@ -15,7 +15,8 @@
   </details>
 <% else %>
   <%= link_to product_path(node),
-        class: "flex items-center gap-1.5 rounded-md py-1.5 pl-[30px] pr-2 hover:bg-tint #{current ? 'bg-accent/60 font-bold text-cooa' : 'text-ink'}" do %>
+        class: "flex items-center gap-1.5 rounded-md py-1.5 pl-[30px] pr-2 hover:bg-tint #{current ? 'bg-accent/60 font-bold text-cooa' : 'text-ink'}",
+        data: { "tree-filter-target": "leaf", name: "#{node.name} #{node.code}" } do %>
     <%= ui_icon "doc", size: 15, klass: "shrink-0 text-line" %>
     <span class="flex-1 truncate text-[14px]"><%= node.name %></span>
     <% if node.code.present? %><span class="shrink-0 text-[10px] text-line"><%= node.code %></span><% end %>

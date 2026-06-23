@@ -6,7 +6,7 @@
 # ============================================================================
 
 puts "Clearing..."
-[ScreeningFinding, ScreeningRun, VersionDiff, CheckItem, Feedback, LabelText, Ingredient,
+[ScreeningFinding, ScreeningRun, AnnotationComment, Annotation, LabelText, Ingredient,
  ComponentVersion, Component, ProductMember, Product, User,
  IngredientLimit, LabelRequirement, AdRiskExpression].each(&:delete_all)
 
@@ -185,22 +185,35 @@ seed_ingredients(v6)
   { text_type: "label", content: "3% RETINOL SERUM  30ml / 1.01 fl oz   분리배출 재활용 마크 PET   DISTRIBUTED BY: COOA, Seoul, Korea   MADE IN KOREA", language: "en", country: "JP" }
 ].each { |a| v6.label_texts.create!(a) }
 
-v5.feedbacks.create!(author: song, body: "용량 표시에서 띄어쓰기가 2개 되어 있는 것 같아서 확인 부탁드립니다!")
-v5.feedbacks.create!(author: park, body: "재활용 표기 표시 필요합니다!", attachment_name: "EU 재활용 표기.png")
-v5.feedbacks.create!(author: lee,  body: "Squalane 옆에 쉼표 붙여주세요!")
+# ── 어노테이션(바운딩박스 피드백) — v5에 제기, 일부 v6에서 반영확인 ──
+def annotate(version, seq:, box:, category:, by:, body:, before: nil, after: nil,
+             attachment: nil, resolved_in: nil, resolved_by: nil)
+  a = version.annotations.create!(
+    seq: seq, box_x: box[0], box_y: box[1], box_w: box[2], box_h: box[3],
+    category: category, before_text: before, after_text: after, created_by: by, position: seq,
+    status: (resolved_in ? "resolved" : "open"),
+    resolved_in_version: resolved_in, resolved_by: resolved_by,
+    resolved_at: (resolved_in ? Time.current : nil)
+  )
+  a.comments.create!(author: by, body: body, attachment_name: attachment)
+  a
+end
 
-[
-  { label: "재활용 표기 표시 누락", status: "missing", element_type: "label" },
-  { label: "Acid. 에서 온점 추가 확인 필요", status: "needs_check", element_type: "label" },
-  { label: "Anti-aging 에서 '-' 생략 확인 필요", status: "needs_check", element_type: "ad" },
-  { label: "Squalane 옆 쉼표 추가 완료", status: "done", element_type: "ingredient" }
-].each_with_index { |a, i| v5.check_items.create!(a.merge(position: i)) }
-
-[
-  { marker_label: 1, before_text: "Anti-aging", after_text: "Anti aging", category: "오탈자", marker_x: 27.0, marker_y: 47.0 },
-  { marker_label: 2, before_text: "Acid", after_text: "Acid.", category: "오탈자", marker_x: 56.0, marker_y: 41.0 },
-  { marker_label: 3, before_text: "Squalane", after_text: "Squalane,", category: "오탈자", marker_x: 57.0, marker_y: 50.0 }
-].each_with_index { |a, i| VersionDiff.create!(a.merge(from_version: v5, to_version: v6, position: i)) }
+annotate(v5, seq: 1, box: [23, 57, 13, 4], category: "오탈자", by: song,
+         body: "용량 표시에서 띄어쓰기가 2개 되어 있는 것 같아서 확인 부탁드립니다!",
+         before: "30ml  /  1.01 fl oz", after: "30ml / 1.01 fl oz", resolved_in: v6, resolved_by: kim)
+annotate(v5, seq: 2, box: [63, 52, 9, 4], category: "오탈자", by: lee,
+         body: "전성분 'Acid' 뒤 온점(.) 추가 확인 부탁드립니다.",
+         before: "Acid", after: "Acid.", resolved_in: v6, resolved_by: kim)
+a3 = annotate(v5, seq: 3, box: [48, 49, 10, 4], category: "오탈자", by: lee,
+              body: "Squalane 옆에 쉼표 붙여주세요!",
+              before: "Squalane", after: "Squalane,", resolved_in: v6, resolved_by: kim)
+a3.comments.create!(author: kim, body: "v6에서 쉼표 반영했습니다. 확인 부탁드려요.")
+annotate(v5, seq: 4, box: [69.5, 70.5, 9, 6], category: "인허가", by: park,
+         body: "재활용 표기(분리배출 마크) 표시 필요합니다!", attachment: "EU 재활용 표기.png",
+         resolved_in: v6, resolved_by: kim)
+annotate(v5, seq: 5, box: [62.5, 63.5, 17, 6], category: "인허가", by: lee,
+         body: "일본 수출용은 製造販売業者(또는 선임 DMAH) 명칭·주소가 필수입니다. 현재 'MADE IN KOREA'만 있어 미반영입니다.")
 
 # ── 미국 30ml(CO0000) 단상자 v5 — 대조군(대체로 적합) ───────────────────────
 us5 = co0000.components.find_by(component_type: "outer_box").component_versions.find_by(version_number: 5)

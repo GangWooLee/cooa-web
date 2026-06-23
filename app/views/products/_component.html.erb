@@ -1,11 +1,11 @@
 <% cur = component.current_version %>
-<% from, to = component.compare_pair %>
+<% from, to = component.default_compare_pair %>
 <% reasons = component.component_versions.select { |v| v.change_reason.present? }.sort_by(&:version_number).reverse %>
 <div class="rounded-2xl border border-line-soft bg-white p-4 shadow-sm">
   <div class="flex flex-wrap items-center justify-between gap-2">
-    <div class="flex items-center gap-2">
+    <div class="flex min-w-0 items-center gap-2">
       <%= ui_icon "layers", size: 20, klass: "text-cooa" %>
-      <h3 class="text-[16px] font-bold text-ink"><%= component.type_label %></h3>
+      <h3 class="truncate text-[16px] font-bold text-ink"><%= component.type_label %></h3>
       <% if cur %><span class="text-[12px] text-line">현 위치 <%= cur.vlabel.upcase %></span><% end %>
     </div>
     <div class="flex items-center gap-2">

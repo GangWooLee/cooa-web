@@ -36,22 +36,31 @@ class DemoFlowsTest < ActionDispatch::IntegrationTest
     assert v.screening_runs.order(:created_at).last.approved?
   end
 
-  test "③ 비교 렌더 + 피드백 추가(turbo_stream) + 다시 체크" do
+  test "③ 비교 렌더 + 어노테이션 코멘트/해소/생성" do
     from = hero_v(5)
     to   = hero_v(6)
 
     get comparison_path(from_id: from.id, to_id: to.id)
     assert_response :success
-    assert_match "피드백 아카이빙", response.body
+    assert_match "피드백", response.body
 
-    assert_difference -> { from.feedbacks.count }, 1 do
-      post component_version_feedbacks_path(from), params: { body: "테스트 코멘트" }, as: :turbo_stream
+    ann = from.annotations.open.first # 미해결(DMAH)
+    assert_difference -> { ann.comments.count }, 1 do
+      post annotation_comments_path(ann), params: { body: "추가 코멘트" }
     end
-    assert_response :success
 
-    post recheck_comparison_path(from_id: from.id, to_id: to.id)
-    assert_redirected_to comparison_path(from_id: from.id, to_id: to.id)
-    assert_not from.check_items.exists?(status: "needs_check"), "재검 후 미해결 항목이 없어야 함"
+    patch resolve_annotation_path(ann), params: { resolved_in_version_id: to.id }
+    assert ann.reload.resolved?, "반영확인 시 resolved 되어야 함"
+
+    assert_difference -> { to.annotations.count }, 1 do
+      post component_version_annotations_path(to),
+           params: { box_x: 10, box_y: 10, box_w: 8, box_h: 5, category: "디자인", body: "새 피드백" }
+    end
+  end
+
+  test "스크리닝 finding 박스 좌표 부여" do
+    run = hero_v(5).screening_runs.order(:created_at).last
+    assert run.screening_findings.any?(&:boxed?), "박스 지정된 finding이 있어야 함"
   end
 
   test "US 대조군 스크리닝은 적합" do

@@ -7,7 +7,6 @@ class User < ApplicationRecord
   has_many :product_members, dependent: :destroy
   has_many :products, through: :product_members
   has_many :owned_products, class_name: "Product", foreign_key: :owner_id, dependent: :nullify
-  has_many :feedbacks, foreign_key: :author_id, dependent: :destroy
 
   def role_label = ROLE_LABELS[role]
   def role_short = ROLE_SHORT[role]
