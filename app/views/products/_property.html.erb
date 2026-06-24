@@ -1,0 +1,27 @@
+<%# 커스텀 속성 한 줄 — 키(인라인 이름변경, 생성 직후 auto) + 값(인라인 편집) + 삭제(호버). locals: product, property %>
+<dt data-controller="inline-edit"
+    data-inline-edit-auto-value="<%= params[:rename_property].to_s == property.id.to_s %>"
+    class="group/prop flex items-center gap-1 font-bold text-line">
+  <span data-inline-edit-target="display" data-action="click->inline-edit#edit" title="키 이름 변경"
+        class="cursor-text rounded px-1 hover:bg-white/70 hover:text-cooa"><%= property.name %></span>
+  <%= form_with model: [product, property], method: :patch,
+        data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden" do |f| %>
+    <%= hidden_field_tag :inline, 1 %>
+    <%= f.text_field :name, id: "prop_name_#{property.id}", data: { "inline-edit-target": "input", action: "keydown->inline-edit#keydown blur->inline-edit#save" },
+          class: "w-28 rounded border border-cooa px-1 py-0.5 text-[12px] font-bold focus:outline-none" %>
+  <% end %>
+  <%= button_to [product, property], method: :delete, title: "속성 삭제",
+        form: { class: "opacity-0 transition-opacity duration-150 group-hover/prop:opacity-100",
+                data: { turbo_frame: "_top", turbo_confirm: "'#{property.name}' 속성을 삭제할까요?" } },
+        class: "rounded p-0.5 text-line hover:text-warn" do %><%= ui_icon "trash", size: 12 %><% end %>
+</dt>
+<dd data-controller="inline-edit" class="min-w-0">
+  <span data-inline-edit-target="display" data-action="click->inline-edit#edit" title="값 편집"
+        class="cursor-text rounded px-1 text-ink transition hover:bg-white/70 hover:text-cooa"><%= property.value.presence || "None" %></span>
+  <%= form_with model: [product, property], method: :patch,
+        data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden" do |f| %>
+    <%= hidden_field_tag :inline, 1 %>
+    <%= f.text_field :value, id: "prop_value_#{property.id}", data: { "inline-edit-target": "input", action: "keydown->inline-edit#keydown blur->inline-edit#save" },
+          class: "w-40 rounded border border-cooa px-1.5 py-0.5 text-[13px] focus:outline-none" %>
+  <% end %>
+</dd>

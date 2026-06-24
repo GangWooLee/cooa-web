@@ -1,0 +1,9 @@
+<%# 담당자 행 — 자유 역할 + 팀에서 사람 선택 + 행 삭제. locals: role, user_id %>
+<div data-members-target="row" class="flex items-center gap-1.5">
+  <input type="text" name="members[][role]" value="<%= role %>" placeholder="역할(예: 디자이너)"
+         class="w-24 rounded border border-line-soft px-1.5 py-0.5 text-[12px] focus:border-cooa focus:outline-none">
+  <%= select_tag "members[][user_id]",
+        options_for_select([["— 담당자 —", nil]] + User.order(:id).map { |u| [u.name, u.id] }, user_id),
+        class: "min-w-0 flex-1 rounded border border-line-soft px-1 py-0.5 text-[12px] focus:border-cooa focus:outline-none" %>
+  <button type="button" data-action="members#remove" title="행 삭제" class="shrink-0 rounded p-0.5 text-line hover:text-warn"><%= ui_icon "x", size: 12 %></button>
+</div>

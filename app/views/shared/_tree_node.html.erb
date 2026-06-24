@@ -1,5 +1,5 @@
 <% current = (current_id && current_id == node.id) %>
-<% if node.children.any? %>
+<% if node.folder? %>
   <details <%= "open" if active_ids.include?(node.id) %>>
     <summary class="flex cursor-pointer list-none items-center gap-1 rounded-md px-2 py-1.5 hover:bg-tint <%= 'bg-accent/60' if active_ids.include?(node.id) %>">
       <%= ui_icon "caret", size: 15, klass: "tree-caret shrink-0 text-line" %>

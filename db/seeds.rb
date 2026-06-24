@@ -7,7 +7,7 @@
 
 puts "Clearing..."
 [ScreeningFinding, ScreeningRun, AnnotationComment, Annotation, LabelText, Ingredient,
- ComponentVersion, Component, ProductMember, Product, User,
+ ComponentVersion, Component, ProductMember, ProductProperty, Product, User,
  IngredientLimit, LabelRequirement, AdRiskExpression].each(&:delete_all)
 
 # ── 사용자 / 팀 ─────────────────────────────────────────────────────────────
@@ -96,15 +96,15 @@ puts "Regulatory facts..."
 COMPONENT_TYPES = %w[outer_box container insert barcode etc]
 NOTION = "https://app.notion.com/p/COOA-3566d4e9b4c180ba89d9f529822feca3"
 
-def node(name:, parent: nil, code: nil, country: nil, channel: nil, owner: nil, deadline: nil, position: 0)
+def node(name:, parent: nil, code: nil, country: nil, channel: nil, owner: nil, deadline: nil, position: 0, kind: "item")
   Product.create!(name: name, parent: parent, code: code, country: country, channel: channel,
-                  owner: owner, deadline: deadline, product_type: "기획",
+                  owner: owner, deadline: deadline, product_type: "기획", kind: kind,
                   notion_url: (code ? NOTION : nil), position: position)
 end
 
 def build_components(product, currents:, creator:, hero_type: nil)
   COMPONENT_TYPES.each_with_index do |type, i|
-    comp  = product.components.create!(component_type: type, position: i)
+    comp  = product.components.create!(component_type: type, name: Component::TYPES[type], position: i)
     cur   = currents[type] || 1
     count = (type == hero_type ? cur + 1 : cur)
     (1..count).each do |n|
@@ -119,6 +119,8 @@ def assign_team(product, team)
   { "designer" => team[0], "pm" => team[1], "ra" => team[2], "scm" => team[3] }.each do |role, user|
     product.product_members.create!(user: user, role: role)
   end
+  # 소유자는 별도 칸 없이 담당자(자유 역할)로 통합
+  product.product_members.create!(user: product.owner, role: "소유자") if product.owner
 end
 
 def seed_ingredients(version)
@@ -133,8 +135,8 @@ end
 # ── 제품 트리 ───────────────────────────────────────────────────────────────
 puts "Product tree..."
 # 레티놀 3% 세럼 (루트) → 미국(폴더)→[30ml, 50ml], 일본(리프, 히어로)
-retinol   = node(name: "레티놀 3% 세럼", position: 0)
-us_folder = node(name: "미국", parent: retinol, country: "US", position: 0)
+retinol   = node(name: "레티놀 3% 세럼", position: 0, kind: "folder")
+us_folder = node(name: "미국", parent: retinol, country: "US", position: 0, kind: "folder")
 co0000    = node(name: "30ml", parent: us_folder, code: "CO0000", country: "US", channel: "Sephora",
                  owner: kim, deadline: Date.new(2026, 6, 21), position: 0)
 co0000l   = node(name: "50ml", parent: us_folder, code: "CO0000L", country: "US", channel: "Sephora",
@@ -143,17 +145,21 @@ co0001    = node(name: "일본", parent: retinol, code: "CO0001", country: "JP",
                  owner: kim, deadline: Date.new(2026, 7, 1), position: 1)
 
 # 비타민C 브라이트닝 앰플 (루트) → 중국
-vitc   = node(name: "비타민C 브라이트닝 앰플", position: 1)
+vitc   = node(name: "비타민C 브라이트닝 앰플", position: 1, kind: "folder")
 co0100 = node(name: "중국", parent: vitc, code: "CO0100", country: "CN", channel: "Tmall",
               owner: song, deadline: Date.new(2026, 8, 10), position: 0)
 
 # 시카 수딩 크림 (루트) → 미국
-cica   = node(name: "시카 수딩 크림", position: 2)
+cica   = node(name: "시카 수딩 크림", position: 2, kind: "folder")
 co0200 = node(name: "미국", parent: cica, code: "CO0200", country: "US", channel: "Amazon",
               owner: lee, deadline: Date.new(2026, 9, 5), position: 0)
 
 # 리프(SKU)에 팀 + 구성요소
 [co0000, co0000l, co0001, co0100, co0200].each { |p| assign_team(p, TEAM) }
+
+# 데모: 히어로에 커스텀 속성(Notion식)
+co0001.product_properties.create!(name: "용량", value: "30ml", position: 0)
+co0001.product_properties.create!(name: "제형", value: "세럼", position: 1)
 build_components(co0000,  currents: { "outer_box" => 5, "container" => 6, "insert" => 2, "barcode" => 1, "etc" => 1 }, creator: kim)
 build_components(co0000l, currents: { "outer_box" => 2, "container" => 1, "insert" => 1, "barcode" => 1, "etc" => 1 }, creator: kim)
 build_components(co0001,  currents: { "outer_box" => 5, "container" => 6, "insert" => 2, "barcode" => 1, "etc" => 1 }, creator: kim, hero_type: "outer_box")

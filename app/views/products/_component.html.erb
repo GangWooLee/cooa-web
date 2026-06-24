@@ -1,13 +1,28 @@
 <%# 구성요소 버전 타임라인 — 노드=슬롯 선택(드래그/클릭), 연결점=빨강, ▾=변경사유(담당자별) %>
 <% versions = component.component_versions.sort_by(&:version_number) %>
 <% cur = component.current_version %>
-<div class="border-b border-line-soft py-4 last:border-0">
+<div class="group/comp relative border-b border-line-soft py-4 pr-9 last:border-0"
+     data-sortable-target="item" data-id="<%= component.id %>"
+     data-action="dragover->sortable#dragover drop->sortable#drop dragleave->sortable#dragleave">
   <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-    <%# 구성요소명 + 현재 버전 %>
-    <div class="flex shrink-0 items-center gap-2 sm:w-[132px] sm:pt-2.5">
-      <%= ui_icon "layers", size: 16, klass: "shrink-0 text-cooa" %>
-      <span class="text-sm font-bold text-ink"><%= component.type_label %></span>
-      <% if cur %><span class="rounded bg-tint px-1.5 py-0.5 text-[10px] font-bold text-line">현재 <%= cur.vlabel.upcase %></span><% end %>
+    <%# 좌: 핸들 + 이름(줄바꿈 ellipsize) / 현재버전 칩은 아래 줄 — 고정폭 오버플로 제거 %>
+    <div class="flex min-w-0 shrink-0 flex-col gap-1 sm:w-[150px] sm:pt-2.5">
+      <div class="flex min-w-0 items-center gap-1.5">
+        <span draggable="true" data-action="dragstart->sortable#dragstart dragend->sortable#dragend" title="드래그하여 순서 변경"
+              class="shrink-0 cursor-grab select-none text-[13px] leading-none text-line opacity-0 transition-opacity group-hover/comp:opacity-100 active:cursor-grabbing">⠿</span>
+        <%= ui_icon "layers", size: 16, klass: "shrink-0 text-cooa" %>
+        <span data-controller="inline-edit" data-inline-edit-auto-value="<%= params[:rename_component].to_s == component.id.to_s %>" class="min-w-0 flex-1">
+          <span data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 이름 변경"
+                class="block cursor-text truncate text-sm font-bold text-ink transition hover:text-cooa"><%= component.display_name %></span>
+          <%= form_with model: component, url: component_path(component), method: :patch,
+                data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden" do |f| %>
+            <%= f.text_field :name, value: component.name,
+                  data: { "inline-edit-target": "input", action: "keydown->inline-edit#keydown blur->inline-edit#save" },
+                  class: "w-full rounded border border-cooa px-1 py-0.5 text-sm font-bold text-ink focus:outline-none" %>
+          <% end %>
+        </span>
+      </div>
+      <% if cur %><span class="ml-[26px] w-fit rounded bg-tint px-1.5 py-0.5 text-[10px] font-bold text-line">현재 <%= cur.vlabel.upcase %></span><% end %>
     </div>
 
     <%# 타임라인 %>
@@ -48,7 +63,7 @@
           <%# + 새 버전 (전체 페이지 폼 — 드로어 프레임 탈출) %>
           <span class="h-px w-3 shrink-0 bg-line-soft sm:w-5"></span>
           <%= link_to new_component_component_version_path(component), data: { turbo_frame: "_top" },
-                title: "#{component.type_label}에 새 버전 추가",
+                title: "#{component.display_name}에 새 버전 추가",
                 class: "flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border border-dashed border-line text-line transition hover:border-cooa hover:text-cooa" do %>
             <%= ui_icon "plus", size: 16 %>
           <% end %>
@@ -85,7 +100,20 @@
         <% end %>
       </div>
     <% else %>
-      <span class="text-[13px] text-line sm:pt-2.5">버전 없음</span>
+      <div class="flex items-center gap-2 sm:pt-2.5">
+        <span class="text-[13px] text-line">버전 없음</span>
+        <%= link_to new_component_component_version_path(component), data: { turbo_frame: "_top" },
+              title: "#{component.display_name}에 새 버전 추가",
+              class: "flex h-[28px] w-[28px] items-center justify-center rounded-md border border-dashed border-line text-line transition hover:border-cooa hover:text-cooa" do %>
+          <%= ui_icon "plus", size: 15 %>
+        <% end %>
+      </div>
     <% end %>
   </div>
+
+  <%# 삭제 — 행 우상단, 호버 노출(제목 옆 아님·타임라인과 안 겹침) %>
+  <%= button_to component_path(component), method: :delete, title: "구성요소 삭제",
+        form: { class: "absolute right-1 top-3 opacity-0 transition-opacity duration-150 group-hover/comp:opacity-100",
+                data: { turbo_frame: "_top", turbo_confirm: "'#{component.display_name}' 및 모든 버전·피드백이 삭제됩니다. 계속할까요?" } },
+        class: "rounded p-1 text-line transition hover:bg-tint hover:text-warn" do %><%= ui_icon "trash", size: 14 %><% end %>
 </div>

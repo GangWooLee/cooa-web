@@ -18,12 +18,14 @@ class ApplicationController < ActionController::Base
 
   def current_user = Current.user
 
-  # 모든 화면 공통 셸 데이터 (사이드바 브랜드, 상단 열린 품목 탭)
+  # 모든 화면 공통 셸 데이터 (사이드바 브랜드, 상단 열린 품목 탭 = 세션 히스토리)
   def set_nav
     return unless ActiveRecord::Base.connection.schema_cache.data_source_exists?("products")
 
     @tree_roots = Product.roots.includes(:children)
-    @open_tabs  = Product.where.not(code: nil).order(:position, :id).includes(:components).limit(2)
+    ids = session[:open_tabs] || []
+    by_id = Product.where(id: ids).includes(:components).index_by(&:id)
+    @open_tabs = ids.filter_map { |id| by_id[id] } # 순서 보존 + 삭제된 항목 제외
   end
 
   # 대시보드 셸의 제품 트리 행 (대시보드 index / 상세 풀요청 공용)

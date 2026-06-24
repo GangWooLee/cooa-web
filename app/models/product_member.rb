@@ -1,8 +1,8 @@
 class ProductMember < ApplicationRecord
   belongs_to :product
   belongs_to :user
-  enum :role, { designer: "designer", pm: "pm", ra: "ra", scm: "scm" }
+  # role은 자유 문자열(역할명 자유 입력). 알려진 키는 약어/라벨, 그 외는 원문 폴백.
 
-  def role_label = User::ROLE_LABELS[role]
-  def role_short = User::ROLE_SHORT[role]
+  def role_label = User::ROLE_LABELS[role] || role
+  def role_short = User::ROLE_SHORT[role] || role
 end

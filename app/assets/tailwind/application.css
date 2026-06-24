@@ -34,3 +34,7 @@ summary::-webkit-details-marker { display: none; }
 /* 변경사유 ▾ 토글 선택(열림) 상태 — 호버와 동일 계열(명시 속성으로 확실 적용) */
 .dot-on { border-color: var(--color-cooa); background-color: var(--color-accent); color: var(--color-cooa); }
 
+/* 드래그 순서변경 드롭 표시선 — box-shadow(리플로우 없음) */
+.drop-before { box-shadow: inset 0 2px 0 0 var(--color-cooa); }
+.drop-after { box-shadow: inset 0 -2px 0 0 var(--color-cooa); }
+

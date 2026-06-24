@@ -12,7 +12,8 @@ class Component < ApplicationRecord
 
   scope :ordered, -> { order(:position, :id) }
 
-  def type_label = TYPES[component_type]
+  def type_label = component_type && TYPES[component_type]
+  def display_name = name.presence || type_label || "구성요소"
   def current_version = component_versions.detect(&:current) || component_versions.max_by(&:version_number)
   def versions_asc = component_versions.sort_by(&:version_number)
 end

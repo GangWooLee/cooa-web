@@ -1,26 +1,35 @@
-<%# 우측 드로어 상세 — 닫기 + 블러시 헤더(라벨형 메타) + 슬롯 액션바 + 타임라인. product 로컬 %>
+<%# 우측 드로어 상세 — 닫기/편집/삭제 + 블러시 헤더(라벨형 메타) + 슬롯 액션바 + 타임라인. product 로컬 %>
+<% del_confirm = product.folder? ?
+     "'#{product.name}' 및 모든 하위 항목·구성요소·버전·피드백이 영구 삭제됩니다. 계속할까요?" :
+     "'#{product.name}' 및 모든 구성요소·버전·피드백이 삭제됩니다. 계속할까요?" %>
 <div class="flex h-full min-h-0 flex-col bg-white">
-  <%# 상단: 브레드크럼 + 닫기 %>
-  <div class="flex items-center justify-between gap-2 border-b border-line-soft px-5 py-3">
-    <div class="min-w-0 truncate text-[13px]"><%= node_breadcrumb(product) %></div>
-    <button type="button" data-action="detail-drawer#close" aria-label="닫기"
-            class="shrink-0 rounded-lg p-1.5 text-line transition hover:bg-tint hover:text-ink">
-      <%= ui_icon "x", size: 18 %>
-    </button>
-  </div>
-
-  <%# 스크롤 본문 (version-select 스코프) %>
+  <%# 스크롤 본문 (version-select 스코프) — 별도 헤더바 없음(닫기·삭제는 블러시 헤더 우상단) %>
   <div data-controller="version-select" class="min-h-0 flex-1 overflow-auto scrollbar-slim">
-    <%# 블러시 헤더 %>
-    <div class="border-b border-line-soft bg-accent/40 px-5 py-4">
-      <div class="flex flex-wrap items-center gap-2">
+    <%# 블러시 헤더 — 이름 인라인 편집 + 우상단 삭제·닫기 %>
+    <div class="relative border-b border-line-soft bg-accent/40 px-5 py-4">
+      <div class="absolute right-3 top-3 flex items-center gap-1">
+        <%= button_to product_path(product), method: :delete, title: "삭제",
+              form: { data: { turbo_frame: "_top", turbo_confirm: del_confirm } },
+              class: "rounded-lg p-1.5 text-line transition hover:bg-tint hover:text-warn" do %><%= ui_icon "trash", size: 16 %><% end %>
+        <button type="button" data-action="detail-drawer#close" aria-label="닫기"
+                class="rounded-lg p-1.5 text-line transition hover:bg-tint hover:text-ink"><%= ui_icon "x", size: 18 %></button>
+      </div>
+      <div data-controller="inline-edit" data-inline-edit-auto-value="<%= params[:rename] == "1" %>" class="flex flex-wrap items-center gap-2 pr-20">
         <% if product.code.present? %>
           <span class="bg-cooa-gradient rounded-md px-2 py-0.5 text-[12px] font-bold text-white">[<%= product.code %>]</span>
         <% end %>
-        <h1 class="min-w-0 break-words text-xl font-bold text-ink"><%= product.name %></h1>
+        <h1 data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 이름 변경"
+            class="min-w-0 cursor-text break-words text-xl font-bold text-ink transition hover:text-cooa"><%= product.name %></h1>
+        <%= form_with model: product, url: product_path(product), method: :patch,
+              data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden min-w-0 flex-1" do |f| %>
+          <%= hidden_field_tag :inline, 1 %>
+          <%= f.text_field :name, data: { "inline-edit-target": "input", action: "keydown->inline-edit#keydown blur->inline-edit#save" },
+                class: "w-full min-w-0 rounded-lg border border-cooa bg-white px-2 py-1 text-xl font-bold text-ink focus:outline-none" %>
+        <% end %>
         <span class="rounded-full bg-white/70 px-2 py-0.5 text-[11px] text-ink/70"><%= product.folder? ? "그룹" : product.product_type %></span>
       </div>
-      <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13px]">
+      <%# 메타 — 값 클릭 시 인라인 편집(별도 편집 페이지 없음) %>
+      <dl class="mt-3 grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1.5 text-[13px]">
         <% if product.notion_url.present? %>
           <dt class="font-bold text-line">기획</dt>
           <dd class="min-w-0 truncate">
@@ -29,14 +38,61 @@
             <% end %>
           </dd>
         <% end %>
-        <% if product.country.present? %><dt class="font-bold text-line">국가</dt><dd class="text-ink"><%= product.country_label %></dd><% end %>
-        <% if product.channel.present? %><dt class="font-bold text-line">채널</dt><dd class="text-ink"><%= product.channel %></dd><% end %>
-        <% if product.deadline %><dt class="font-bold text-line">기한</dt><dd class="text-ink"><%= product.deadline.strftime("%Y.%m.%d") %></dd><% end %>
-        <% if product.product_members.any? %>
+        <%# 경로 — 전체 경로 표시 + 클릭 시 이동(상위 폴더 선택) %>
+        <dt class="font-bold text-line">경로</dt>
+        <dd data-controller="inline-edit" class="min-w-0">
+          <span data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 이동"
+                class="cursor-text break-words rounded px-1 text-ink transition hover:bg-white/70 hover:text-cooa"><%= product.path_label %></span>
+          <%= form_with model: product, url: product_path(product), method: :patch,
+                data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden" do %>
+            <%= hidden_field_tag :inline, 1 %>
+            <%= select_tag "product[parent_id]",
+                  options_for_select([["— 최상위 —", nil]] + Product.parent_options_for(product).map { |p, d| ["#{"　" * d}#{p.name}", p.id] }, product.parent_id),
+                  data: { "inline-edit-target": "input", action: "change->inline-edit#change blur->inline-edit#save" },
+                  class: "rounded border border-cooa px-1.5 py-0.5 text-[13px] focus:outline-none" %>
+          <% end %>
+        </dd>
+        <% unless product.folder? %>
+          <%= render "products/inline_meta", product: product, label: "품목코드", attr: :code, kind: :text, display: product.code %>
+          <%= render "products/inline_meta", product: product, label: "국가", attr: :country, kind: :text, display: product.country_label.presence %>
+          <%= render "products/inline_meta", product: product, label: "채널", attr: :channel, kind: :text, display: product.channel %>
+          <%= render "products/inline_meta", product: product, label: "기한", attr: :deadline, kind: :date, display: product.deadline&.strftime("%Y.%m.%d") %>
+          <%# 커스텀 속성(Notion식) — 키/값 자유, 추가/이름변경/삭제 %>
+          <% product.product_properties.ordered.each do |prop| %>
+            <%= render "products/property", product: product, property: prop %>
+          <% end %>
+          <dt></dt>
+          <dd>
+            <%= button_to product_product_properties_path(product), method: :post,
+                  form: { class: "inline", data: { turbo_frame: "_top" } },
+                  class: "inline-flex items-center gap-1 rounded px-1 text-[12px] text-line transition hover:text-cooa" do %>
+              <%= ui_icon "plus", size: 12 %> 속성 추가
+            <% end %>
+          </dd>
+          <%# 담당자 — 자유 역할 + 팀에서 사람 선택, 행 추가/삭제 %>
           <dt class="font-bold text-line">담당자</dt>
-          <dd class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <% product.product_members.sort_by { |m| %w[designer pm ra scm].index(m.role) || 9 }.each do |pm| %>
-              <span class="inline-flex items-center gap-1"><%= avatar(pm.user, size: 22) %><span class="text-[12px] font-bold text-ink"><%= pm.user.name %></span><span class="text-[10px] text-line"><%= pm.role_short %></span></span>
+          <dd data-controller="inline-edit members" class="min-w-0">
+            <span data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 수정"
+                  class="flex cursor-text flex-wrap items-center gap-x-3 gap-y-1 rounded px-1 hover:bg-white/70">
+              <% if product.product_members.any? %>
+                <% product.product_members.each do |pm| %>
+                  <span class="inline-flex items-center gap-1"><%= avatar(pm.user, size: 22) %><span class="text-[12px] font-bold text-ink"><%= pm.user.name %></span><span class="max-w-[88px] truncate text-[10px] text-line"><%= pm.role_short %></span></span>
+                <% end %>
+              <% else %><span class="text-line">None</span><% end %>
+            </span>
+            <%= form_with model: product, url: product_path(product), method: :patch,
+                  data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden" do %>
+              <%= hidden_field_tag :inline, 1 %>
+              <div data-members-target="rows" class="flex flex-col gap-1.5">
+                <% product.product_members.each do |pm| %>
+                  <%= render "products/member_row", role: pm.role, user_id: pm.user_id %>
+                <% end %>
+              </div>
+              <div class="mt-2 flex items-center gap-2">
+                <button type="button" data-action="members#add" class="inline-flex items-center gap-1 rounded px-1 text-[12px] text-cooa hover:underline"><%= ui_icon "plus", size: 12 %> 담당자 추가</button>
+                <button type="button" data-action="members#save" class="rounded bg-cooa px-2.5 py-0.5 text-[12px] font-bold text-white">저장</button>
+              </div>
+              <template data-members-target="template"><%= render "products/member_row", role: "", user_id: nil %></template>
             <% end %>
           </dd>
         <% end %>
@@ -72,38 +128,26 @@
       </div>
     <% end %>
 
-    <%# 본문 %>
+    <%# 본문 — 하위 항목은 트리에서 직접 관리(드로어에서 보지 않음) %>
     <div class="px-5 py-4">
-      <%# 하위 항목 (폴더) — 클릭 시 같은 드로어에서 펼침 %>
-      <% if product.children.any? %>
-        <h2 class="mb-2 text-base font-bold text-ink">하위 항목</h2>
-        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <% product.children.each do |child| %>
-            <%= link_to product_path(child), data: { turbo_frame: "detail", turbo_action: "advance" },
-                  class: "flex items-center gap-3 rounded-xl border border-line-soft bg-white p-3 shadow-sm hover:border-cooa" do %>
-              <%= ui_icon(child.leaf? ? "doc" : "folder", size: 20, klass: "text-cooa") %>
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2">
-                  <span class="truncate text-sm font-bold text-ink"><%= child.name %></span>
-                  <% if child.code.present? %><span class="text-[11px] text-line"><%= child.code %></span><% end %>
-                </div>
-                <div class="text-[12px] text-line">
-                  <% if child.leaf? %><%= [child.country_label, child.channel].compact.join(" · ") if child.country.present? %>
-                  <% else %><%= child.children.size %>개 하위<% end %>
-                </div>
-              </div>
-              <%= ui_icon "caret", size: 16, klass: "-rotate-90 text-line" %>
-            <% end %>
+      <%# 구성요소 · 버전 타임라인 (항목=leaf) — 추가/삭제 %>
+      <% if product.leaf? %>
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-base font-bold text-ink">구성요소 · 버전</h2>
+          <%= button_to product_components_path(product), method: :post,
+                form: { class: "inline", data: { turbo_frame: "_top" } },
+                class: "inline-flex cursor-pointer items-center gap-1 rounded-lg border border-cooa bg-white px-2.5 py-1.5 text-[12px] font-bold text-cooa transition hover:bg-cooa hover:text-white" do %>
+            <%= ui_icon "plus", size: 13 %> 구성요소 추가
           <% end %>
         </div>
-      <% end %>
-
-      <%# 구성요소 · 버전 타임라인 (리프) %>
-      <% if product.components.any? %>
-        <h2 class="mb-2 text-base font-bold text-ink">구성요소 · 버전</h2>
-        <div class="rounded-2xl border border-line-soft bg-white px-4 shadow-sm">
-          <%= render partial: "products/component", collection: product.components.sort_by { |c| [c.position || 0, c.id] }, as: :component %>
-        </div>
+        <% if product.components.any? %>
+          <div data-controller="sortable" data-sortable-url-value="<%= reorder_product_components_path(product) %>"
+               class="rounded-2xl border border-line-soft bg-white px-4 shadow-sm">
+            <%= render partial: "products/component", collection: product.components.sort_by { |c| [c.position || 0, c.id] }, as: :component %>
+          </div>
+        <% else %>
+          <p class="rounded-xl border border-dashed border-line-soft px-4 py-6 text-center text-[13px] text-line">구성요소가 없습니다 · 위에서 추가하세요</p>
+        <% end %>
       <% end %>
     </div>
   </div>

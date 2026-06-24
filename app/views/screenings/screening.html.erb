@@ -4,7 +4,7 @@
 <div class="flex h-full flex-col">
   <%# 헤더 + 주의문 %>
   <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-5 py-3">
-    <div class="text-sm"><%= node_breadcrumb(@product, trailing: "#{@version.component.type_label} #{@version.vlabel.upcase} 인허가 스크리닝") %></div>
+    <div class="text-sm"><%= node_breadcrumb(@product, trailing: "#{@version.component.display_name} #{@version.vlabel.upcase} 인허가 스크리닝") %></div>
     <div class="text-xs text-line">AI의 답변은 완벽하지 않으니 꼭 RA 담당자의 검토를 권합니다.</div>
   </div>
 
@@ -15,7 +15,7 @@
       <% if artwork?(@version) %>
         <%= render "shared/artwork_viewer", image_src: artwork_src(@version), boxes: fboxes, zoom: false %>
       <% else %>
-        <div class="flex h-full items-center justify-center rounded-xl border border-line bg-tint-2 text-line">아트워크 이미지 없음 · <%= @version.component.type_label %> <%= @version.vlabel.upcase %></div>
+        <div class="flex h-full items-center justify-center rounded-xl border border-line bg-tint-2 text-line">아트워크 이미지 없음 · <%= @version.component.display_name %> <%= @version.vlabel.upcase %></div>
       <% end %>
     </div>
 

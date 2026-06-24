@@ -2,7 +2,7 @@
 <div class="flex h-full flex-col">
   <%# 상단: 브레드크럼 + 버전 페어 선택기 (가치 라벨 없음) %>
   <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft px-5 py-3">
-    <div class="text-sm"><%= node_breadcrumb(@product, trailing: "#{@component.type_label} 버전 비교") %></div>
+    <div class="text-sm"><%= node_breadcrumb(@product, trailing: "#{@component.display_name} 버전 비교") %></div>
     <div data-controller="version-picker" class="flex items-center gap-2 text-sm">
       <span class="text-xs text-line">기준</span>
       <select data-role="from" data-action="change->version-picker#go" class="rounded-md border border-line-soft bg-white px-2 py-1">

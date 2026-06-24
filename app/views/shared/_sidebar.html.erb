@@ -15,8 +15,11 @@
     </div>
 
     <div class="flex-1 overflow-auto">
-      <div class="mb-1 px-2">
+      <div class="mb-1 flex items-center justify-between px-2">
         <span class="text-[12px] font-bold text-line">제품</span>
+        <%= button_to products_path, params: { product: { kind: "folder" } }, title: "새 폴더",
+              form: { class: "inline" },
+              class: "rounded p-0.5 text-line transition hover:bg-tint hover:text-cooa" do %><%= ui_icon "plus", size: 14 %><% end %>
       </div>
       <% active_ids = (@product&.self_and_ancestors&.map(&:id) || []) %>
       <% (@tree_roots || []).each do |node| %>

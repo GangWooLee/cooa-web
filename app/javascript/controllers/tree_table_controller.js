@@ -9,6 +9,8 @@ export default class extends Controller {
   }
 
   toggle(event) {
+    // 행 내부 케밥/링크 클릭 시 토글 금지(메뉴는 stopPropagation도 하지만 방어)
+    if (event.target.closest("a, button, [data-no-rowlink]")) return
     const tr = event.currentTarget.closest("tr")
     if (!tr) return
     const id = tr.dataset.nodeId

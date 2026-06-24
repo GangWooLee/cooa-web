@@ -13,10 +13,15 @@ Rails.application.routes.draw do
   root "dashboard#index"
   get "/brands/:id", to: "dashboard#index", as: :brand        # 브랜드별 대시보드
 
-  resources :products, only: [:show]                          # ② 제품 상세 허브
+  resources :products, only: [:show, :create, :update, :destroy] do  # ② 제품 트리 CRUD (생성=즉시·편집=인라인)
+    resources :components, only: [:create] do                                     # 구성요소 추가
+      patch :reorder, on: :collection                                             # 드래그 순서변경
+    end
+    resources :product_properties, only: [:create, :update, :destroy], path: "properties"  # 커스텀 속성(Notion식)
+  end
 
-  # 새 버전 추가(구성요소 하위) — new/create
-  resources :components, only: [] do
+  # 구성요소 이름변경·삭제 + 새 버전 추가(구성요소 하위)
+  resources :components, only: [:update, :destroy] do
     resources :component_versions, only: [:new, :create], path: "versions"
   end
 
@@ -39,4 +44,7 @@ Rails.application.routes.draw do
 
   # ③ 버전 비교 (가치 라벨 없는 버전쌍 선택)
   get "versions/:from_id/compare/:to_id", to: "comparisons#show", as: :comparison
+
+  # 상단 히스토리 탭 닫기(세션)
+  delete "/tabs/:id", to: "tabs#destroy", as: :tab
 end

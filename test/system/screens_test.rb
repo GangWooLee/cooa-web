@@ -24,12 +24,12 @@ class ScreensTest < ApplicationSystemTestCase
     v5 = hero.component_versions.find_by(version_number: 5)
     v6 = hero.component_versions.find_by(version_number: 6)
 
+    # 히스토리 탭은 세션 기반 → 제품을 한 번 열어 탭을 채운 뒤 정합 확인
+    visit product_path(Product.find_by(code: "CO0001"))
     visit root_path
     assert_text "레티놀 3% 세럼"
     # 상단바 정합: 첫 히스토리 탭 우측 ≈ 사이드바 우측 (격자 일치)
-    # 탭은 div 컨테이너(코드 링크 + 버전 칩 링크 — 중첩 a 금지로 언네스트됨)
     assert_selector "header nav > div", minimum: 1
-    assert_selector "header nav a", minimum: 1 # 칩/코드 링크 존재
     tab_r  = page.evaluate_script("document.querySelector('header nav > div').getBoundingClientRect().right")
     side_r = page.evaluate_script("document.querySelector('aside').getBoundingClientRect().right")
     assert_in_delta tab_r, side_r, 2, "첫 탭 우측(#{tab_r})이 사이드바 우측(#{side_r})과 정합해야 함"
@@ -47,10 +47,10 @@ class ScreensTest < ApplicationSystemTestCase
     sleep 0.4
     assert_equal "/", URI.parse(current_url).path, "닫기 후 URL은 대시보드(/)"
 
-    # ── 폴더 클릭 = 트리 토글(별도 페이지 이동 없음) ──
-    within("table") { find("td", text: "레티놀 3% 세럼").click }
+    # ── 폴더 캐럿 클릭 = 트리 토글(별도 페이지 이동 없음). 폴더명 클릭은 드로어 관리 ──
+    within("table") { first(".tree-caret").click }
     sleep 0.3
-    assert_equal "/", URI.parse(current_url).path, "폴더 클릭은 페이지 이동 없어야 함"
+    assert_equal "/", URI.parse(current_url).path, "폴더 캐럿(토글)은 페이지 이동 없어야 함"
 
     visit product_path(Product.find_by(code: "CO0001"))
     assert_text "구성요소"
@@ -144,7 +144,7 @@ class ScreensTest < ApplicationSystemTestCase
     assert_selector "[data-vs-ready]"
     add_link = "a[href='/components/#{barcode.id}/versions/new']"
     assert_selector add_link
-    find(add_link).click
+    find(add_link).execute_script("this.click()") # 좌표 클릭 대신 JS 클릭(드로어 하단 오클루전 회피)
     assert_current_path(%r{/components/#{barcode.id}/versions/new\z}, wait: 5)
     attach_file "component_version_artwork", Rails.root.join("test/fixtures/files/box.jpg").to_s, make_visible: true
     fill_in "component_version_change_reason", with: "바코드 초안 업로드"

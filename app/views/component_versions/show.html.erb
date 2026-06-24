@@ -1,9 +1,9 @@
-<% content_for :title, "#{@component.type_label} #{@version.vlabel.upcase} · #{@product.code}" %>
+<% content_for :title, "#{@component.display_name} #{@version.vlabel.upcase} · #{@product.code}" %>
 <div class="flex h-full flex-col">
   <%# 헤더: 브레드크럼 + 버전 스위처 + 이전/다음 %>
   <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft px-5 py-3">
     <div class="flex items-center gap-2 text-sm">
-      <%= node_breadcrumb(@product, trailing: "#{@component.type_label} #{@version.vlabel.upcase}") %>
+      <%= node_breadcrumb(@product, trailing: "#{@component.display_name} #{@version.vlabel.upcase}") %>
       <% if @version.current? %>
         <span class="rounded bg-tint px-1.5 py-0.5 text-[10px] font-bold text-line">현재 버전</span>
       <% end %>
@@ -33,7 +33,7 @@
       <% else %>
         <div class="flex h-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-line bg-tint-2 text-line">
           <%= ui_icon "doc", size: 32, klass: "text-line" %>
-          <p>아트워크 이미지 없음 · <%= @component.type_label %> <%= @version.vlabel.upcase %></p>
+          <p>아트워크 이미지 없음 · <%= @component.display_name %> <%= @version.vlabel.upcase %></p>
           <%= link_to "파일 추가", edit_component_version_path(@version),
                 class: "inline-flex items-center gap-1 rounded-lg bg-cooa px-3 py-1.5 text-[13px] font-bold text-white" %>
         </div>
@@ -45,7 +45,7 @@
         <div class="flex items-center gap-2">
           <%= version_chip(@version.vlabel.upcase, size: 34, active: @version.current?) %>
           <div class="min-w-0">
-            <div class="text-base font-bold text-ink"><%= @component.type_label %> <%= @version.vlabel.upcase %></div>
+            <div class="text-base font-bold text-ink"><%= @component.display_name %> <%= @version.vlabel.upcase %></div>
             <div class="text-[12px] text-line"><%= @product.code %> · <%= @product.name %></div>
           </div>
         </div>

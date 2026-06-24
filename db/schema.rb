@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_24_035542) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_24_220000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -106,8 +106,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_035542) do
   end
 
   create_table "components", force: :cascade do |t|
-    t.string "component_type", null: false
+    t.string "component_type"
     t.datetime "created_at", null: false
+    t.string "name"
     t.integer "position", default: 0
     t.integer "product_id", null: false
     t.datetime "updated_at", null: false
@@ -179,12 +180,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_035542) do
     t.index ["user_id"], name: "index_product_members_on_user_id"
   end
 
+  create_table "product_properties", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.integer "position", default: 0
+    t.integer "product_id", null: false
+    t.datetime "updated_at", null: false
+    t.string "value"
+    t.index ["product_id", "position"], name: "index_product_properties_on_product_id_and_position"
+    t.index ["product_id"], name: "index_product_properties_on_product_id"
+  end
+
   create_table "products", force: :cascade do |t|
     t.string "channel"
     t.string "code"
     t.string "country"
     t.datetime "created_at", null: false
     t.date "deadline"
+    t.string "kind", default: "item", null: false
     t.string "name", null: false
     t.string "notion_url"
     t.integer "owner_id"
@@ -258,6 +271,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_035542) do
   add_foreign_key "label_texts", "component_versions"
   add_foreign_key "product_members", "products"
   add_foreign_key "product_members", "users"
+  add_foreign_key "product_properties", "products"
   add_foreign_key "products", "products", column: "parent_id"
   add_foreign_key "products", "users", column: "owner_id"
   add_foreign_key "screening_findings", "screening_runs"
