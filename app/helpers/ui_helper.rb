@@ -74,6 +74,19 @@ module UiHelper
     end
   end
 
+  # 아트워크 URL 해석(단일 진실원): 업로드 첨부(ActiveStorage) > 정적 에셋(image_name) > nil.
+  # rails_blob_path(루트상대)로 host 불필요 — <img src>·background-image:url() 모두 호환.
+  # (url_for/rails_blob_url은 view에서 host 필요 → 사용 금지)
+  def artwork?(version)
+    version && (version.artwork.attached? || version.image_name.present?)
+  end
+
+  def artwork_src(version)
+    return nil unless version
+    return rails_blob_path(version.artwork, only_path: true) if version.artwork.attached?
+    image_path(version.image_name) if version.image_name.present?
+  end
+
   IMG_RATIO = 2048.0 / 1118.0 # 박스 전개도 가로/세로 비
 
   # 어노테이션 → 아트워크 뷰어 박스 배열

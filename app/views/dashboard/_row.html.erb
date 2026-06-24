@@ -46,7 +46,8 @@
   <% %w[outer_box container insert barcode etc].each do |type| %>
     <td class="px-3 py-2.5">
       <% if node.leaf? && (comp = node.components.detect { |c| c.component_type == type }) && (v = comp.current_version) %>
-        <%= version_chip(v.vlabel, size: 22) %>
+        <%= link_to component_version_path(v), title: "#{v.vlabel.upcase} 파일 보기",
+              class: "inline-block rounded-md transition hover:ring-2 hover:ring-cooa/40" do %><%= version_chip(v.vlabel, size: 22) %><% end %>
       <% end %>
     </td>
   <% end %>

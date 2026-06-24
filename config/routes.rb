@@ -15,7 +15,12 @@ Rails.application.routes.draw do
 
   resources :products, only: [:show]                          # ② 제품 상세 허브
 
-  resources :component_versions, only: [], path: "versions" do
+  # 새 버전 추가(구성요소 하위) — new/create
+  resources :components, only: [] do
+    resources :component_versions, only: [:new, :create], path: "versions"
+  end
+
+  resources :component_versions, only: [:show, :edit, :update], path: "versions" do
     member do
       get  :screening,         to: "screenings#screening"          # ④ 인허가 스크리닝 화면
       post :run_screening,     to: "screenings#run_screening"      # 스크리닝 실행(룰엔진)

@@ -1,0 +1,45 @@
+<%# new/edit 공유 폼 — 파일·변경사유·현재 지정. multipart. %>
+<% persisted  = @version.persisted? %>
+<% url        = persisted ? component_version_path(@version) : component_component_versions_path(@component) %>
+<% method     = persisted ? :patch : :post %>
+<% cancel_url = persisted ? component_version_path(@version) : product_path(@component.product) %>
+
+<%= form_with model: @version, url: url, method: method, multipart: true, class: "space-y-5" do |f| %>
+  <% if @version.errors.any? %>
+    <div class="rounded-lg border border-warn/50 p-3 text-[13px] text-warn">
+      <ul class="list-disc pl-4">
+        <% @version.errors.full_messages.each do |m| %><li><%= m %></li><% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div>
+    <label class="block text-[13px] font-bold text-ink">아트워크 파일 <span class="font-normal text-line">· PNG·JPG·WEBP · 10MB 이하</span></label>
+    <% if persisted && @version.artwork.attached? %>
+      <div class="mt-2 flex items-center gap-2 text-[12px] text-line">
+        <img src="<%= artwork_src(@version) %>" class="h-16 w-auto rounded border border-line-soft" alt="현재 아트워크">
+        <span>현재 파일 · 새로 선택하지 않으면 유지됩니다</span>
+      </div>
+    <% end %>
+    <%= f.file_field :artwork, accept: "image/png,image/jpeg,image/webp",
+          class: "mt-2 block w-full text-[13px] text-ink file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-cooa file:px-3 file:py-2 file:font-bold file:text-white" %>
+  </div>
+
+  <div>
+    <label class="block text-[13px] font-bold text-ink">변경사유</label>
+    <%= f.text_area :change_reason, rows: 3, placeholder: "이 버전에서 무엇이 달라졌나요?",
+          class: "mt-2 w-full rounded-lg border border-line-soft px-3 py-2 text-[14px] focus:border-cooa focus:outline-none" %>
+  </div>
+
+  <label class="flex items-center gap-2 text-[14px] text-ink">
+    <%= f.check_box :current, class: "h-4 w-4 rounded border-line text-cooa" %>
+    이 버전을 <b>현재 버전</b>으로 지정
+  </label>
+
+  <div class="flex items-center gap-2 pt-1">
+    <%= f.submit(persisted ? "저장" : "버전 추가",
+          class: "cursor-pointer rounded-lg bg-cooa px-5 py-2.5 text-[14px] font-bold text-white") %>
+    <%= link_to "취소", cancel_url, data: { turbo_frame: "_top" },
+          class: "rounded-lg border border-line px-4 py-2.5 text-[14px] font-bold text-ink transition hover:border-cooa" %>
+  </div>
+<% end %>

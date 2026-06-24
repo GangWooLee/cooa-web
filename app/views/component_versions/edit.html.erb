@@ -1,0 +1,8 @@
+<% content_for :title, "버전 편집 · #{@component.product.code}" %>
+<div class="mx-auto max-w-xl px-5 py-8">
+  <div class="mb-5">
+    <div class="text-sm"><%= node_breadcrumb(@component.product, trailing: "#{@component.type_label} #{@version.vlabel.upcase} 편집") %></div>
+    <h1 class="mt-2 text-xl font-bold text-ink"><%= @component.type_label %> <%= @version.vlabel.upcase %> 편집</h1>
+  </div>
+  <%= render "form" %>
+</div>

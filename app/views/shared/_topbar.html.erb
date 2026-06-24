@@ -7,13 +7,16 @@
 
   <nav class="flex h-full min-w-0 flex-1 items-center overflow-x-auto">
     <% (@open_tabs || []).each do |p| %>
-      <%= link_to product_path(p),
-            class: "flex h-full w-[180px] shrink-0 items-center gap-2 px-3 hover:bg-white/60" do %>
-        <span class="text-[15px] font-medium text-ink">[<%= p.code %>]</span>
+      <%# 탭 컨테이너(div) — 코드=제품 링크, 칩=각 버전 파일 링크(중첩 a 금지 위해 언네스트) %>
+      <div class="flex h-full w-[180px] shrink-0 items-center gap-2 px-3 hover:bg-white/60">
+        <%= link_to "[#{p.code}]", product_path(p), class: "text-[15px] font-medium text-ink hover:text-cooa" %>
         <% p.components.first(2).each do |c| %>
-          <% if (v = c.current_version) %><%= version_chip(v.vlabel.upcase, size: 26) %><% end %>
+          <% if (v = c.current_version) %>
+            <%= link_to component_version_path(v), title: "#{v.vlabel.upcase} 파일 보기",
+                  class: "shrink-0 rounded-md transition hover:ring-2 hover:ring-cooa/40" do %><%= version_chip(v.vlabel.upcase, size: 26) %><% end %>
+          <% end %>
         <% end %>
-      <% end %>
+      </div>
       <div class="h-full w-px shrink-0 bg-line/70"></div>
     <% end %>
   </nav>

@@ -27,8 +27,10 @@ class ScreensTest < ApplicationSystemTestCase
     visit root_path
     assert_text "레티놀 3% 세럼"
     # 상단바 정합: 첫 히스토리 탭 우측 ≈ 사이드바 우측 (격자 일치)
-    assert_selector "header nav a", minimum: 1
-    tab_r  = page.evaluate_script("document.querySelector('header nav a').getBoundingClientRect().right")
+    # 탭은 div 컨테이너(코드 링크 + 버전 칩 링크 — 중첩 a 금지로 언네스트됨)
+    assert_selector "header nav > div", minimum: 1
+    assert_selector "header nav a", minimum: 1 # 칩/코드 링크 존재
+    tab_r  = page.evaluate_script("document.querySelector('header nav > div').getBoundingClientRect().right")
     side_r = page.evaluate_script("document.querySelector('aside').getBoundingClientRect().right")
     assert_in_delta tab_r, side_r, 2, "첫 탭 우측(#{tab_r})이 사이드바 우측(#{side_r})과 정합해야 함"
     sleep 0.4
@@ -116,5 +118,55 @@ class ScreensTest < ApplicationSystemTestCase
       assert sw <= cw + 1, "#{w}px: main 가로 오버플로 (scrollWidth #{sw} > clientWidth #{cw})"
       save_screenshot(dir.join("compare_#{w}.png"))
     end
+  end
+
+  # 버전 파일: 보기(전체 페이지) · 추가(업로드) · 수정(교체)
+  test "version file: view, add, edit" do
+    dir = Rails.root.join("tmp/screens")
+    FileUtils.mkdir_p(dir)
+    page.driver.browser.manage.window.resize_to(1440, 900)
+    prod    = Product.find_by(code: "CO0001")
+    barcode = prod.components.find_by(component_type: "barcode") # 원래 아트워크 없음
+
+    # ── v# 칩 클릭 → 파일 보기(전체 페이지, 드로어 아님) ──
+    visit product_path(prod)
+    assert_selector "[data-vs-ready]" # version-select 연결 대기
+    nodes = all("button[data-version-select-target='version']")
+    assert_operator nodes.size, :>, 0
+    nodes.first.execute_script("this.click()") # draggable이라 합성 click(드래그 아님)
+    assert_current_path(%r{/versions/\d+\z}, wait: 5)
+    assert_selector "button", text: "전체"                       # show 줌바(zoom:true) — screening/compare엔 없음
+    assert_selector "[data-controller='artwork-viewer'] img"     # 뷰어 렌더
+    save_screenshot(dir.join("7_version_show.png"))
+
+    # ── 새 버전 추가(업로드) ── 드로어 타임라인 "+ 새 버전" 진입점
+    visit product_path(prod)
+    assert_selector "[data-vs-ready]"
+    add_link = "a[href='/components/#{barcode.id}/versions/new']"
+    assert_selector add_link
+    find(add_link).click
+    assert_current_path(%r{/components/#{barcode.id}/versions/new\z}, wait: 5)
+    attach_file "component_version_artwork", Rails.root.join("test/fixtures/files/box.jpg").to_s, make_visible: true
+    fill_in "component_version_change_reason", with: "바코드 초안 업로드"
+    check "component_version_current"
+    save_screenshot(dir.join("8_version_new.png"))
+    click_button "버전 추가"
+    assert_current_path(%r{/versions/\d+\z}, wait: 5)
+    assert_selector "img[src*='/rails/active_storage/']", wait: 5 # 업로드 파일(ActiveStorage) 렌더
+    nv = barcode.component_versions.order(:version_number).last
+    assert nv.artwork.attached?, "새 버전에 아트워크 첨부됨"
+    assert nv.current?, "새 버전이 현재 버전"
+    assert_equal 1, barcode.component_versions.where(current: true).count, "current 단일성 보장"
+
+    # ── 대시보드 칩 갱신(현재 버전 = 방금 추가본) ──
+    visit root_path
+    assert_selector "a[href='/versions/#{nv.id}']", wait: 5
+
+    # ── 수정: 파일 교체 ──
+    visit edit_component_version_path(nv)
+    attach_file "component_version_artwork", Rails.root.join("test/fixtures/files/box2.jpg").to_s, make_visible: true
+    click_button "저장"
+    assert_current_path(%r{/versions/#{nv.id}\z}, wait: 5)
+    assert_selector "img[src*='/rails/active_storage/']", wait: 5
   end
 end

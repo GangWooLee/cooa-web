@@ -22,12 +22,12 @@
        class="flex min-h-0 flex-1 flex-col xl:flex-row">
     <%# 좌: 검토(현재) 버전 아트워크 + 이전 버전 피드백 박스 %>
     <div class="min-h-0 min-w-0 flex-1 p-3" style="min-height:380px">
-      <% if @from.image_name.present? && @to.image_name.present? %>
+      <% if artwork?(@from) && artwork?(@to) %>
         <% anns = annotation_boxes(@from.annotations.ordered) %>
         <%= render "shared/artwork_viewer",
               panes: [
-                { image_src: image_path(@from.image_name), label: @from.vlabel, boxes: anns },
-                { image_src: image_path(@to.image_name),   label: @to.vlabel,   boxes: anns }
+                { image_src: artwork_src(@from), label: @from.vlabel, boxes: anns },
+                { image_src: artwork_src(@to),   label: @to.vlabel,   boxes: anns }
               ],
               autofocus: true, drawable: true, zoom: false %>
       <% else %>

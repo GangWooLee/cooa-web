@@ -12,8 +12,8 @@
        class="flex min-h-0 flex-1 flex-col lg:flex-row">
     <%# 좌: 아트워크 + finding 박스 %>
     <div class="min-h-0 min-w-0 flex-1 p-3" style="min-height:380px">
-      <% if @version.image_name.present? %>
-        <%= render "shared/artwork_viewer", image_src: image_path(@version.image_name), boxes: fboxes, zoom: false %>
+      <% if artwork?(@version) %>
+        <%= render "shared/artwork_viewer", image_src: artwork_src(@version), boxes: fboxes, zoom: false %>
       <% else %>
         <div class="flex h-full items-center justify-center rounded-xl border border-line bg-tint-2 text-line">아트워크 이미지 없음 · <%= @version.component.type_label %> <%= @version.vlabel.upcase %></div>
       <% end %>
