@@ -21,13 +21,24 @@ class TreeCrudTest < ApplicationSystemTestCase
     find("#node_name_#{node.id}").send_keys(:enter)
   end
 
+  # 트리 행 합성 드래그앤드롭(HTML5) — 좌표 클릭/Capybara drag는 불안정 → DragEvent 직접 디스패치
+  def drag_row_onto(source_id, target_id, where: :middle)
+    page.execute_script(<<~JS, source_id.to_s, target_id.to_s, where.to_s)
+      const [sid, tid, where] = arguments
+      const src = document.querySelector(`tr[data-node-id='${sid}']`)
+      const tgt = document.querySelector(`tr[data-node-id='${tid}']`)
+      const dt = new DataTransfer()
+      const r = tgt.getBoundingClientRect()
+      const y = where === 'top' ? r.top + 2 : where === 'bottom' ? r.bottom - 2 : r.top + r.height / 2
+      const fire = (el, type) => el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt, clientY: y }))
+      fire(src, 'dragstart'); fire(tgt, 'dragover'); fire(tgt, 'drop'); fire(src, 'dragend')
+    JS
+  end
+
   def create_folder_via_toolbar
     page.driver.browser.manage.window.resize_to(1440, 900)
     visit root_path
-    within("[data-controller='menu']") do
-      click_button "새로 만들기"
-      click_button "새 폴더"
-    end
+    find("button.bg-cooa-gradient[title='새 폴더']").click # 툴바 폴더 아이콘(사이드바와 구분)
     new_node # 대기 + 폴더 반환
   end
 
@@ -39,10 +50,11 @@ class TreeCrudTest < ApplicationSystemTestCase
     assert_selector "td", text: "브랜드A", wait: 5
     assert_equal "브랜드A", folder.reload.name
 
-    # ── 폴더 행 "+"로 하위 항목 즉시 생성 → 빈 구성요소 + 트리 인라인 명명 ──
-    js_click("tr[data-node-id='#{folder.id}'] button[title='하위 항목 추가']")
+    # ── 폴더 선택 → 상단 파일 아이콘으로 하위 항목 생성(선택 기준) ──
+    find("tr[data-node-id='#{folder.id}']").click # 폴더 선택
+    find("button[title='새 파일']").click
     item = new_node
-    assert_equal folder.id, item.parent_id
+    assert_equal folder.id, item.parent_id, "폴더 선택 → 자식"
     assert_equal 0, item.components.count, "새 항목은 빈 상태"
     rename_in_tree(item, "제품A")
     assert_selector "td", text: "제품A", wait: 5
@@ -88,29 +100,45 @@ class TreeCrudTest < ApplicationSystemTestCase
     assert_equal "제목 없음 폴더", folder.reload.name
   end
 
-  test "진입점: 폴더 행 ⋯ 메뉴로 하위 폴더 즉시 생성" do
+  test "선택 기준 생성: 폴더 선택 → 상단 폴더 아이콘 = 자식" do
     page.driver.browser.manage.window.resize_to(1440, 900)
     retinol = Product.find_by(name: "레티놀 3% 세럼")
     visit root_path
     before = retinol.children.count
-    js_click("tr[data-node-id='#{retinol.id}'] button[title='이동']") # ⋯ 메뉴 토글
-    js_click("tr[data-node-id='#{retinol.id}'] [data-menu-target='panel'] form[action='/products'] button") # 하위 폴더 추가
+    find("tr[data-node-id='#{retinol.id}']").click # 폴더 선택
+    find("button.bg-cooa-gradient[title='새 폴더']").click
     child = new_node
     assert child.folder?
-    assert_equal retinol.id, child.parent_id
+    assert_equal retinol.id, child.parent_id, "폴더 선택 → 자식"
     assert_equal before + 1, retinol.children.reload.count
+  end
+
+  test "드래그앤드롭: 리프를 다른 폴더 안으로 이동(재배치)" do
+    page.driver.browser.manage.window.resize_to(1440, 900)
+    leaf = Product.find_by(code: "CO0001") # 레티놀 하위
+    dest = Product.find_by(name: "비타민C 브라이트닝 앰플") # 다른 루트 폴더
+    visit root_path
+    drag_row_onto(leaf.id, dest.id, where: :middle) # 폴더 가운데 = 안으로
+    assert_selector "tr[data-node-id='#{leaf.id}'][data-parent-id='#{dest.id}']", wait: 5 # 재렌더 후
+    assert_equal dest.id, leaf.reload.parent_id
   end
 
   test "리프 메타 인라인 편집(국가 자유 입력 + 정규화)" do
     page.driver.browser.manage.window.resize_to(1440, 900)
     leaf = Product.find_by(code: "CO0001")
     visit product_path(leaf)
+    assert_selector "#detail", wait: 10
+    sleep 0.3 # Stimulus 연결 정착(무거운 대시보드 뒤 드로어)
     within("#detail") do
-      find("dd[data-controller='inline-edit'] span", exact_text: leaf.country_label).click # 국가(=일본) 정확 매칭
+      # 국가(=일본) 편집 열기 — 클릭이 Stimulus 연결 전일 수 있어 재시도
+      3.times do
+        find("dd[data-controller='inline-edit'] span", exact_text: leaf.country_label).click
+        break if has_css?("#product_country", wait: 3)
+      end
       fill_in "product_country", with: "미국"
       find("#product_country").send_keys(:enter)
     end
-    assert_text "미국", wait: 5 # 풀 리렌더 대기
+    assert_text "미국", wait: 10 # 풀 리렌더 대기
     assert_equal "US", leaf.reload.country, "미국 → US 정규화(screening 보존)"
   end
 end

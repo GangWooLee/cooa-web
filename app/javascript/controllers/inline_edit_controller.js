@@ -14,6 +14,7 @@ export default class extends Controller {
     this.displayTarget.classList.add("hidden")
     this.formTarget.classList.remove("hidden")
     if (this.hasInputTarget) { // 담당자 폼처럼 단일 input이 없을 수 있음
+      this._original = this.inputTarget.value // 무변경 판별용
       this.inputTarget.focus()
       this.inputTarget.select?.() // <select>에는 없음 — 가드
       this.inputTarget.scrollIntoView({ block: "nearest" }) // 트리 인라인 생성 시 새 행 보이게
@@ -29,11 +30,13 @@ export default class extends Controller {
   // select/date는 변경 즉시 저장
   change() { this.save() }
 
-  // Enter/blur/change 이중제출 방지(_done). 빈값 가드는 text 입력에만(select "—" 비우기 허용)
+  // Enter/blur/change 이중제출 방지(_done). 빈값 가드는 text 입력에만(select "—" 비우기 허용).
+  // 값 무변경이면 제출 안 함 — 그냥 다른 필드 클릭 시 불필요한 PATCH·풀리렌더(깜빡임) 방지.
   save() {
     if (this._done) return
     const el = this.inputTarget
     if (el.tagName === "INPUT" && el.type === "text" && el.value.trim() === "") { this.cancel(); return }
+    if (el.value === this._original) { this.cancel(); return }
     this._done = true
     this.formTarget.requestSubmit()
   }

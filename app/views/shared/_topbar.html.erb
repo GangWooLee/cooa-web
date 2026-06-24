@@ -7,16 +7,18 @@
 
   <nav class="flex h-full min-w-0 flex-1 items-center overflow-x-auto">
     <% (@open_tabs || []).each do |p| %>
-      <%# 히스토리 탭 — 코드=제품 링크, 칩=표시만(헤더에서 파일이동 안 함), 호버 시 우측 x로 닫기 %>
-      <div class="group flex h-full w-[180px] shrink-0 items-center gap-2 px-3 hover:bg-white/60">
-        <%= link_to "[#{p.code}]", product_path(p), data: { turbo_frame: "detail", turbo_action: "advance" },
-              class: "shrink-0 text-[15px] font-medium text-ink hover:text-cooa" %>
-        <% p.components.first(2).each do |c| %>
-          <% if (v = c.current_version) %><span class="shrink-0"><%= version_chip(v.vlabel.upcase, size: 26) %></span><% end %>
-        <% end %>
+      <%# 히스토리 탭 — 코드/칩은 우측 페이드로 클립(x버튼 영역에서 흐려짐), x는 위치 고정·호버 노출 %>
+      <div class="group relative flex h-full w-[180px] shrink-0 items-center hover:bg-white/60">
+        <div class="tab-fade flex min-w-0 flex-1 items-center gap-2 overflow-hidden px-3">
+          <%= link_to "[#{p.code}]", product_path(p), data: { turbo_frame: "detail", turbo_action: "advance" },
+                class: "shrink-0 whitespace-nowrap text-[15px] font-medium text-ink hover:text-cooa" %>
+          <% p.components.first(2).each do |c| %>
+            <% if (v = c.current_version) %><span class="shrink-0"><%= version_chip(v.vlabel.upcase, size: 26) %></span><% end %>
+          <% end %>
+        </div>
         <%= button_to tab_path(p), method: :delete, title: "탭 닫기",
-              form: { class: "ml-auto inline opacity-0 transition-opacity duration-150 group-hover:opacity-100" },
-              class: "rounded p-0.5 text-line hover:text-warn" do %><%= ui_icon "x", size: 14 %><% end %>
+              form: { class: "absolute right-1 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-150 group-hover:opacity-100" },
+              class: "rounded bg-white/90 p-0.5 text-line shadow-sm hover:text-warn" do %><%= ui_icon "x", size: 14 %><% end %>
       </div>
       <div class="h-full w-px shrink-0 bg-line/70"></div>
     <% end %>

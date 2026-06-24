@@ -1,6 +1,5 @@
 <%# 구성요소 버전 타임라인 — 노드=슬롯 선택(드래그/클릭), 연결점=빨강, ▾=변경사유(담당자별) %>
 <% versions = component.component_versions.sort_by(&:version_number) %>
-<% cur = component.current_version %>
 <div class="group/comp relative border-b border-line-soft py-4 pr-9 last:border-0"
      data-sortable-target="item" data-id="<%= component.id %>"
      data-action="dragover->sortable#dragover drop->sortable#drop dragleave->sortable#dragleave">
@@ -22,7 +21,6 @@
           <% end %>
         </span>
       </div>
-      <% if cur %><span class="ml-[26px] w-fit rounded bg-tint px-1.5 py-0.5 text-[10px] font-bold text-line">현재 <%= cur.vlabel.upcase %></span><% end %>
     </div>
 
     <%# 타임라인 %>
@@ -111,9 +109,9 @@
     <% end %>
   </div>
 
-  <%# 삭제 — 행 우상단, 호버 노출(제목 옆 아님·타임라인과 안 겹침) %>
+  <%# 삭제 — 행 우측 상하중앙, 호버 노출(제목 옆 아님·타임라인과 안 겹침) %>
   <%= button_to component_path(component), method: :delete, title: "구성요소 삭제",
-        form: { class: "absolute right-1 top-3 opacity-0 transition-opacity duration-150 group-hover/comp:opacity-100",
+        form: { class: "absolute right-1 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-150 group-hover/comp:opacity-100",
                 data: { turbo_frame: "_top", turbo_confirm: "'#{component.display_name}' 및 모든 버전·피드백이 삭제됩니다. 계속할까요?" } },
         class: "rounded p-1 text-line transition hover:bg-tint hover:text-warn" do %><%= ui_icon "trash", size: 14 %><% end %>
 </div>

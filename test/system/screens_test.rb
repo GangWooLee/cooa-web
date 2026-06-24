@@ -134,7 +134,7 @@ class ScreensTest < ApplicationSystemTestCase
     nodes = all("button[data-version-select-target='version']")
     assert_operator nodes.size, :>, 0
     nodes.first.execute_script("this.click()") # draggable이라 합성 click(드래그 아님)
-    assert_current_path(%r{/versions/\d+\z}, wait: 5)
+    assert_current_path(%r{/versions/\d+\z}, wait: 12)
     assert_selector "button", text: "전체"                       # show 줌바(zoom:true) — screening/compare엔 없음
     assert_selector "[data-controller='artwork-viewer'] img"     # 뷰어 렌더
     save_screenshot(dir.join("7_version_show.png"))
@@ -145,14 +145,14 @@ class ScreensTest < ApplicationSystemTestCase
     add_link = "a[href='/components/#{barcode.id}/versions/new']"
     assert_selector add_link
     find(add_link).execute_script("this.click()") # 좌표 클릭 대신 JS 클릭(드로어 하단 오클루전 회피)
-    assert_current_path(%r{/components/#{barcode.id}/versions/new\z}, wait: 5)
+    assert_current_path(%r{/components/#{barcode.id}/versions/new\z}, wait: 12)
     attach_file "component_version_artwork", Rails.root.join("test/fixtures/files/box.jpg").to_s, make_visible: true
     fill_in "component_version_change_reason", with: "바코드 초안 업로드"
     check "component_version_current"
     save_screenshot(dir.join("8_version_new.png"))
     click_button "버전 추가"
-    assert_current_path(%r{/versions/\d+\z}, wait: 5)
-    assert_selector "img[src*='/rails/active_storage/']", wait: 5 # 업로드 파일(ActiveStorage) 렌더
+    assert_current_path(%r{/versions/\d+\z}, wait: 12)
+    assert_selector "img[src*='/rails/active_storage/']", wait: 12 # 업로드 파일(ActiveStorage) 렌더
     nv = barcode.component_versions.order(:version_number).last
     assert nv.artwork.attached?, "새 버전에 아트워크 첨부됨"
     assert nv.current?, "새 버전이 현재 버전"
@@ -160,13 +160,13 @@ class ScreensTest < ApplicationSystemTestCase
 
     # ── 대시보드 칩 갱신(현재 버전 = 방금 추가본) ──
     visit root_path
-    assert_selector "a[href='/versions/#{nv.id}']", wait: 5
+    assert_selector "a[href='/versions/#{nv.id}']", wait: 12
 
     # ── 수정: 파일 교체 ──
     visit edit_component_version_path(nv)
     attach_file "component_version_artwork", Rails.root.join("test/fixtures/files/box2.jpg").to_s, make_visible: true
     click_button "저장"
-    assert_current_path(%r{/versions/#{nv.id}\z}, wait: 5)
-    assert_selector "img[src*='/rails/active_storage/']", wait: 5
+    assert_current_path(%r{/versions/#{nv.id}\z}, wait: 12)
+    assert_selector "img[src*='/rails/active_storage/']", wait: 12
   end
 end

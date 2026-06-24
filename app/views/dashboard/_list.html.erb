@@ -1,5 +1,5 @@
 <%# 대시보드 트리 리스트 (헤더+툴바+테이블) — index / 상세 셸 공용. @rows 사용 %>
-<div class="flex h-full min-w-0 flex-col bg-white">
+<div data-controller="tree" data-tree-create-url-value="<%= products_path %>" class="flex h-full min-w-0 flex-col bg-white">
   <%# 헤더 %>
   <div class="border-b border-line-soft px-6 pt-4">
     <div class="flex min-w-0 items-center justify-between">
@@ -17,21 +17,16 @@
 
   <%# 액션 툴바 — 새로 만들기(폴더/항목) + 미구현은 비활성 %>
   <div class="flex min-w-0 flex-wrap items-center gap-2 px-6 py-3">
-    <div data-controller="menu" class="relative">
-      <button type="button" data-action="menu#toggle"
-              class="bg-cooa-gradient flex items-center gap-1.5 rounded-lg px-3 py-2 text-[14px] font-bold text-white">
-        <%= ui_icon "plus", size: 16, stroke: 2 %> 새로 만들기 <%= ui_icon "caret", size: 15 %>
+    <%# 상단 생성 아이콘 — 선택 노드 기준(폴더→자식 / 파일→형제 / 미선택→루트 맨 아래) %>
+    <div class="flex items-center gap-1.5">
+      <button type="button" data-action="tree#newFolder" title="새 폴더"
+              class="bg-cooa-gradient flex items-center justify-center rounded-lg p-2 text-white transition hover:opacity-90">
+        <%= ui_icon "folder", size: 18 %>
       </button>
-      <div data-menu-target="panel" class="absolute left-0 top-full z-30 mt-1 hidden w-44 overflow-hidden rounded-lg border border-line-soft bg-white py-1 shadow-xl">
-        <%= button_to products_path, params: { product: { kind: "folder" } }, form_class: "block",
-              class: "flex w-full items-center gap-2 px-3 py-2 text-left text-[14px] text-ink hover:bg-tint" do %>
-          <%= ui_icon "folder", size: 16, klass: "text-cooa" %> 새 폴더
-        <% end %>
-        <%= button_to products_path, params: { product: { kind: "item" } }, form_class: "block",
-              class: "flex w-full items-center gap-2 px-3 py-2 text-left text-[14px] text-ink hover:bg-tint" do %>
-          <%= ui_icon "doc", size: 16, klass: "text-cooa" %> 새 항목
-        <% end %>
-      </div>
+      <button type="button" data-action="tree#newItem" title="새 파일"
+              class="flex items-center justify-center rounded-lg border border-line-soft bg-white p-2 text-cooa transition hover:bg-tint">
+        <%= ui_icon "doc", size: 18 %>
+      </button>
     </div>
     <button type="button" disabled title="준비 중"
             class="flex cursor-not-allowed items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-[14px] font-bold text-cooa opacity-60">
@@ -45,7 +40,7 @@
   </div>
 
   <%# 제품 트리 테이블 — 좁은 폭에서 가로 스크롤 %>
-  <div class="min-w-0 flex-1 overflow-auto px-6 pb-10" data-controller="tree-table">
+  <div class="min-w-0 flex-1 overflow-auto px-6 pb-10" data-controller="tree-table tree-dnd">
     <div class="min-w-0 overflow-x-auto">
       <table class="w-full min-w-[860px] border-collapse text-[14px]">
         <thead class="sticky top-0 z-10">

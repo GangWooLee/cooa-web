@@ -1,17 +1,20 @@
 <%# 대시보드 행 — 폴더: 캐럿/여백=토글·이름=인라인 변경 / 리프: 이름=드로어. 좌측 호버 컨트롤. %>
 <%
-  row_data = { "tree-table-target": "row", "node-id": node.id, "depth": depth }
+  dnd = "dragstart->tree-dnd#dragstart dragover->tree-dnd#dragover dragleave->tree-dnd#dragleave drop->tree-dnd#drop dragend->tree-dnd#dragend"
+  row_data = { "tree-table-target": "row", "tree-dnd-target": "row",
+               "node-id": node.id, "depth": depth, kind: (node.folder? ? "folder" : "item"),
+               "parent-id": node.parent_id }
   if node.folder?
-    row_data[:action] = "click->tree-table#toggle"
+    row_data[:action] = "click->tree-table#toggle click->tree#select #{dnd}"
   else
     row_data[:controller] = "row-link"
-    row_data[:action] = "click->row-link#go"
+    row_data[:action] = "click->row-link#go click->tree#select #{dnd}"
   end
   del_confirm = node.folder? ?
     "'#{node.name}' 및 모든 하위 항목·구성요소·버전·피드백이 영구 삭제됩니다. 계속할까요?" :
     "'#{node.name}' 및 모든 구성요소·버전·피드백이 삭제됩니다. 계속할까요?"
 %>
-<%= content_tag :tr, data: row_data, class: "group cursor-pointer border-b border-line-soft hover:bg-accent/30" do %>
+<%= content_tag :tr, data: row_data, draggable: true, class: "group cursor-pointer border-b border-line-soft hover:bg-accent/30" do %>
   <td class="whitespace-nowrap py-2.5 pr-3" style="padding-left: <%= 10 + depth * 20 %>px">
     <div class="flex items-center gap-1">
       <% if depth > 0 %>
@@ -57,34 +60,8 @@
         </span>
       <% end %>
 
-      <%# 좌측 호버 컨트롤 — 자연스러운 페이드(150ms) %>
+      <%# 좌측 호버 컨트롤 — 삭제만(이동=드래그앤드롭, 생성=상단 아이콘) %>
       <span class="ml-1.5 inline-flex items-center gap-0.5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100" data-no-rowlink>
-        <% if node.folder? %>
-          <%= button_to products_path, params: { product: { kind: "item", parent_id: node.id } }, title: "하위 항목 추가",
-                form: { class: "inline", data: { turbo_frame: "_top" } },
-                class: "rounded p-0.5 text-line hover:bg-tint hover:text-cooa" do %><%= ui_icon "plus", size: 14 %><% end %>
-          <%# 이동(상위 폴더) — 드롭다운 %>
-          <span data-controller="menu" class="relative inline-flex">
-            <button type="button" data-action="menu#toggle" title="이동" class="rounded p-0.5 text-line hover:bg-tint hover:text-cooa"><%= ui_icon "dots", size: 14 %></button>
-            <div data-menu-target="panel" class="absolute left-0 top-full z-30 mt-1 hidden w-56 rounded-lg border border-line-soft bg-white p-2 text-left shadow-xl">
-              <%= button_to products_path, params: { product: { kind: "folder", parent_id: node.id } },
-                    form: { class: "block", data: { turbo_frame: "_top" } },
-                    class: "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] text-ink hover:bg-tint" do %>
-                <%= ui_icon "folder", size: 14, klass: "text-cooa" %> 하위 폴더 추가
-              <% end %>
-              <div class="my-1.5 border-t border-line-soft"></div>
-              <div class="mb-1 text-[11px] font-bold text-line">상위 폴더로 이동</div>
-              <%= form_with model: node, url: product_path(node), method: :patch, data: { turbo_frame: "_top" } do %>
-                <%= hidden_field_tag :inline, 1 %>
-                <%= hidden_field_tag :return, "tree" %>
-                <%= select_tag "product[parent_id]",
-                      options_for_select([["— 최상위 —", nil]] + Product.parent_options_for(node).map { |p, d| ["#{"　" * d}#{p.name}", p.id] }, node.parent_id),
-                      onchange: "this.form.requestSubmit()",
-                      class: "w-full rounded border border-line-soft px-1.5 py-1 text-[12px]" %>
-              <% end %>
-            </div>
-          </span>
-        <% end %>
         <%= button_to product_path(node), method: :delete, title: "삭제",
               form: { class: "inline", data: { turbo_frame: "_top", turbo_confirm: del_confirm } },
               class: "rounded p-0.5 text-line hover:bg-tint hover:text-warn" do %><%= ui_icon "trash", size: 14 %><% end %>

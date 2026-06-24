@@ -8,9 +8,10 @@ class ProductsController < ApplicationController
     load_dashboard_rows unless turbo_frame_request? # 풀요청이면 셸의 트리 리스트도 렌더
   end
 
-  # 즉시 생성(폼 없음) — 기본 이름으로 만들고 트리에서 인라인 명명(드로어 안 띄움)
+  # 즉시 생성(폼 없음) — 선택 노드 기준 위치에 만들고 트리에서 인라인 명명(드로어 안 띄움)
   def create
     @product = Product.new(product_params)
+    apply_creation_context(@product) # parent_id(선택 기준) + position(형제 맨 아래)
     @product.name = default_name(@product) if @product.name.blank?
     if @product.save
       sync_members(@product) if @product.leaf? # 항목 생성 시 담당자(있으면)
@@ -38,7 +39,54 @@ class ProductsController < ApplicationController
     redirect_to root_path
   end
 
+  # 드래그앤드롭 트리 이동 — parent_id(빈값=루트) + before_id/after_id(형제 기준).
+  # 자기·자손·비폴더 부모는 모델 검증(parent_not_self_or_descendant)이 거부 → 422(500 아님).
+  def move
+    node = Product.find(params[:id])
+    node.parent_id = params[:parent_id].presence
+    return head :unprocessable_entity unless node.valid?
+
+    Product.transaction do
+      node.save!
+      siblings = Product.where(parent_id: node.parent_id).order(:position, :id).to_a
+      siblings.delete(node)
+      idx = sibling_index(siblings)
+      siblings.insert(idx, node)
+      siblings.each_with_index { |s, i| Product.where(id: s.id).update_all(position: i) }
+    end
+    head :ok
+  rescue ActiveRecord::RecordInvalid
+    head :unprocessable_entity
+  end
+
   private
+
+  # before_id면 그 앞, after_id면 그 뒤, 둘 다 없으면 맨 끝(=폴더 안으로 떨굼 append)
+  def sibling_index(siblings)
+    if (bid = params[:before_id].presence)
+      i = siblings.index { |s| s.id.to_s == bid.to_s }
+      i || siblings.size
+    elsif (aid = params[:after_id].presence)
+      i = siblings.index { |s| s.id.to_s == aid.to_s }
+      i ? i + 1 : siblings.size
+    else
+      siblings.size
+    end
+  end
+
+  # 생성 위치 규칙(단일 출처): relative_to(선택 노드) 기준. 명시적 parent_id가 오면 존중.
+  #  - 없음 → 루트 / 선택 폴더 → 그 폴더 자식 / 선택 리프 → 그 형제. position은 항상 맨 아래.
+  def apply_creation_context(product)
+    if product.parent_id.blank? # 명시적 parent_id(사이드바/레거시)는 존중
+      rel = Product.find_by(id: params[:relative_to])
+      product.parent_id = rel&.folder? ? rel.id : rel&.parent_id
+    end
+    product.position = next_position(product.parent_id)
+  end
+
+  def next_position(parent_id)
+    (Product.where(parent_id: parent_id).maximum(:position) || -1) + 1
+  end
 
   # 헤더 히스토리 탭(세션) — 최근 연 코드 보유 제품, 중복제거, 최대 8개
   def track_open_tab(product)

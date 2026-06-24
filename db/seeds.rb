@@ -119,8 +119,6 @@ def assign_team(product, team)
   { "designer" => team[0], "pm" => team[1], "ra" => team[2], "scm" => team[3] }.each do |role, user|
     product.product_members.create!(user: user, role: role)
   end
-  # 소유자는 별도 칸 없이 담당자(자유 역할)로 통합
-  product.product_members.create!(user: product.owner, role: "소유자") if product.owner
 end
 
 def seed_ingredients(version)

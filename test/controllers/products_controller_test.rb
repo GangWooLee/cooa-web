@@ -140,4 +140,70 @@ class ProductsControllerTest < ActionDispatch::IntegrationTest
     assert_empty Component.where(id: comp_ids)
     assert_empty ComponentVersion.where(id: ver_ids)
   end
+
+  # ── 생성 위치(relative_to) ──
+  test "생성 위치: 폴더 선택 → 자식 맨 아래" do
+    f = folder
+    post products_path, params: { product: { kind: "item" }, relative_to: f.id }
+    item = created_product
+    assert_equal f.id, item.parent_id, "폴더 선택 → 자식"
+    assert_equal f.children.maximum(:position), item.position, "맨 아래"
+  end
+
+  test "생성 위치: 파일 선택 → 형제(같은 부모)" do
+    leaf = Product.find_by(code: "CO0001") # 레티놀 하위
+    post products_path, params: { product: { kind: "folder" }, relative_to: leaf.id }
+    node = created_product
+    assert_equal leaf.parent_id, node.parent_id, "파일 선택 → 형제"
+  end
+
+  test "생성 위치: 미선택 → 루트 맨 아래" do
+    post products_path, params: { product: { kind: "folder" } }
+    node = created_product
+    assert_nil node.parent_id
+    assert_equal Product.roots.maximum(:position), node.position, "루트 맨 아래"
+  end
+
+  # ── 드래그앤드롭 이동(move) ──
+  def move_url(node) = move_product_path(node)
+
+  test "move: 폴더 안으로 재배치(parent 변경 + 맨 끝)" do
+    leaf = Product.find_by(code: "CO0001")
+    dest = Product.find_by(name: "비타민C 브라이트닝 앰플") # 다른 폴더
+    patch move_url(leaf), params: { parent_id: dest.id }
+    assert_response :success
+    assert_equal dest.id, leaf.reload.parent_id
+    assert_equal dest.children.maximum(:position), leaf.position, "맨 끝 append"
+  end
+
+  test "move: before_id로 형제 앞 정렬" do
+    f = folder
+    a = f.children.create!(name: "A", kind: "folder")
+    b = f.children.create!(name: "B", kind: "folder")
+    patch move_url(b), params: { parent_id: f.id, before_id: a.id }
+    assert_response :success
+    assert b.reload.position < a.reload.position, "b가 a 앞"
+  end
+
+  test "move: 루트로 이동(parent_id 빈값)" do
+    child = Product.find_by(code: "CO0001")
+    patch move_url(child), params: { parent_id: "" }
+    assert_response :success
+    assert_nil child.reload.parent_id
+  end
+
+  test "move: 자손으로 이동 거부(순환) → 422·불변" do
+    parent = folder
+    child = parent.children.find_by(name: "미국") # 하위 폴더
+    patch move_url(parent), params: { parent_id: child.id }
+    assert_response :unprocessable_entity
+    assert_nil parent.reload.parent_id, "이동 안 됨"
+  end
+
+  test "move: 비폴더(파일) 부모 거부 → 422" do
+    leaf = Product.find_by(code: "CO0001")
+    other = Product.find_by(code: "CO0100")
+    patch move_url(other), params: { parent_id: leaf.id }
+    assert_response :unprocessable_entity
+  end
 end
