@@ -48,3 +48,14 @@ summary::-webkit-details-marker { display: none; }
   mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 }
 
+/* 인허가 스크리닝 — 스캔 빔(상→하 반복) + 스캔 중 박스 초기 숨김(reveal은 JS) */
+.screening-scanning [data-artwork-viewer-target='box'] { opacity: 0; }
+.scan-beam {
+  position: absolute; left: 0; right: 0; height: 26%; top: -26%;
+  background: linear-gradient(to bottom, transparent, rgba(142, 3, 0, 0.10) 55%, rgba(142, 3, 0, 0.42));
+  border-bottom: 2px solid rgba(142, 3, 0, 0.85);
+  box-shadow: 0 0 22px 4px rgba(142, 3, 0, 0.32);
+  animation: scan-beam 1.5s ease-in-out infinite;
+}
+@keyframes scan-beam { 0% { top: -26%; } 100% { top: 100%; } }
+

@@ -4,12 +4,13 @@ class ScreeningsController < ApplicationController
   # ④ 인허가 스크리닝 화면
   def screening
     @run = latest_run
+    track_tab("s", @version.id) # 헤더 히스토리 — 스크리닝
   end
 
-  # 스크리닝 실행(룰엔진)
+  # 스크리닝 실행(룰엔진) — ran=1로 "방금 실행" 표시(스캔 애니메이션·순차 reveal 트리거)
   def run_screening
     ScreeningService.new(@version, @country).run!(requested_by: current_user)
-    redirect_to screening_component_version_path(@version)
+    redirect_to screening_component_version_path(@version, ran: 1)
   end
 
   # RA 승인

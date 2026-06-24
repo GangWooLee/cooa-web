@@ -30,7 +30,7 @@ class DemoFlowsTest < ActionDispatch::IntegrationTest
     assert_difference -> { v.screening_runs.count }, 1 do
       post run_screening_component_version_path(v)
     end
-    assert_redirected_to screening_component_version_path(v)
+    assert_redirected_to screening_component_version_path(v, ran: 1) # 스캔 애니메이션 트리거
 
     post approve_screening_component_version_path(v)
     assert v.screening_runs.order(:created_at).last.approved?

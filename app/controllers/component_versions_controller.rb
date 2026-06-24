@@ -9,6 +9,7 @@ class ComponentVersionsController < ApplicationController
     idx        = @siblings.index { |v| v.id == @version.id }
     @prev      = idx&.positive? ? @siblings[idx - 1] : nil
     @next      = idx && idx < @siblings.size - 1 ? @siblings[idx + 1] : nil
+    track_tab("v", @version.id) # 헤더 히스토리 — 버전 파일 보기
   end
 
   def new

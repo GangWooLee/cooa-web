@@ -9,11 +9,16 @@
   </div>
 
   <div data-controller="screening" data-action="artwork-viewer:focus->screening#onFocus"
+       data-screening-just-ran-value="<%= params[:ran].present? %>"
        class="flex min-h-0 flex-1 flex-col lg:flex-row">
-    <%# 좌: 아트워크 + finding 박스 %>
-    <div class="min-h-0 min-w-0 flex-1 p-3" style="min-height:380px">
+    <%# 좌: 아트워크 + finding 박스 (방금 실행 시 스캔 애니메이션) %>
+    <div class="relative min-h-0 min-w-0 flex-1 p-3 <%= "screening-scanning" if params[:ran] %>" style="min-height:380px">
       <% if artwork?(@version) %>
         <%= render "shared/artwork_viewer", image_src: artwork_src(@version), boxes: fboxes, zoom: false %>
+        <%# 스캔 빔 오버레이 — 방금 실행 시 JS가 표시 후 애니메이션 %>
+        <div data-screening-target="scanner" class="pointer-events-none absolute inset-3 z-20 hidden overflow-hidden rounded-xl">
+          <div class="scan-beam"></div>
+        </div>
       <% else %>
         <div class="flex h-full items-center justify-center rounded-xl border border-line bg-tint-2 text-line">아트워크 이미지 없음 · <%= @version.component.display_name %> <%= @version.vlabel.upcase %></div>
       <% end %>
@@ -41,13 +46,15 @@
       </div>
 
       <div class="min-h-0 flex-1 space-y-2 overflow-auto p-3">
-        <% if @run && @run.screening_findings.any? %>
-          <% @run.screening_findings.each do |f| %>
+        <%# 목적=위반 탐지 → '적합'(ok)은 노출하지 않음 %>
+        <% issues = @run ? @run.screening_findings.reject(&:decision_ok?) : [] %>
+        <% if issues.any? %>
+          <% issues.each do |f| %>
             <% seq = box_seq[f.id] %>
-            <div data-screening-target="finding" <%= ("data-seq=#{seq}").html_safe if seq %>
-                 class="rounded-lg border border-line-soft p-3 <%= "cursor-pointer hover:border-cooa" if seq %>"
+            <div data-screening-target="finding" <%= seq ? "data-seq=\"#{seq}\"".html_safe : "" %>
+                 class="rounded-lg border border-line-soft p-3 <%= "cursor-pointer hover:border-cooa" if seq %> <%= "opacity-0 blur-[2px]" if params[:ran] %>"
                  style="border-left:4px solid <%= f.decision_meta[:color] %>"
-                 <%= ("data-action=click->screening#focusFinding").html_safe if seq %>>
+                 <%= seq ? 'data-action="click->screening#focusFinding"'.html_safe : "" %>>
               <div class="flex items-center justify-between gap-2">
                 <div class="flex min-w-0 items-center gap-2">
                   <% if seq %><span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white" style="background:<%= f.decision_meta[:color] %>"><%= seq %></span><% end %>
@@ -56,15 +63,27 @@
                 </div>
                 <%= decision_pill(f.decision) %>
               </div>
+              <%# 근거(판단 사유) %>
               <p class="mt-1.5 text-[13px] text-ink/80"><%= f.issue_description %></p>
               <% if f.recommended_action.present? %><p class="mt-1 text-[13px] text-cooa">→ <%= f.recommended_action %></p><% end %>
+              <%# 출처 — 판단 근거의 규제 출처를 명확히 명시(사용자 검증용) %>
+              <% if f.citation.present? %>
+                <div class="mt-2 flex items-start gap-1.5 rounded-md bg-tint px-2 py-1.5 text-[11px]">
+                  <%= ui_icon "external", size: 12, klass: "mt-0.5 shrink-0 text-line" %>
+                  <span><span class="font-bold text-line">출처</span> <span class="break-all text-ink/70"><%= f.citation %></span></span>
+                </div>
+              <% end %>
               <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-line">
-                <% if f.citation.present? %><span class="inline-flex items-center gap-1"><%= ui_icon "external", size: 12 %><%= f.citation %></span><% end %>
                 <span>신뢰도 <%= f.confidence %>%</span>
                 <% if f.human_review_required? %><span class="font-bold text-warn">· RA 검토 필요</span><% end %>
               </div>
             </div>
           <% end %>
+        <% elsif @run %>
+          <div class="py-12 text-center text-sm">
+            <span class="text-[15px] font-bold" style="color:#5f8f2e">✓ 위반·주의 사항 없음</span><br>
+            <span class="text-line">검토 기준을 통과했습니다.</span>
+          </div>
         <% else %>
           <div class="py-12 text-center text-sm text-line">아직 스크리닝을 실행하지 않았습니다.<br>아래 <b>‘인허가 스크리닝’</b>을 눌러 실행하세요.</div>
         <% end %>

@@ -4,7 +4,7 @@ class ProductsController < ApplicationController
     @product = Product.includes(:owner, :parent, :children, product_members: :user,
                                 components: { component_versions: [:ingredients, { annotations: [:created_by, :comments] }] }).find(params[:id])
     @ancestors = @product.self_and_ancestors
-    track_open_tab(@product) # 헤더 히스토리 탭에 추가
+    track_tab("p", @product.id) if @product.code.present? # 헤더 히스토리 탭(코드 있는 제품)
     load_dashboard_rows unless turbo_frame_request? # 풀요청이면 셸의 트리 리스트도 렌더
   end
 
@@ -86,15 +86,6 @@ class ProductsController < ApplicationController
 
   def next_position(parent_id)
     (Product.where(parent_id: parent_id).maximum(:position) || -1) + 1
-  end
-
-  # 헤더 히스토리 탭(세션) — 최근 연 코드 보유 제품, 중복제거, 최대 8개
-  def track_open_tab(product)
-    return if product.code.blank?
-    tabs = session[:open_tabs] || []
-    tabs.delete(product.id)
-    tabs.unshift(product.id)
-    session[:open_tabs] = tabs.first(8)
   end
 
   # 즉시 생성 기본 이름(생성 직후 인라인으로 변경)

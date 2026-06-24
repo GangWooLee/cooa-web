@@ -6,17 +6,24 @@
   <div class="h-full w-px shrink-0 bg-line/70"></div>
 
   <nav class="flex h-full min-w-0 flex-1 items-center overflow-x-auto">
-    <% (@open_tabs || []).each do |p| %>
-      <%# 히스토리 탭 — 코드/칩은 우측 페이드로 클립(x버튼 영역에서 흐려짐), x는 위치 고정·호버 노출 %>
+    <%# 히스토리 탭 — 제품(p)/버전보기(v)/스크리닝(s). 코드/내용은 우측 페이드로 클립, x는 위치 고정·호버 노출 %>
+    <% (@open_tabs || []).each do |tab| %>
+      <% link_data = { turbo_action: "advance" }; link_data[:turbo_frame] = tab[:frame] if tab[:frame] %>
       <div class="group relative flex h-full w-[180px] shrink-0 items-center hover:bg-white/60">
-        <div class="tab-fade flex min-w-0 flex-1 items-center gap-2 overflow-hidden px-3">
-          <%= link_to "[#{p.code}]", product_path(p), data: { turbo_frame: "detail", turbo_action: "advance" },
-                class: "shrink-0 whitespace-nowrap text-[15px] font-medium text-ink hover:text-cooa" %>
-          <% p.components.first(2).each do |c| %>
-            <% if (v = c.current_version) %><span class="shrink-0"><%= version_chip(v.vlabel.upcase, size: 26) %></span><% end %>
+        <%= link_to tab[:path], data: link_data, class: "tab-fade flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden px-3 hover:text-cooa" do %>
+          <%= ui_icon (tab[:type] == "s" ? "spark" : tab[:type] == "v" ? "doc" : "grid"), size: 14, klass: "shrink-0 text-line" %>
+          <span class="shrink-0 whitespace-nowrap text-[14px] font-medium text-ink">[<%= tab[:code] %>]</span>
+          <% if tab[:type] == "p" %>
+            <% tab[:product].components.first(2).each do |c| %>
+              <% if (v = c.current_version) %><span class="shrink-0"><%= version_chip(v.vlabel.upcase, size: 24) %></span><% end %>
+            <% end %>
+          <% else %>
+            <% v = tab[:version] %>
+            <span class="shrink-0 whitespace-nowrap text-[12px] text-line"><%= v.component.display_name %> <%= v.vlabel.upcase %></span>
+            <% if tab[:type] == "s" %><span class="shrink-0 rounded bg-accent px-1 py-0.5 text-[10px] font-bold text-cooa">스크리닝</span><% end %>
           <% end %>
-        </div>
-        <%= button_to tab_path(p), method: :delete, title: "탭 닫기",
+        <% end %>
+        <%= button_to tab_path(tab[:key]), method: :delete, title: "탭 닫기",
               form: { class: "absolute right-1 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-150 group-hover:opacity-100" },
               class: "rounded bg-white/90 p-0.5 text-line shadow-sm hover:text-warn" do %><%= ui_icon "x", size: 14 %><% end %>
       </div>
