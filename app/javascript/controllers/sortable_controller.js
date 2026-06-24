@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { csrfToken } from "controllers/lib/dom"
 
 // 드래그 순서변경(HTML5 DnD) — 좌측 핸들로 잡아 끌고, 행 위 드롭. drop 후 순서 PATCH.
 // _active 가드: 다른 드래그(버전 슬롯 등)와 섞이지 않게.
@@ -48,10 +49,9 @@ export default class extends Controller {
 
   _persist() {
     const ids = this.itemTargets.map((i) => i.dataset.id)
-    const token = document.querySelector("meta[name='csrf-token']")?.content
     fetch(this.urlValue, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
       body: JSON.stringify({ ids })
     })
   }

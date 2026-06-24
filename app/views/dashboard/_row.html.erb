@@ -10,9 +10,7 @@
     row_data[:controller] = "row-link"
     row_data[:action] = "click->row-link#go click->tree#select #{dnd}"
   end
-  del_confirm = node.folder? ?
-    "'#{node.name}' 및 모든 하위 항목·구성요소·버전·피드백이 영구 삭제됩니다. 계속할까요?" :
-    "'#{node.name}' 및 모든 구성요소·버전·피드백이 삭제됩니다. 계속할까요?"
+  del_confirm = delete_confirm(node)
 %>
 <%= content_tag :tr, data: row_data, draggable: true, class: "group cursor-pointer border-b border-line-soft hover:bg-accent/30" do %>
   <td class="whitespace-nowrap py-2.5 pr-3" style="padding-left: <%= 10 + depth * 20 %>px">

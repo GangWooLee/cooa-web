@@ -39,7 +39,7 @@ module UiHelper
                 xmlns: "http://www.w3.org/2000/svg", width: size, height: size,
                 viewBox: "0 0 24 24", fill: "none", stroke: "currentColor",
                 "stroke-width": stroke, "stroke-linecap": "round", "stroke-linejoin": "round",
-                class: ["inline-block shrink-0", klass].compact.join(" ")
+                class: [ "inline-block shrink-0", klass ].compact.join(" ")
   end
 
   # 버전 칩 (그라데이션 사각형 + V#)
@@ -65,6 +65,15 @@ module UiHelper
     crumbs = product.self_and_ancestors.map { |a| link_to(a.name, product_path(a), class: "text-line hover:text-cooa") }
     crumbs << content_tag(:span, trailing, class: "text-ink") if trailing.present?
     safe_join(crumbs, sep)
+  end
+
+  # 노드 삭제 확인 문구(폴더/리프) — 단일 출처(대시보드 행·드로어·사이드바 컨텍스트 메뉴 공용)
+  def delete_confirm(node)
+    if node.folder?
+      "'#{node.name}' 및 모든 하위 항목·구성요소·버전·피드백이 영구 삭제됩니다. 계속할까요?"
+    else
+      "'#{node.name}' 및 모든 구성요소·버전·피드백이 삭제됩니다. 계속할까요?"
+    end
   end
 
   # 4-enum 판정 알약

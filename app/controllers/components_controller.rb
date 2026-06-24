@@ -1,9 +1,10 @@
 class ComponentsController < ApplicationController
+  include Positionable
+
   # 항목(제품)에 구성요소 즉시 추가 — 기본 이름 후 인라인 명명
   def create
     product = Product.find(params[:product_id])
-    pos = (product.components.maximum(:position) || -1) + 1
-    c = product.components.create!(name: "제목 없음 구성요소", position: pos)
+    c = product.components.create!(name: "제목 없음 구성요소", position: next_position(product.components))
     redirect_to product_path(product, rename_component: c.id)
   end
 

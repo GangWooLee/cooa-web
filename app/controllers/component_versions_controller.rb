@@ -9,7 +9,7 @@ class ComponentVersionsController < ApplicationController
     idx        = @siblings.index { |v| v.id == @version.id }
     @prev      = idx&.positive? ? @siblings[idx - 1] : nil
     @next      = idx && idx < @siblings.size - 1 ? @siblings[idx + 1] : nil
-    track_tab("v", @version.id) # 헤더 히스토리 — 버전 파일 보기
+    TabHistory.track(session, "v", @version.id) # 헤더 히스토리 — 버전 파일 보기
   end
 
   def new
@@ -23,14 +23,14 @@ class ComponentVersionsController < ApplicationController
     @version.label          = "[#{@component.product.code}]"
     @version.created_by     = current_user
     @version.require_artwork = true
-    # with_lock으로 max(version_number) 읽기→insert 직렬화(동시 생성 시 번호 중복 방지)
+    # with_lock으로 번호 채번 + current 단일성을 함께 직렬화(read-then-write 원자화)
     saved = false
     @component.with_lock do
       @version.version_number = (@component.component_versions.maximum(:version_number) || 0) + 1
       saved = @version.save
+      enforce_single_current(@version) if saved
     end
     if saved
-      enforce_single_current(@version)
       redirect_to component_version_path(@version), notice: "새 버전이 추가되었습니다."
     else
       render :new, status: :unprocessable_entity
@@ -45,8 +45,12 @@ class ComponentVersionsController < ApplicationController
   def update
     @version   = ComponentVersion.find(params[:id])
     @component = @version.component
-    if @version.update(version_params)
-      enforce_single_current(@version)
+    ok = false
+    @component.with_lock do # current 단일성 read-then-write 원자화
+      ok = @version.update(version_params)
+      enforce_single_current(@version) if ok
+    end
+    if ok
       redirect_to component_version_path(@version), notice: "버전이 수정되었습니다."
     else
       render :edit, status: :unprocessable_entity

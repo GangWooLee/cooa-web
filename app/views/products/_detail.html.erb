@@ -1,7 +1,5 @@
 <%# 우측 드로어 상세 — 닫기/편집/삭제 + 블러시 헤더(라벨형 메타) + 슬롯 액션바 + 타임라인. product 로컬 %>
-<% del_confirm = product.folder? ?
-     "'#{product.name}' 및 모든 하위 항목·구성요소·버전·피드백이 영구 삭제됩니다. 계속할까요?" :
-     "'#{product.name}' 및 모든 구성요소·버전·피드백이 삭제됩니다. 계속할까요?" %>
+<% del_confirm = delete_confirm(product) %>
 <div class="flex h-full min-h-0 flex-col bg-white">
   <%# 스크롤 본문 (version-select 스코프) — 별도 헤더바 없음(닫기·삭제는 블러시 헤더 우상단) %>
   <div data-controller="version-select" class="min-h-0 flex-1 overflow-auto scrollbar-slim">

@@ -1,10 +1,12 @@
 class ProductsController < ApplicationController
+  include Positionable
+
   # ② 데이터 매핑 = 제품 클릭 상세보기 (허브) — 트리 노드
   def show
     @product = Product.includes(:owner, :parent, :children, product_members: :user,
-                                components: { component_versions: [:ingredients, { annotations: [:created_by, :comments] }] }).find(params[:id])
+                                components: { component_versions: [ :ingredients, { annotations: [ :created_by, :comments ] } ] }).find(params[:id])
     @ancestors = @product.self_and_ancestors
-    track_tab("p", @product.id) if @product.code.present? # 헤더 히스토리 탭(코드 있는 제품)
+    TabHistory.track(session, "p", @product.id) if @product.code.present? # 헤더 히스토리 탭(코드 있는 제품)
     load_dashboard_rows unless turbo_frame_request? # 풀요청이면 셸의 트리 리스트도 렌더
   end
 
@@ -81,11 +83,7 @@ class ProductsController < ApplicationController
       rel = Product.find_by(id: params[:relative_to])
       product.parent_id = rel&.folder? ? rel.id : rel&.parent_id
     end
-    product.position = next_position(product.parent_id)
-  end
-
-  def next_position(parent_id)
-    (Product.where(parent_id: parent_id).maximum(:position) || -1) + 1
+    product.position = next_position(Product.where(parent_id: product.parent_id))
   end
 
   # 즉시 생성 기본 이름(생성 직후 인라인으로 변경)

@@ -1,9 +1,10 @@
 class ProductPropertiesController < ApplicationController
+  include Positionable
+
   # 커스텀 속성 즉시 추가 — 기본 키명 후 인라인 명명
   def create
     product = Product.find(params[:product_id])
-    pos = (product.product_properties.maximum(:position) || -1) + 1
-    prop = product.product_properties.create!(name: "속성", position: pos)
+    prop = product.product_properties.create!(name: "속성", position: next_position(product.product_properties))
     redirect_to product_path(product, rename_property: prop.id)
   end
 

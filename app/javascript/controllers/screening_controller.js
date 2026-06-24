@@ -7,7 +7,14 @@ export default class extends Controller {
   static values = { justRan: Boolean }
 
   connect() {
+    this._timers = []
     if (this.justRanValue) this.runReveal()
+  }
+
+  disconnect() { this._timers.forEach(clearTimeout) } // 네비 중 setTimeout이 분리된 컨트롤러를 건드리지 않게
+
+  _after(ms, fn) {
+    this._timers.push(setTimeout(() => { if (this.element.isConnected) fn() }, ms))
   }
 
   get viewer() {
@@ -20,23 +27,23 @@ export default class extends Controller {
   }
 
   runReveal() {
-    const scanMs = 1600
+    const SCAN_MS = 1600 // 스캔 빔 지속(CSS scan-beam 1.5s가 ~1회 순회)
     if (this.hasScannerTarget) this.scannerTarget.classList.remove("hidden")
-    setTimeout(() => {
+    this._after(SCAN_MS, () => {
       if (this.hasScannerTarget) this.scannerTarget.classList.add("hidden")
       this.element.querySelector(".screening-scanning")?.classList.remove("screening-scanning")
 
       // (b) 결과 카드 순차 reveal — blur→clear, 130ms 간격
       this.findingTargets.forEach((f, i) => {
         f.style.transition = "opacity .45s ease, filter .45s ease"
-        setTimeout(() => f.classList.remove("opacity-0", "blur-[2px]"), i * 130)
+        this._after(i * 130, () => f.classList.remove("opacity-0", "blur-[2px]"))
       })
 
       // (c) 박스 seq 순서 reveal — 인라인 제어로 stagger(자연스러운 scale-in)
       const bx = this.boxes
       bx.forEach((b) => { b.style.opacity = "0"; b.style.transform = "scale(.9)"; b.style.transition = "opacity .4s ease, transform .4s ease" })
-      bx.forEach((b, i) => setTimeout(() => { b.style.opacity = "1"; b.style.transform = "scale(1)" }, 150 + i * 160))
-    }, scanMs)
+      bx.forEach((b, i) => this._after(150 + i * 160, () => { b.style.opacity = "1"; b.style.transform = "scale(1)" }))
+    })
   }
 
   onFocus(e) { this.highlight(e.detail.seq) }

@@ -18,6 +18,7 @@ export default class extends Controller {
 
   // 채우기 — 비교 슬롯(a·b)은 동일 구성요소만(상대 슬롯이 다른 comp면 비움)
   fill(slot, v) {
+    if (!v || !v.id) return // 비정상 값(슬롯 c 포함) 방지 → render/screen의 .id 역참조 안전
     if (slot === "c") {
       this.sel.c = v
     } else {
