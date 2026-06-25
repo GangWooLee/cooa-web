@@ -27,6 +27,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this._endGesture?.() // 진행 중 pan/draw의 window pointermove/up 정리(좀비 리스너·GC 차단 방지)
     window.removeEventListener("resize", this._resize)
     this.surface.removeEventListener("pointerdown", this.onDown)
     this.surface.removeEventListener("wheel", this.onWheel)
@@ -110,8 +111,9 @@ export default class extends Controller {
     e.preventDefault()
     const sx = e.clientX, sy = e.clientY, tx0 = this.tx, ty0 = this.ty
     const move = (ev) => { this.tx = tx0 + (ev.clientX - sx); this.ty = ty0 + (ev.clientY - sy); this.apply() }
-    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up) }
-    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up)
+    const end = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", end); this._endGesture = null }
+    this._endGesture = end // disconnect 시에도 정리되도록 보관
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", end)
   }
 
   startDraw(e) {
@@ -133,12 +135,14 @@ export default class extends Controller {
       Object.assign(draft.style, { left: x + "%", top: y + "%", width: w + "%", height: h + "%" })
       draft.dataset.box = JSON.stringify({ x, y, w, h })
     }
+    const cleanup = () => { window.removeEventListener("pointermove", draw); window.removeEventListener("pointerup", up); this._endGesture = null }
     const up = () => {
-      window.removeEventListener("pointermove", draw); window.removeEventListener("pointerup", up)
+      cleanup()
       const box = JSON.parse(draft.dataset.box || "{}")
       draft.classList.add("hidden")
       if (box.w > 1.5 && box.h > 1) this.dispatch("draw", { detail: box })
     }
+    this._endGesture = cleanup // disconnect 시 리스너만 정리(draw 디스패치 없이)
     window.addEventListener("pointermove", draw); window.addEventListener("pointerup", up)
   }
 

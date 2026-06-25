@@ -54,6 +54,11 @@ class ScreeningService
                   recommended_action: "1차 법령으로 한도를 확인 후 조정하세요.",
                   citation: limit.citation, confidence: 68, human_review_required: true)
         end
+      elsif limit.capped? && ing.declared_pct.blank? # 한도 규제인데 선언 농도 미상 → 적합 단정 금지
+        finding(element_type: "ingredient", decision: "warning", severity: "Major", subject: ing.inci_name,
+                issue_description: "#{cl} 농도 상한 규제 성분이나 라벨 선언 농도가 확인되지 않습니다.",
+                recommended_action: "선언 농도를 확인해 한도 #{pct(limit.max_pct)} 충족 여부를 검토하세요.",
+                citation: limit.citation, confidence: 55, human_review_required: true)
       else
         ok_finding(ing, limit.citation)
       end

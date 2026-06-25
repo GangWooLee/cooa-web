@@ -98,14 +98,20 @@
     </aside>
   </div>
 
-  <%# 하단 액션바 %>
+  <%# 하단 액션바 — 국가 미지정이면 실행 차단(거짓 '적합' 방지) %>
   <div class="flex items-center justify-center gap-3 border-t border-line-soft bg-white px-6 py-3">
-    <%= button_to (@run ? "인허가 스크리닝 다시 실행" : "인허가 스크리닝"), run_screening_component_version_path(@version),
-          class: "rounded-lg px-6 py-2.5 text-[15px] font-bold text-ink", style: "background-image:linear-gradient(to right,#fdd5d4,#e6caff)" %>
-    <% if @run %>
-      <%= button_to "승인하기", approve_screening_component_version_path(@version),
-            class: "bg-cooa-gradient rounded-lg px-6 py-2.5 text-[15px] font-bold text-white",
-            form: { data: { turbo_confirm: "이 버전을 RA 승인 처리할까요?" } } %>
+    <% if @product.country.blank? %>
+      <span class="flex items-center gap-1.5 text-[13px] font-medium text-warn">
+        <%= ui_icon "warn", size: 16 %> 국가가 지정되지 않아 스크리닝을 실행할 수 없습니다 — 드로어에서 국가를 먼저 지정하세요.
+      </span>
+    <% else %>
+      <%= button_to (@run ? "인허가 스크리닝 다시 실행" : "인허가 스크리닝"), run_screening_component_version_path(@version),
+            class: "rounded-lg px-6 py-2.5 text-[15px] font-bold text-ink", style: "background-image:linear-gradient(to right,#fdd5d4,#e6caff)" %>
+      <% if @run %>
+        <%= button_to "승인하기", approve_screening_component_version_path(@version),
+              class: "bg-cooa-gradient rounded-lg px-6 py-2.5 text-[15px] font-bold text-white",
+              form: { data: { turbo_confirm: "이 버전을 RA 승인 처리할까요?" } } %>
+      <% end %>
     <% end %>
   </div>
 </div>

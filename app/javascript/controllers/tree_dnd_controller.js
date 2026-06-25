@@ -80,10 +80,12 @@ export default class extends Controller {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
       body: JSON.stringify(body)
-    }).then((res) => {
-      if (!res.ok) return
-      if (window.Turbo) window.Turbo.visit(window.location.href, { action: "replace" })
-      else window.location.reload()
-    })
+    }).then(() => this._resync()).catch(() => this._resync())
+  }
+
+  // 성공=깊이/들여쓰기 재렌더, 거부(422)=서버 트리로 재동기 — 어느 쪽이든 서버 상태로 정합
+  _resync() {
+    if (window.Turbo) window.Turbo.visit(window.location.href, { action: "replace" })
+    else window.location.reload()
   }
 }

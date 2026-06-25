@@ -9,8 +9,10 @@ module Decidable
     "unable"    => { label: "판단불가", color: "#6b7280", bg: "#f1f1f1", icon: "question" }
   }.freeze
 
-  # 여러 판정 중 최악(가장 심각) 하나를 고른다 — 종합 판정 계산용
-  SEVERITY_ORDER = %w[ok warning unable violation].freeze
+  # 여러 판정 중 최악(가장 심각) 하나를 고른다 — 종합 판정 계산용.
+  # 순서: 적합 < 판단불가 < 주의 < 위반. (실재 우려인 '주의'가 미결정 '판단불가'에 가려지지 않게 —
+  #  build_summary 표시순 "위반·위험(주의)·판단불가"와도 정합.)
+  SEVERITY_ORDER = %w[ok unable warning violation].freeze
 
   def decision_meta = DECISIONS[decision] || DECISIONS["unable"]
   def decision_label = decision_meta[:label]

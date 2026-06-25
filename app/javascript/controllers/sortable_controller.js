@@ -53,6 +53,12 @@ export default class extends Controller {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
       body: JSON.stringify({ ids })
-    })
+    }).then((res) => { if (!res.ok) this._resync() }).catch(() => this._resync())
+  }
+
+  // 서버 거부/네트워크 실패 시 낙관적 DOM 변경을 서버 상태로 되돌림(조용한 유실 방지)
+  _resync() {
+    if (window.Turbo) window.Turbo.visit(window.location.href, { action: "replace" })
+    else window.location.reload()
   }
 }

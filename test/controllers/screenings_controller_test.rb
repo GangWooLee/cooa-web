@@ -30,4 +30,15 @@ class ScreeningsControllerTest < ActionDispatch::IntegrationTest
     assert_includes body, 'data-screening-target="scanner"', "스캔 오버레이"
     assert_includes body, "opacity-0 blur-[2px]", "결과 초기 숨김(순차 reveal 대상)"
   end
+
+  test "국가 미지정이면 run_screening 차단(거짓 '적합' 방지) + 화면 안내" do
+    v = hero_version
+    v.product.update!(country: nil) # 국가 비움
+    assert_no_difference -> { ScreeningRun.count } do
+      post run_screening_component_version_path(v)
+    end
+    assert_redirected_to screening_component_version_path(v) # ran=1 아님(실행 안 됨)
+    get screening_component_version_path(v)
+    assert_includes @response.body, "국가가 지정되지 않아", "실행 불가 안내 배너"
+  end
 end

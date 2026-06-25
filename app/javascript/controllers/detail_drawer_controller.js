@@ -6,8 +6,8 @@ export default class extends Controller {
 
   connect() {
     this.frame = this.element.querySelector("turbo-frame#detail")
-    // 직접 URL 진입 등으로 콘텐츠가 이미 있으면 열기
-    if (this.frame && this.frame.children.length > 0) this.open()
+    // 열림 상태는 URL(/products/:id) 기준 — 프레임 캐시 잔여로 인한 desync(닫은 드로어 재오픈) 방지
+    if (this._productUrl()) this.open()
     this._onLoad = () => this.open()
     this.frame?.addEventListener("turbo:frame-load", this._onLoad)
     this._onKey = (e) => { if (e.key === "Escape") this.close() }
@@ -19,11 +19,14 @@ export default class extends Controller {
     document.removeEventListener("keydown", this._onKey)
   }
 
+  _productUrl() { return window.location.pathname.startsWith("/products/") }
+
   open() { this.panelTarget.classList.remove("translate-x-full") }
 
   close() {
     this.panelTarget.classList.add("translate-x-full")
     if (this.frame) this.frame.replaceChildren()
-    if (window.location.pathname.startsWith("/products/")) history.replaceState({}, "", "/")
+    // 드로어 닫으면 URL을 대시보드로(현 history.state 보존 — Turbo 복원 캐시 교란 방지)
+    if (this._productUrl()) history.replaceState(history.state, "", "/")
   }
 }

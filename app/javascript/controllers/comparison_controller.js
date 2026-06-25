@@ -9,7 +9,10 @@ export default class extends Controller {
     return el && this.application.getControllerForElementAndIdentifier(el, "artwork-viewer")
   }
 
-  onFocus(e) { this.show(e.detail.seq) }
+  onFocus(e) {
+    if (e.detail.seq == null) this.backToList() // 박스 재클릭(토글 해제·무선택) → 리스트로
+    else this.show(e.detail.seq)
+  }
   focusFromList(e) { this.viewer?.focus(e.currentTarget.dataset.seq) } // → onFocus
 
   show(seq) {
@@ -32,6 +35,6 @@ export default class extends Controller {
     }
     this.listTarget.style.display = "none"
     this.detailTargets.forEach((d) => (d.style.display = "none"))
-    this.newFormTarget.style.display = "flex"
+    if (this.hasNewFormTarget) this.newFormTarget.style.display = "flex" // 다른 참조와 동일하게 가드
   }
 }

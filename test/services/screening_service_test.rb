@@ -44,6 +44,35 @@ class ScreeningServiceTest < ActiveSupport::TestCase
     assert_equal a.findings.map { |f| f[:decision] }, b.findings.map { |f| f[:decision] }
   end
 
+  test "banned 성분 => violation/Critical/96 (가장 치명적 분기 — 회귀 방지)" do
+    @v.ingredients.create!(inci_name: "Mercury", inci_canonical: "MERCURY")
+    IngredientLimit.create!(country: "JP", inci_canonical: "MERCURY", restriction_type: "banned",
+                            category: "all", status: "structured", citation: "jp#banned")
+    r = ScreeningService.new(@v, "JP").call
+    hg = finding(r, "Mercury")
+    assert_equal "violation", hg[:decision]
+    assert_equal "Critical", hg[:severity]
+    assert_equal 96, hg[:confidence]
+    assert_equal "violation", r.decision
+  end
+
+  test "capped 성분인데 declared_pct 미상 => warning + human_review (적합 단정 금지)" do
+    @v.ingredients.create!(inci_name: "Squalane", inci_canonical: "SQUALANE") # declared_pct 없음
+    IngredientLimit.create!(country: "JP", inci_canonical: "SQUALANE", restriction_type: "max_concentration",
+                            max_pct: 40.0, category: "leave-on", status: "structured", citation: "jp#sq")
+    r = ScreeningService.new(@v, "JP").call
+    sq = finding(r, "Squalane")
+    assert_equal "warning", sq[:decision], "한도 규제+농도 미상은 적합이 아니라 주의여야 함"
+    assert sq[:human_review_required]
+  end
+
+  test "종합판정: 실재 '주의'가 미결정 '판단불가'에 가려지지 않음" do
+    assert_equal "warning",   ScreeningFinding.worst_decision(%w[ok unable warning])
+    assert_equal "violation", ScreeningFinding.worst_decision(%w[warning unable violation])
+    assert_equal "unable",    ScreeningFinding.worst_decision(%w[ok unable])
+    assert_equal "ok",        ScreeningFinding.worst_decision([])
+  end
+
   test "run! persists ScreeningRun + findings with citations" do
     run = ScreeningService.new(@v, "JP").run!(requested_by: @user)
     assert run.persisted?
