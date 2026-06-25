@@ -17,7 +17,7 @@
         <%= render "shared/artwork_viewer", image_src: artwork_src(@version), boxes: fboxes, zoom: false %>
         <%# 스캔 빔 오버레이 — 방금 실행 시 JS가 표시 후 애니메이션 %>
         <div data-screening-target="scanner" class="pointer-events-none absolute inset-3 z-20 hidden overflow-hidden rounded-xl">
-          <div class="scan-beam"></div>
+          <div class="scan-line"></div>
         </div>
       <% else %>
         <div class="flex h-full items-center justify-center rounded-xl border border-line bg-tint-2 text-line">아트워크 이미지 없음 · <%= @version.component.display_name %> <%= @version.vlabel.upcase %></div>

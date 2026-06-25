@@ -24,8 +24,8 @@ class ScreensTest < ApplicationSystemTestCase
     v5 = hero.component_versions.find_by(version_number: 5)
     v6 = hero.component_versions.find_by(version_number: 6)
 
-    # 히스토리 탭은 세션 기반 → 제품을 한 번 열어 탭을 채운 뒤 정합 확인
-    visit product_path(Product.find_by(code: "CO0001"))
+    # 히스토리 탭은 풀페이지 작업만 기록 → 버전 보기로 탭을 채운 뒤 정합 확인(드로어는 탭 안 만듦)
+    visit component_version_path(v5)
     visit root_path
     assert_text "레티놀 3% 세럼"
     # 상단바 정합: 첫 히스토리 탭 우측 ≈ 사이드바 우측 (격자 일치)

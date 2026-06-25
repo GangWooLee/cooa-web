@@ -27,22 +27,27 @@ export default class extends Controller {
   }
 
   runReveal() {
-    const SCAN_MS = 1600 // 스캔 빔 지속(CSS scan-beam 1.5s가 ~1회 순회)
+    const SCAN_MS = 1800 // 라인 통과 시간(CSS --scan-ms와 동기화 — 단일 출처)
+    this.element.style.setProperty("--scan-ms", `${SCAN_MS}ms`)
     if (this.hasScannerTarget) this.scannerTarget.classList.remove("hidden")
+
+    // (a) 박스: 라인의 선명선이 box_y를 지나는 순간 감지 reveal(인라인 opacity가 scanning CSS를 덮음)
+    const bx = this.boxes
+    bx.forEach((b) => { b.style.opacity = "0"; b.style.transform = "scale(.92)"; b.style.transition = "opacity .3s ease, transform .3s ease" })
+    bx.forEach((b) => {
+      const y = parseFloat(b.dataset.y) || 0
+      this._after((y / 100) * SCAN_MS, () => { b.style.opacity = "1"; b.style.transform = "scale(1)" })
+    })
+
+    // (b) 패스 종료: 라인 숨김 + scanning 해제 + 남은 박스 보장 + 결과 카드 위→아래 순차
     this._after(SCAN_MS, () => {
       if (this.hasScannerTarget) this.scannerTarget.classList.add("hidden")
       this.element.querySelector(".screening-scanning")?.classList.remove("screening-scanning")
-
-      // (b) 결과 카드 순차 reveal — blur→clear, 130ms 간격
+      bx.forEach((b) => { b.style.opacity = "1"; b.style.transform = "scale(1)" }) // 누락 방지
       this.findingTargets.forEach((f, i) => {
-        f.style.transition = "opacity .45s ease, filter .45s ease"
-        this._after(i * 130, () => f.classList.remove("opacity-0", "blur-[2px]"))
+        f.style.transition = "opacity .4s ease, filter .4s ease"
+        this._after(i * 110, () => f.classList.remove("opacity-0", "blur-[2px]"))
       })
-
-      // (c) 박스 seq 순서 reveal — 인라인 제어로 stagger(자연스러운 scale-in)
-      const bx = this.boxes
-      bx.forEach((b) => { b.style.opacity = "0"; b.style.transform = "scale(.9)"; b.style.transition = "opacity .4s ease, transform .4s ease" })
-      bx.forEach((b, i) => this._after(150 + i * 160, () => { b.style.opacity = "1"; b.style.transform = "scale(1)" }))
     })
   }
 

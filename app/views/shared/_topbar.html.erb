@@ -6,17 +6,14 @@
   <div class="h-full w-px shrink-0 bg-line/70"></div>
 
   <nav class="flex h-full min-w-0 flex-1 items-center overflow-x-auto">
-    <%# 히스토리 탭 — 제품(p)/버전보기(v)/스크리닝(s). 코드/내용은 우측 페이드로 클립, x는 위치 고정·호버 노출 %>
+    <%# 히스토리 탭 — 풀페이지 작업만(버전 v / 비교 c / 스크리닝 s), 쌓인 순서 유지. 우측 페이드 클립, x 호버 노출 %>
     <% (@open_tabs || []).each do |tab| %>
-      <% link_data = { turbo_action: "advance" }; link_data[:turbo_frame] = tab[:frame] if tab[:frame] %>
       <div class="group relative flex h-full w-[180px] shrink-0 items-center hover:bg-white/60">
-        <%= link_to tab[:path], data: link_data, class: "tab-fade flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden px-3 hover:text-cooa" do %>
-          <%= ui_icon (tab[:type] == "s" ? "spark" : tab[:type] == "v" ? "doc" : "grid"), size: 14, klass: "shrink-0 text-line" %>
+        <%= link_to tab[:path], data: { turbo_action: "advance" }, class: "tab-fade flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden px-3 hover:text-cooa" do %>
+          <%= ui_icon (tab[:type] == "s" ? "spark" : tab[:type] == "c" ? "layers" : "doc"), size: 14, klass: "shrink-0 text-line" %>
           <span class="shrink-0 whitespace-nowrap text-[14px] font-medium text-ink">[<%= tab[:code] %>]</span>
-          <% if tab[:type] == "p" %>
-            <% tab[:product].components.first(2).each do |c| %>
-              <% if (v = c.current_version) %><span class="shrink-0"><%= version_chip(v.vlabel.upcase, size: 24) %></span><% end %>
-            <% end %>
+          <% if tab[:type] == "c" %>
+            <span class="shrink-0 whitespace-nowrap text-[12px] text-line"><%= tab[:from].component.display_name %> <%= tab[:from].vlabel.upcase %>↔<%= tab[:to].vlabel.upcase %></span>
           <% else %>
             <% v = tab[:version] %>
             <span class="shrink-0 whitespace-nowrap text-[12px] text-line"><%= v.component.display_name %> <%= v.vlabel.upcase %></span>

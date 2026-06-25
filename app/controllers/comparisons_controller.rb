@@ -5,6 +5,7 @@ class ComparisonsController < ApplicationController
   def show
     @annotations = @from.annotations.ordered.includes(:created_by, :resolved_by, comments: :author)
     @versions    = @component.versions_asc
+    TabHistory.track(session, "c", "#{@from.id}-#{@to.id}") # 헤더 히스토리 — 버전 비교
   end
 
   private
