@@ -203,20 +203,20 @@ def annotate(version, seq:, box:, category:, by:, body:, before: nil, after: nil
   a
 end
 
-annotate(v5, seq: 1, box: [23, 57, 13, 4], category: "오탈자", by: song,
+annotate(v5, seq: 1, box: [16.5, 59.3, 11.0, 2.4], category: "오탈자", by: song,
          body: "용량 표시에서 띄어쓰기가 2개 되어 있는 것 같아서 확인 부탁드립니다!",
          before: "30ml  /  1.01 fl oz", after: "30ml / 1.01 fl oz", resolved_in: v6, resolved_by: kim)
-annotate(v5, seq: 2, box: [63, 52, 9, 4], category: "오탈자", by: lee,
+annotate(v5, seq: 2, box: [42.5, 62.0, 11.5, 3.3], category: "오탈자", by: lee,
          body: "전성분 'Acid' 뒤 온점(.) 추가 확인 부탁드립니다.",
          before: "Acid", after: "Acid.", resolved_in: v6, resolved_by: kim)
-a3 = annotate(v5, seq: 3, box: [48, 49, 10, 4], category: "오탈자", by: lee,
+a3 = annotate(v5, seq: 3, box: [42.5, 52.5, 11.5, 3.3], category: "오탈자", by: lee,
               body: "Squalane 옆에 쉼표 붙여주세요!",
               before: "Squalane", after: "Squalane,", resolved_in: v6, resolved_by: kim)
 a3.comments.create!(author: kim, body: "v6에서 쉼표 반영했습니다. 확인 부탁드려요.")
-annotate(v5, seq: 4, box: [69.5, 70.5, 9, 6], category: "인허가", by: park,
+annotate(v5, seq: 4, box: [76.0, 63.5, 12.0, 5.0], category: "인허가", by: park,
          body: "재활용 표기(분리배출 마크) 표시 필요합니다!", attachment: "EU 재활용 표기.png",
          resolved_in: v6, resolved_by: kim)
-annotate(v5, seq: 5, box: [62.5, 63.5, 17, 6], category: "인허가", by: lee,
+annotate(v5, seq: 5, box: [53.0, 68.5, 12.5, 4.5], category: "인허가", by: lee,
          body: "일본 수출용은 製造販売業者(또는 선임 DMAH) 명칭·주소가 필수입니다. 현재 'MADE IN KOREA'만 있어 미반영입니다.")
 
 # ── 미국 30ml(CO0000) 단상자 v5 — 대조군(대체로 적합) ───────────────────────

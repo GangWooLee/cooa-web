@@ -102,14 +102,15 @@ class ScreeningService
   def assign_boxes(findings)
     findings.each do |f|
       next if f[:decision] == "ok"
+      # 좌표는 box_v5.jpg(2048×1118) 실측 — 그리드+오버레이로 내용 정합 검증(좌상단+크기, %)
       box =
         case f[:element_type]
-        when "ingredient" then ([ 48.0, 34.0, 12.0, 4.5 ] if f[:subject].to_s.upcase == "RETINOL")
-        when "ad"         then [ 22.0, 46.5, 16.0, 4.5 ]   # 전면 패널 Anti-Aging Formula
+        when "ingredient" then ([ 16.5, 53.3, 16.0, 3.0 ] if f[:subject].to_s.upcase == "RETINOL") # 전면 "3% RETINOL SERUM"
+        when "ad"         then [ 16.5, 56.8, 17.5, 2.5 ]   # 전면 "Advanced Anti-Aging Formula"
         when "label"
           s = f[:subject].to_s
-          if s.include?("재활용") then [ 69.5, 70.5, 9.0, 6.0 ]
-          elsif s.include?("製造販売業者") || s.include?("DMAH") then [ 62.5, 63.5, 17.0, 6.0 ]
+          if s.include?("재활용") then [ 76.0, 63.5, 12.0, 5.0 ]            # 우패널 6M/PETE/FSC 마크
+          elsif s.include?("製造販売業者") || s.include?("DMAH") then [ 53.0, 68.5, 12.5, 4.5 ] # DISTRIBUTED BY
           end
         end
       f[:box_x], f[:box_y], f[:box_w], f[:box_h] = box if box
