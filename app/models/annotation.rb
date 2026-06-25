@@ -4,7 +4,7 @@ class Annotation < ApplicationRecord
   belongs_to :created_by, class_name: "User", optional: true
   belongs_to :resolved_in_version, class_name: "ComponentVersion", optional: true
   belongs_to :resolved_by, class_name: "User", optional: true
-  has_many :comments, -> { order(:created_at) }, class_name: "AnnotationComment", dependent: :destroy
+  has_many :comments, -> { order(:created_at, :id) }, class_name: "AnnotationComment", dependent: :destroy
 
   enum :status, { open: "open", resolved: "resolved", dismissed: "dismissed" }, default: "open"
 

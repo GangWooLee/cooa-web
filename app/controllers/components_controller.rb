@@ -12,7 +12,7 @@ class ComponentsController < ApplicationController
   def update
     component = Component.find(params[:id])
     name = params.dig(:component, :name).to_s.strip
-    component.update(name: name) if name.present?
+    component.update!(name: name) if name.present? # present 가드 후라 실패는 버그 → 표면화
     redirect_to product_path(component.product_id)
   end
 

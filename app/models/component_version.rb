@@ -22,7 +22,7 @@ class ComponentVersion < ApplicationRecord
 
   def vlabel = "v#{version_number}"
   def product = component.product
-  def latest_screening = screening_runs.order(:created_at).last
+  def latest_screening = screening_runs.order(:created_at, :id).last # id 동률 보정(결정성)
 
   private
 

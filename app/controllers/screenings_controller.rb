@@ -31,6 +31,6 @@ class ScreeningsController < ApplicationController
   end
 
   def latest_run
-    @version.screening_runs.where(country: @country).order(:created_at).last
+    @version.screening_runs.where(country: @country).order(:created_at, :id).last # id 동률 보정
   end
 end

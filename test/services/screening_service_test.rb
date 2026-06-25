@@ -73,6 +73,15 @@ class ScreeningServiceTest < ActiveSupport::TestCase
     assert_equal "ok",        ScreeningFinding.worst_decision([])
   end
 
+  test "박스: 히어로 전개도(box_v5)만 좌표 부여, 그 외 아트워크는 미부여(틀린 박스 방지)" do
+    r1 = ScreeningService.new(@v, "JP").call # @v: image_name 없음 → 비히어로
+    assert r1.findings.any? { |f| f[:decision] != "ok" }, "위반 finding 존재"
+    assert r1.findings.none? { |f| f[:box_x].present? }, "비히어로 아트워크엔 박스 없음"
+    @v.update_column(:image_name, "cooa/box_v5.jpg")
+    r2 = ScreeningService.new(@v, "JP").call
+    assert r2.findings.any? { |f| f[:subject].to_s.upcase == "RETINOL" && f[:box_x].present? }, "히어로엔 RETINOL 박스"
+  end
+
   test "run! persists ScreeningRun + findings with citations" do
     run = ScreeningService.new(@v, "JP").run!(requested_by: @user)
     assert run.persisted?

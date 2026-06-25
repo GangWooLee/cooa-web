@@ -99,8 +99,9 @@ class ProductsController < ApplicationController
   # 담당자만 갱신하는 PATCH는 product 키가 없으므로 require 대신 빈 해시 허용.
   def product_params
     return {} unless params.key?(:product)
-    permitted = %i[name code country channel deadline parent_id]
-    permitted << :kind if action_name == "create"
+    permitted = %i[name code country channel deadline]
+    # kind·parent_id는 생성 시에만 — update로 재부모화 차단(이동은 move/DnD가 position까지 재작성)
+    permitted += %i[kind parent_id] if action_name == "create"
     params.require(:product).permit(*permitted)
   end
 

@@ -103,8 +103,10 @@ class ScreeningService
   end
 
   # ── helpers ──
-  # finding 위치(아트워크 위 바운딩박스, 데모 큐레이션 — 실제 CV 아님)
+  # finding 위치(아트워크 위 바운딩박스, 데모 큐레이션 — 실제 CV 아님).
+  # 좌표는 히어로 전개도(box_v5/v6) 전용 — 타 아트워크엔 미부여(틀린 박스 표시 방지).
   def assign_boxes(findings)
+    return findings unless @version.image_name.to_s.start_with?("cooa/box_v")
     findings.each do |f|
       next if f[:decision] == "ok"
       # 좌표는 box_v5.jpg(2048×1118) 실측 — 폭은 수정 대상에 타이트하게(좌상단+크기, %)

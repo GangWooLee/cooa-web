@@ -11,12 +11,16 @@ class InlineClearableTest < ApplicationSystemTestCase
     visit product_path(prop.product)
     assert_selector "#prop_value_#{prop.id}", visible: :all, wait: 10
     sleep 0.6 # Stimulus 연결 정착
-    # 값 display 클릭 → 입력칸 열기(요소 캐시 없이 id로 fresh 조회 — stale 방지)
-    page.execute_script("document.getElementById('prop_value_#{prop.id}').closest('dd').querySelector(\"[data-inline-edit-target='display']\").click()")
-    assert_selector "#prop_value_#{prop.id}", visible: true, wait: 5
-    fill_in "prop_value_#{prop.id}", with: ""
-    find("#prop_value_#{prop.id}").send_keys(:enter)
-    sleep 0.7
+    # 편집 열기 + 빈값 + Enter 저장을 한 스크립트로(재find·blur 레이스/stale 회피)
+    page.execute_script(<<~JS)
+      var dd = document.getElementById('prop_value_#{prop.id}').closest('dd');
+      dd.querySelector("[data-inline-edit-target='display']").click();
+      var el = document.getElementById('prop_value_#{prop.id}');
+      el.value = '';
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    JS
+    deadline = Time.now + 8
+    sleep 0.2 while prop.reload.value.to_s != "" && Time.now < deadline # 저장(redirect) 반영 대기
     assert_equal "", prop.reload.value.to_s, "선택 필드(값)는 빈값 저장(되돌리지 않음)"
   end
 end

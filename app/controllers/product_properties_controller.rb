@@ -13,7 +13,7 @@ class ProductPropertiesController < ApplicationController
     prop = ProductProperty.find(params[:id])
     attrs = params.require(:product_property).permit(:name, :value)
     attrs.delete(:name) if attrs.key?(:name) && attrs[:name].to_s.strip.blank?
-    prop.update(attrs)
+    prop.update!(attrs) # 빈 키 가드 후라 실패는 곧 버그 → 삼키지 않고 표면화
     redirect_to product_path(prop.product_id)
   end
 

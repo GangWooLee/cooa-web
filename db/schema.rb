@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_24_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_25_120000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -100,7 +100,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_220000) do
     t.string "label"
     t.datetime "updated_at", null: false
     t.integer "version_number", null: false
-    t.index ["component_id", "version_number"], name: "index_component_versions_on_component_id_and_version_number"
+    t.index ["component_id", "version_number"], name: "index_component_versions_on_component_id_and_version_number", unique: true
     t.index ["component_id"], name: "index_component_versions_on_component_id"
     t.index ["created_by_id"], name: "index_component_versions_on_created_by_id"
   end
@@ -130,7 +130,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_220000) do
     t.string "source_url"
     t.string "status"
     t.datetime "updated_at", null: false
-    t.index ["country", "inci_canonical"], name: "index_ingredient_limits_on_country_and_inci_canonical"
+    t.index ["country", "inci_canonical"], name: "index_ingredient_limits_on_country_and_inci_canonical", unique: true
   end
 
   create_table "ingredients", force: :cascade do |t|
@@ -205,6 +205,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_220000) do
     t.integer "position", default: 0
     t.string "product_type", default: "기획"
     t.datetime "updated_at", null: false
+    t.index ["code"], name: "idx_unique_product_code", unique: true, where: "code IS NOT NULL AND code != ''"
     t.index ["owner_id"], name: "index_products_on_owner_id"
     t.index ["parent_id"], name: "index_products_on_parent_id"
   end

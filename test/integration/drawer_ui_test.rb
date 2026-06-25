@@ -77,6 +77,14 @@ class DrawerUiTest < ActionDispatch::IntegrationTest
     assert_equal "CN", hero.reload.country
   end
 
+  test "T3: parent_id는 update로 재부모화되지 않음(이동은 move 전용)" do
+    leaf = hero
+    orig = leaf.parent_id
+    other = Product.find_by(name: "비타민C 브라이트닝 앰플")
+    patch product_path(leaf), params: { product: { parent_id: other.id } }
+    assert_equal orig, leaf.reload.parent_id, "parent_id는 product_params에서 제외 — update로 안 바뀜"
+  end
+
   test "R4: 경로는 표시 전용(클릭 편집 폼 없음)" do
     get product_path(hero), headers: { "Turbo-Frame" => "detail" }
     assert_response :success
