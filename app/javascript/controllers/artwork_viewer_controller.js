@@ -48,7 +48,7 @@ export default class extends Controller {
 
   // resize 시 현재가 포커스 상태면 유지, 아니면 fit
   refit() {
-    if (this.activeSeq != null) this.focus(this.activeSeq, false)
+    if (this.activeSeq != null) this.zoomToBox(this.activeSeq, false)
     else this.fit()
   }
 
@@ -146,7 +146,19 @@ export default class extends Controller {
   focusBox(e) { this.focus(e.currentTarget.dataset.seq) }
   focusSeq(e) { this.focus(e.currentTarget.dataset.seq) }
 
+  // 사용자 클릭: 같은 박스 재클릭이면 선택만 해제(흐림 제거·줌 유지), 아니면 그 박스로 확대
   focus(seq, animate = true) {
+    if (this.activeSeq != null && String(this.activeSeq) === String(seq)) {
+      this.activeSeq = null
+      this.highlight(null) // 흐림 해제 — scale/tx/ty 유지(확대 안 되돌림)
+      this.dispatch("focus", { detail: { seq: null } })
+      return
+    }
+    this.zoomToBox(seq, animate)
+  }
+
+  // 박스로 확대(토글 없음) — refit/프로그램적 재포커스용
+  zoomToBox(seq, animate = true) {
     const el = this.boxTargets.find((b) => b.dataset.seq == seq)
     if (!el) return
     const bx = +el.dataset.x, by = +el.dataset.y, bw = +el.dataset.w, bh = +el.dataset.h

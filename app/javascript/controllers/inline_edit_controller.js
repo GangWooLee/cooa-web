@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 // 인라인 이름변경 — 텍스트 클릭(또는 생성 직후 auto)으로 입력칸 전환, Enter 저장 / Esc 취소 / blur 저장.
 export default class extends Controller {
   static targets = ["display", "form", "input"]
-  static values = { auto: Boolean }
+  static values = { auto: Boolean, clearable: Boolean } // clearable=선택 필드(빈값 저장 허용)
 
   connect() {
     if (this.autoValue) this.edit()
@@ -33,12 +33,12 @@ export default class extends Controller {
   // select/date는 변경 즉시 저장
   change() { this.save() }
 
-  // Enter/blur/change 이중제출 방지(_done). 빈값 가드는 text 입력에만(select "—" 비우기 허용).
+  // Enter/blur/change 이중제출 방지(_done). 빈값 가드는 필수 text 입력에만(이름 등) — clearable(선택 필드)은 빈값 저장 허용.
   // 값 무변경이면 제출 안 함 — 그냥 다른 필드 클릭 시 불필요한 PATCH·풀리렌더(깜빡임) 방지.
   save() {
     if (this._done) return
     const el = this.inputTarget
-    if (el.tagName === "INPUT" && el.type === "text" && el.value.trim() === "") { this.cancel(); return }
+    if (!this.clearableValue && el.tagName === "INPUT" && el.type === "text" && el.value.trim() === "") { this.cancel(); return }
     if (el.value === this._original) { this.cancel(); return }
     this._done = true
     this.formTarget.requestSubmit()

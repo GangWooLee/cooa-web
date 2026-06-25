@@ -6,16 +6,16 @@
 # ============================================================================
 
 puts "Clearing..."
-[ScreeningFinding, ScreeningRun, AnnotationComment, Annotation, LabelText, Ingredient,
+[ ScreeningFinding, ScreeningRun, AnnotationComment, Annotation, LabelText, Ingredient,
  ComponentVersion, Component, ProductMember, ProductProperty, Product, User,
- IngredientLimit, LabelRequirement, AdRiskExpression].each(&:delete_all)
+ IngredientLimit, LabelRequirement, AdRiskExpression ].each(&:delete_all)
 
 # ── 사용자 / 팀 ─────────────────────────────────────────────────────────────
 kim  = User.create!(name: "김쿠아", role: "designer", avatar_color: "#8e0300", email: "kim@cooa.dev")
 song = User.create!(name: "송쿠아", role: "pm",       avatar_color: "#4f74e3", email: "song@cooa.dev")
 lee  = User.create!(name: "이쿠아", role: "ra",       avatar_color: "#d65f9a", email: "lee@cooa.dev")
 park = User.create!(name: "박쿠아", role: "scm",      avatar_color: "#5f9e57", email: "park@cooa.dev")
-TEAM = [kim, song, lee, park]
+TEAM = [ kim, song, lee, park ]
 
 # ── 규제 데이터 (실제 CSV 큐레이션) ─────────────────────────────────────────
 puts "Regulatory facts..."
@@ -153,7 +153,7 @@ co0200 = node(name: "미국", parent: cica, code: "CO0200", country: "US", chann
               owner: lee, deadline: Date.new(2026, 9, 5), position: 0)
 
 # 리프(SKU)에 팀 + 구성요소
-[co0000, co0000l, co0001, co0100, co0200].each { |p| assign_team(p, TEAM) }
+[ co0000, co0000l, co0001, co0100, co0200 ].each { |p| assign_team(p, TEAM) }
 
 # 데모: 히어로에 커스텀 속성(Notion식)
 co0001.product_properties.create!(name: "용량", value: "30ml", position: 0)
@@ -203,20 +203,20 @@ def annotate(version, seq:, box:, category:, by:, body:, before: nil, after: nil
   a
 end
 
-annotate(v5, seq: 1, box: [16.5, 59.3, 11.0, 2.4], category: "오탈자", by: song,
+annotate(v5, seq: 1, box: [ 16.5, 59.3, 10.0, 2.4 ], category: "오탈자", by: song,
          body: "용량 표시에서 띄어쓰기가 2개 되어 있는 것 같아서 확인 부탁드립니다!",
          before: "30ml  /  1.01 fl oz", after: "30ml / 1.01 fl oz", resolved_in: v6, resolved_by: kim)
-annotate(v5, seq: 2, box: [42.5, 62.0, 11.5, 3.3], category: "오탈자", by: lee,
+annotate(v5, seq: 2, box: [ 48.0, 63.0, 5.5, 3.0 ], category: "오탈자", by: lee,
          body: "전성분 'Acid' 뒤 온점(.) 추가 확인 부탁드립니다.",
          before: "Acid", after: "Acid.", resolved_in: v6, resolved_by: kim)
-a3 = annotate(v5, seq: 3, box: [42.5, 52.5, 11.5, 3.3], category: "오탈자", by: lee,
+a3 = annotate(v5, seq: 3, box: [ 42.5, 52.5, 6.0, 3.3 ], category: "오탈자", by: lee,
               body: "Squalane 옆에 쉼표 붙여주세요!",
               before: "Squalane", after: "Squalane,", resolved_in: v6, resolved_by: kim)
 a3.comments.create!(author: kim, body: "v6에서 쉼표 반영했습니다. 확인 부탁드려요.")
-annotate(v5, seq: 4, box: [76.0, 63.5, 12.0, 5.0], category: "인허가", by: park,
+annotate(v5, seq: 4, box: [ 76.0, 63.5, 10.5, 4.5 ], category: "인허가", by: park,
          body: "재활용 표기(분리배출 마크) 표시 필요합니다!", attachment: "EU 재활용 표기.png",
          resolved_in: v6, resolved_by: kim)
-annotate(v5, seq: 5, box: [53.0, 68.5, 12.5, 4.5], category: "인허가", by: lee,
+annotate(v5, seq: 5, box: [ 53.0, 68.5, 9.0, 4.5 ], category: "인허가", by: lee,
          body: "일본 수출용은 製造販売業者(또는 선임 DMAH) 명칭·주소가 필수입니다. 현재 'MADE IN KOREA'만 있어 미반영입니다.")
 
 # ── 미국 30ml(CO0000) 단상자 v5 — 대조군(대체로 적합) ───────────────────────

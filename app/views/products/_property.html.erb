@@ -12,7 +12,8 @@
           class: "w-full rounded border border-cooa px-1 py-0.5 text-[12px] font-bold focus:outline-none" %>
   <% end %>
 </dt>
-<dd data-controller="inline-edit" class="group/prop flex min-w-0 items-center gap-1">
+<%# 값은 선택 — 빈값으로 비우기 허용(clearable). 키(dt)는 필수라 기본(되돌림) %>
+<dd data-controller="inline-edit" data-inline-edit-clearable-value="true" class="group/prop flex min-w-0 items-center gap-1">
   <span data-inline-edit-target="display" data-action="click->inline-edit#edit" title="값 편집"
         class="min-w-0 flex-1 cursor-text truncate rounded px-1 text-ink transition hover:bg-white/70 hover:text-cooa"><%= property.value.presence || "None" %></span>
   <%= form_with model: [product, property], method: :patch,

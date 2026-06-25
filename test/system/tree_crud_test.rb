@@ -123,7 +123,7 @@ class TreeCrudTest < ApplicationSystemTestCase
     assert_equal dest.id, leaf.reload.parent_id
   end
 
-  test "리프 메타 인라인 편집(국가 자유 입력 + 정규화)" do
+  test "리프 메타 인라인 편집(국가 select — 표시=한글·저장=코드)" do
     page.driver.browser.manage.window.resize_to(1440, 900)
     leaf = Product.find_by(code: "CO0001")
     visit product_path(leaf)
@@ -135,10 +135,9 @@ class TreeCrudTest < ApplicationSystemTestCase
         find("dd[data-controller='inline-edit'] span", exact_text: leaf.country_label).click
         break if has_css?("#product_country", wait: 3)
       end
-      fill_in "product_country", with: "미국"
-      find("#product_country").send_keys(:enter)
+      select "미국", from: "product_country" # 드롭다운(한글 라벨) 선택 → change 저장
     end
     assert_text "미국", wait: 10 # 풀 리렌더 대기
-    assert_equal "US", leaf.reload.country, "미국 → US 정규화(screening 보존)"
+    assert_equal "US", leaf.reload.country, "선택값=코드(US) 저장(screening 보존)"
   end
 end

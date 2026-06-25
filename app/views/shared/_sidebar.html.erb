@@ -27,6 +27,10 @@
       <% if (rid = params[:rename_side]).present? && (rnode = Product.find_by(id: rid)) %>
         <% active_ids |= rnode.self_and_ancestors.map(&:id) %>
       <% end %>
+      <%# 브레드크럼 폴더 클릭(focus) → 해당 폴더 + 조상 펼침 %>
+      <% if (fid = params[:focus]).present? && (fnode = Product.find_by(id: fid)) %>
+        <% active_ids |= fnode.self_and_ancestors.map(&:id) %>
+      <% end %>
       <% (@tree_roots || []).each do |node| %>
         <%= render "shared/tree_node", node: node, active_ids: active_ids, current_id: @product&.id %>
       <% end %>

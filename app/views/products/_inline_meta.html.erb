@@ -1,6 +1,7 @@
 <%# 인라인 편집 메타 필드 — locals: product, label, attr, kind(:text/:date/:select), display, options(select용) %>
 <dt class="font-bold text-line"><%= label %></dt>
-<dd data-controller="inline-edit" class="min-w-0">
+<%# 메타 필드(코드·국가·채널·기한)는 모두 선택 — 빈값으로 비우기 허용(clearable) %>
+<dd data-controller="inline-edit" data-inline-edit-clearable-value="true" class="min-w-0">
   <span data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 수정"
         class="cursor-text rounded px-1 text-ink transition hover:bg-white/70 hover:text-cooa"><%= display.presence || "None" %></span>
   <%= form_with model: product, url: product_path(product), method: :patch,

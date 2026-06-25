@@ -29,7 +29,7 @@
                 { image_src: artwork_src(@from), label: @from.vlabel, boxes: anns },
                 { image_src: artwork_src(@to),   label: @to.vlabel,   boxes: anns }
               ],
-              autofocus: true, drawable: true, zoom: false %>
+              drawable: true, zoom: false %><%# autofocus 제거: 초기 무선택(전 박스 선명), 클릭 토글로 포커스 %>
       <% else %>
         <div class="flex h-full items-center justify-center rounded-xl border border-line bg-tint-2 text-line">이 구성요소는 아트워크 이미지가 없습니다.</div>
       <% end %>

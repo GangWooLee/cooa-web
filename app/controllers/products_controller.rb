@@ -5,6 +5,8 @@ class ProductsController < ApplicationController
   def show
     @product = Product.includes(:owner, :parent, :children, product_members: :user,
                                 components: { component_versions: [ :ingredients, { annotations: [ :created_by, :comments ] } ] }).find(params[:id])
+    # 폴더는 드로어 대상 아님 — 풀요청이면 대시보드(해당 폴더 펼침)로(브레드크럼/직접 URL 방어)
+    return redirect_to root_path(focus: @product.id) if @product.folder? && !turbo_frame_request?
     @ancestors = @product.self_and_ancestors
     # 드로어(제품) 진입은 히스토리에 기록하지 않음 — 풀페이지 작업(버전/비교/스크리닝)만 기록
     load_dashboard_rows unless turbo_frame_request? # 풀요청이면 셸의 트리 리스트도 렌더

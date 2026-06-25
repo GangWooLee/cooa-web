@@ -61,11 +61,20 @@ module UiHelper
   end
 
   # 조상 경로 브레드크럼 (루트 › … › 현재 [› trailing])
+  #  · 폴더 세그먼트 → 대시보드(해당 폴더 펼침)  · 리프 세그먼트 → 드로어
   def node_breadcrumb(product, trailing: nil)
     sep = content_tag(:span, "›", class: "px-1 text-line")
-    crumbs = product.self_and_ancestors.map { |a| link_to(a.name, product_path(a), class: "text-line hover:text-cooa") }
+    crumbs = product.self_and_ancestors.map do |a|
+      href = a.folder? ? root_path(focus: a.id) : product_path(a)
+      link_to(a.name, href, class: "text-line hover:text-cooa")
+    end
     crumbs << content_tag(:span, trailing, class: "text-ink") if trailing.present?
     safe_join(crumbs, sep)
+  end
+
+  # 국가 인라인 편집용 옵션(라벨=한글, 값=코드) — 표시(country_label)와 일관, 저장은 코드(JP/CN/US/KR)
+  def country_options
+    [ [ "— 미지정 —", "" ] ] + ApplicationRecord::COUNTRY_LABELS.map { |code, label| [ label, code ] }
   end
 
   # 노드 삭제 확인 문구(폴더/리프) — 단일 출처(대시보드 행·드로어·사이드바 컨텍스트 메뉴 공용)
