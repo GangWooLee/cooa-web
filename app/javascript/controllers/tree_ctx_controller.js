@@ -2,9 +2,10 @@ import { Controller } from "@hotwired/stimulus"
 import { bindDismiss, unbindDismiss } from "controllers/lib/dismissable"
 import { submitDynamicForm } from "controllers/lib/dom"
 
-// 사이드바 트리 우클릭 컨텍스트 메뉴 — 경로 복사 / 이름 변경 / 삭제
+// 트리 우클릭 컨텍스트 메뉴 — 경로 복사 / 이름 변경 / 삭제 (사이드바·대시보드 공용)
 export default class extends Controller {
   static targets = ["menu", "toast"]
+  static values = { renameParam: { type: String, default: "rename_side" } } // 사이드바=rename_side / 대시보드=rename
 
   connect() { bindDismiss(this, { contains: (t) => this.menuTarget.contains(t), onScroll: true }) }
   disconnect() { unbindDismiss(this) }
@@ -35,7 +36,7 @@ export default class extends Controller {
   rename() {
     const id = this.node?.id
     this.hide()
-    const url = `/?rename_side=${id}` // 사이드바 트리에서 인라인 명명(행동한 곳에서 반응)
+    const url = `/?${this.renameParamValue}=${id}` // 행동한 트리에서 인라인 명명(사이드바=rename_side / 대시보드=rename)
     if (window.Turbo) window.Turbo.visit(url); else window.location.assign(url)
   }
 

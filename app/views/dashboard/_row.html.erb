@@ -1,16 +1,17 @@
 <%# 대시보드 행 — 폴더: 캐럿/여백=토글·이름=인라인 변경 / 리프: 이름=드로어. 좌측 호버 컨트롤. %>
 <%
   dnd = "dragstart->tree-dnd#dragstart dragover->tree-dnd#dragover dragleave->tree-dnd#dragleave drop->tree-dnd#drop dragend->tree-dnd#dragend"
+  del_confirm = delete_confirm(node)
   row_data = { "tree-table-target": "row", "tree-dnd-target": "row",
                "node-id": node.id, "depth": depth, kind: (node.folder? ? "folder" : "item"),
-               "parent-id": node.parent_id }
+               "node-kind": (node.folder? ? "folder" : "leaf"), "node-name": node.name,
+               "node-path": node.path_label, "node-confirm": del_confirm, "parent-id": node.parent_id }
   if node.folder?
-    row_data[:action] = "click->tree-table#toggle click->tree#select #{dnd}"
+    row_data[:action] = "click->tree-table#toggle click->tree#select contextmenu->tree-ctx#open #{dnd}"
   else
     row_data[:controller] = "row-link"
-    row_data[:action] = "click->row-link#go click->tree#select #{dnd}"
+    row_data[:action] = "click->row-link#go click->tree#select contextmenu->tree-ctx#open #{dnd}"
   end
-  del_confirm = delete_confirm(node)
 %>
 <%= content_tag :tr, data: row_data, draggable: true, class: "group cursor-pointer border-b border-line-soft hover:bg-accent/30" do %>
   <td class="whitespace-nowrap py-2.5 pr-3" style="padding-left: <%= 10 + depth * 20 %>px">
@@ -25,20 +26,19 @@
       <% if node.folder? %>
         <span class="tree-caret shrink-0 text-line transition-transform"><%= ui_icon "caret", size: 15 %></span>
         <%= ui_icon "folder", size: 16, klass: "shrink-0 text-cooa" %>
-        <%# 폴더명 = 인라인 이름변경(클릭 / 생성 직후 자동). 캐럿/여백 = 토글 %>
-        <span data-controller="inline-edit" data-no-rowlink
+        <%# 폴더명 클릭 = 펼침/접힘(행과 동일). 이름변경은 우클릭 메뉴 / 생성 직후 auto-open %>
+        <span data-controller="inline-edit"
               data-inline-edit-auto-value="<%= params[:rename].to_s == node.id.to_s %>" class="min-w-0">
-          <span data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 이름 변경"
-                class="cursor-text text-[14px] font-bold text-ink transition hover:text-cooa"><%= node.name %></span>
+          <span data-inline-edit-target="display"
+                class="text-[14px] font-bold text-ink"><%= node.name %></span>
           <%= form_with model: node, url: product_path(node), method: :patch,
                 data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden" do |f| %>
             <%= hidden_field_tag :inline, 1 %>
             <%= hidden_field_tag :return, "tree" %>
-            <%= f.text_field :name, id: "node_name_#{node.id}", data: { "inline-edit-target": "input", action: "keydown->inline-edit#keydown blur->inline-edit#save" },
+            <%= f.text_field :name, id: "node_name_#{node.id}", data: { "no-rowlink": "", "inline-edit-target": "input", action: "keydown->inline-edit#keydown blur->inline-edit#save" },
                   class: "w-40 rounded border border-cooa px-1 py-0.5 text-[14px] font-bold focus:outline-none" %>
           <% end %>
         </span>
-        <span class="ml-1 text-[12px] text-line">· 하위 <%= node.children.size %></span>
       <% else %>
         <span class="inline-block w-[15px] shrink-0"></span>
         <%= ui_icon "doc", size: 15, klass: "shrink-0 text-line" %>

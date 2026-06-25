@@ -32,12 +32,6 @@
       <% end %>
     </div>
 
-    <%# 우클릭 컨텍스트 메뉴(공용 1개) — JS가 커서 위치로 이동·선택 노드에 적용 %>
-    <div data-tree-ctx-target="menu" class="fixed z-50 hidden w-44 overflow-hidden rounded-lg border border-line-soft bg-white py-1 text-[13px] shadow-xl">
-      <button type="button" data-action="tree-ctx#copyPath" class="flex w-full items-center gap-2 px-3 py-2 text-left text-ink hover:bg-tint"><%= ui_icon "external", size: 14, klass: "text-line" %> 경로 복사</button>
-      <button type="button" data-action="tree-ctx#rename" class="flex w-full items-center gap-2 px-3 py-2 text-left text-ink hover:bg-tint"><%= ui_icon "pencil", size: 14, klass: "text-line" %> 이름 변경</button>
-      <button type="button" data-action="tree-ctx#del" class="flex w-full items-center gap-2 px-3 py-2 text-left text-warn hover:bg-tint"><%= ui_icon "trash", size: 14 %> 삭제</button>
-      <div data-tree-ctx-target="toast" class="hidden border-t border-line-soft px-3 py-1.5 text-[11px] text-line">경로 복사됨</div>
-    </div>
+    <%= render "shared/tree_context_menu" %>
   </nav>
 </aside>

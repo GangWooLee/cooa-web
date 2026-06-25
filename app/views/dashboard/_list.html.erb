@@ -1,5 +1,5 @@
 <%# 대시보드 트리 리스트 (헤더+툴바+테이블) — index / 상세 셸 공용. @rows 사용 %>
-<div data-controller="tree" data-tree-create-url-value="<%= products_path %>" class="flex h-full min-w-0 flex-col bg-white">
+<div data-controller="tree tree-ctx" data-tree-create-url-value="<%= products_path %>" data-tree-ctx-rename-param-value="rename" class="flex h-full min-w-0 flex-col bg-white">
   <%# 헤더 %>
   <div class="border-b border-line-soft px-6 pt-4">
     <div class="flex min-w-0 items-center justify-between">
@@ -58,4 +58,6 @@
       </table>
     </div>
   </div>
+
+  <%= render "shared/tree_context_menu" %>
 </div>
