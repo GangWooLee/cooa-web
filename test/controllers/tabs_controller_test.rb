@@ -20,13 +20,21 @@ class TabsControllerTest < ActionDispatch::IntegrationTest
     get screening_component_version_path(from) # s
     get comparison_path(from_id: from.id, to_id: to.id) # c
     get component_version_path(from)        # 재방문 → 무이동
-    assert_equal ["v-#{from.id}", "s-#{from.id}", "c-#{from.id}-#{to.id}"], session[:open_tabs],
+    assert_equal [ "v-#{from.id}", "s-#{from.id}", "c-#{from.id}-#{to.id}" ], session[:open_tabs],
                  "쌓인 순서 유지, 재방문 시 재정렬·중복 없음"
     # 헤더 렌더
     get root_path
     assert_response :success
     assert_includes @response.body, "스크리닝"
     assert_includes @response.body, from.component.display_name
+  end
+
+  test "버전 진입 즉시 그 페이지 topbar에 해당 탭 표시(한 스텝 늦지 않음)" do
+    v = hero_versions.first
+    get component_version_path(v)
+    assert_response :success
+    # 들어간 바로 그 응답의 헤더에 현재 버전 탭 링크가 있어야 함(이전엔 다음 요청에서야 보였음)
+    assert_select "header nav a[href=?]", component_version_path(v), minimum: 1
   end
 
   test "탭 닫기 — DELETE /tabs/:key(해당 키만 제거)" do
