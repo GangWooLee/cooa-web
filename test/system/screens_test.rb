@@ -28,11 +28,9 @@ class ScreensTest < ApplicationSystemTestCase
     visit component_version_path(v5)
     visit root_path
     assert_text "레티놀 3% 세럼"
-    # 상단바 정합: 첫 히스토리 탭 우측 ≈ 사이드바 우측 (격자 일치)
+    # 상단바: 사이드바 토글(영속 chrome) + 히스토리 탭 렌더
+    assert_selector "header button[title='사이드바 접기/펼치기']"
     assert_selector "header nav > div", minimum: 1
-    tab_r  = page.evaluate_script("document.querySelector('header nav > div').getBoundingClientRect().right")
-    side_r = page.evaluate_script("document.querySelector('aside').getBoundingClientRect().right")
-    assert_in_delta tab_r, side_r, 2, "첫 탭 우측(#{tab_r})이 사이드바 우측(#{side_r})과 정합해야 함"
     sleep 0.4
     save_screenshot(dir.join("1_dashboard.png"))
 

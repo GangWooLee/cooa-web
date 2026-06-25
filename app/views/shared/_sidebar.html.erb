@@ -1,14 +1,10 @@
 <%# 공통 좌측 사이드바: 사용자 · 아트워크 찾기(트리 필터) · 제품 디렉터리 트리(노션형) %>
 <aside id="app-sidebar" class="hidden w-[281px] min-w-0 shrink-0 flex-col border-r border-line bg-white lg:flex">
-  <%# 사용자 + 닫기 버튼(우측 상단) %>
+  <%# 사용자 (접기/펼치기는 상단바 토글로 통일) %>
   <div class="flex min-w-0 items-center gap-2 px-3 pb-3 pt-4">
     <%= ui_icon "user", size: 24, klass: "shrink-0 text-ink" %>
     <span class="truncate text-[18px] font-bold text-ink"><%= current_user&.name %></span>
     <span class="ml-auto rounded bg-tint px-1.5 py-0.5 text-[10px] text-line">데모</span>
-    <button type="button" data-action="click->sidebar#toggle" title="사이드바 닫기" aria-label="사이드바 닫기"
-            class="shrink-0 rounded-md p-1 text-line transition hover:bg-tint hover:text-cooa">
-      <%= ui_icon "panel-left", size: 18 %>
-    </button>
   </div>
 
   <%# 제품 디렉터리 트리 + 아트워크 찾기(클라이언트 필터) %>

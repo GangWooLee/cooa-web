@@ -19,12 +19,7 @@
   <body class="h-full bg-tint text-ink font-sans antialiased">
     <div class="flex h-screen flex-col overflow-hidden" data-controller="sidebar">
       <%= render "shared/topbar" %>
-      <div class="relative flex min-h-0 flex-1">
-        <%# 닫힘 시에만 노출되는 작은 여는 버튼(좌측 상단) — 표시는 CSS가 제어 %>
-        <button id="sidebar-open" type="button" data-action="click->sidebar#toggle" title="사이드바 열기" aria-label="사이드바 열기"
-                class="absolute left-2 top-2 z-30 rounded-lg border border-line-soft bg-white p-1.5 text-line shadow-sm transition hover:bg-tint hover:text-cooa">
-          <%= ui_icon "panel-left", size: 18 %>
-        </button>
+      <div class="flex min-h-0 flex-1">
         <%= render "shared/sidebar" %>
         <main class="min-w-0 flex-1 overflow-auto"><%= yield %></main>
       </div>

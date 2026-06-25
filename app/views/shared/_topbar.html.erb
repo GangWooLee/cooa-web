@@ -1,5 +1,11 @@
-<%# 공통 상단바: 로고 · 열린 품목 탭 %>
+<%# 공통 상단바: 사이드바 토글 · 로고 · 열린 품목 탭 %>
 <header class="flex h-[43px] shrink-0 items-center border-b border-line-soft bg-tint-2">
+  <%# 사이드바 접기/펼치기 — 영속 chrome(상단바) 좌측, 항상 같은 위치(콘텐츠 비가림) %>
+  <button type="button" data-action="click->sidebar#toggle" title="사이드바 접기/펼치기" aria-label="사이드바 접기/펼치기"
+          class="flex h-full shrink-0 items-center px-3 text-line transition hover:text-cooa">
+    <%= ui_icon "panel-left", size: 18 %>
+  </button>
+  <div class="h-full w-px shrink-0 bg-line/70"></div>
   <%= link_to root_path, class: "flex h-full w-[100px] shrink-0 items-center pl-3" do %>
     <%= image_tag "cooa/logo.png", class: "h-[26px] w-auto", alt: "COOA" %>
   <% end %>
