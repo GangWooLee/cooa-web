@@ -65,3 +65,9 @@ summary::-webkit-details-marker { display: none; }
   100% { top: 86%; opacity: 0; }
 }
 
+/* 좌측 사이드바 접기/펼치기 — html.sidebar-collapsed 시 화면 밖으로 부드럽게 슬라이드 */
+#app-sidebar { transition: margin-left .28s ease, opacity .2s ease; }
+html.sidebar-collapsed #app-sidebar { margin-left: -282px; opacity: 0; pointer-events: none; }
+#sidebar-open { display: none; } /* 닫힘 시에만(아래) 노출 */
+@media (min-width: 1024px) { html.sidebar-collapsed #sidebar-open { display: inline-flex; } }
+
