@@ -17,11 +17,16 @@
     <div class="flex-1 overflow-auto">
       <div class="mb-1 flex items-center justify-between px-2">
         <span class="text-[12px] font-bold text-line">제품</span>
-        <%= button_to products_path, params: { product: { kind: "folder" } }, title: "새 폴더",
+        <%# origin=side → create가 rename_side로 리다이렉트(사이드바에서 인라인 명명) %>
+        <%= button_to products_path, params: { product: { kind: "folder" }, origin: "side" }, title: "새 폴더",
               form: { class: "inline" },
               class: "rounded p-0.5 text-line transition hover:bg-tint hover:text-cooa" do %><%= ui_icon "plus", size: 14 %><% end %>
       </div>
       <% active_ids = (@product&.self_and_ancestors&.map(&:id) || []) %>
+      <%# rename 대상의 조상 <details>를 열어 인라인 입력칸이 보이게 %>
+      <% if (rid = params[:rename_side]).present? && (rnode = Product.find_by(id: rid)) %>
+        <% active_ids |= rnode.self_and_ancestors.map(&:id) %>
+      <% end %>
       <% (@tree_roots || []).each do |node| %>
         <%= render "shared/tree_node", node: node, active_ids: active_ids, current_id: @product&.id %>
       <% end %>

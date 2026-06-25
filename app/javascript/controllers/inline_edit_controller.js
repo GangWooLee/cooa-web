@@ -27,6 +27,9 @@ export default class extends Controller {
     else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); this.cancel() }
   }
 
+  // 사이드바 폴더 <summary> 안의 입력칸 클릭이 details 토글로 전파되지 않게
+  stop(e) { e.stopPropagation() }
+
   // select/date는 변경 즉시 저장
   change() { this.save() }
 

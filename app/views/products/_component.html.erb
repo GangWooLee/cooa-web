@@ -1,117 +1,124 @@
 <%# 구성요소 버전 타임라인 — 노드=슬롯 선택(드래그/클릭), 연결점=빨강, ▾=변경사유(담당자별) %>
 <% versions = component.component_versions.sort_by(&:version_number) %>
-<div class="group/comp relative border-b border-line-soft py-4 pr-9 last:border-0"
+<div class="group/comp border-b border-line-soft py-4 last:border-0"
      data-sortable-target="item" data-id="<%= component.id %>"
      data-action="dragover->sortable#dragover drop->sortable#drop dragleave->sortable#dragleave">
-  <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-    <%# 좌: 핸들 + 이름(줄바꿈 ellipsize) / 현재버전 칩은 아래 줄 — 고정폭 오버플로 제거 %>
-    <div class="flex min-w-0 shrink-0 flex-col gap-1 sm:w-[150px] sm:pt-2.5">
-      <div class="flex min-w-0 items-center gap-1.5">
-        <span draggable="true" data-action="dragstart->sortable#dragstart dragend->sortable#dragend" title="드래그하여 순서 변경"
-              class="shrink-0 cursor-grab select-none text-[13px] leading-none text-line opacity-0 transition-opacity group-hover/comp:opacity-100 active:cursor-grabbing">⠿</span>
-        <%= ui_icon "layers", size: 16, klass: "shrink-0 text-cooa" %>
-        <span data-controller="inline-edit" data-inline-edit-auto-value="<%= params[:rename_component].to_s == component.id.to_s %>" class="min-w-0 flex-1">
-          <span data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 이름 변경"
-                class="block cursor-text truncate text-sm font-bold text-ink transition hover:text-cooa"><%= component.display_name %></span>
-          <%= form_with model: component, url: component_path(component), method: :patch,
-                data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden" do |f| %>
-            <%= f.text_field :name, value: component.name,
-                  data: { "inline-edit-target": "input", action: "keydown->inline-edit#keydown blur->inline-edit#save" },
-                  class: "w-full rounded border border-cooa px-1 py-0.5 text-sm font-bold text-ink focus:outline-none" %>
-          <% end %>
-        </span>
-      </div>
-    </div>
-
-    <%# 타임라인 %>
-    <% if versions.any? %>
-      <div data-controller="version-timeline" class="min-w-0 flex-1">
-        <%# 호버 ring 안 잘리게 패딩 + 슬림 스크롤바 %>
-        <div class="flex items-center overflow-x-auto scrollbar-slim px-1 py-2">
-          <% versions.each_with_index do |v, i| %>
-            <% if i.positive? %>
-              <%# 연결선 + (변경사유 있으면) ▾ 토글 / 없으면 빨간 점 %>
-              <div class="flex shrink-0 items-center">
-                <span class="h-px w-3 bg-line-soft sm:w-5"></span>
-                <% if v.change_reason.present? %>
-                  <button type="button"
-                          data-action="version-timeline#toggle" data-version-timeline-index-param="<%= i %>"
-                          data-version-timeline-target="dot" data-index="<%= i %>"
-                          aria-expanded="false" aria-controls="reason-<%= component.id %>-<%= i %>"
-                          aria-label="<%= versions[i - 1].vlabel.upcase %>→<%= v.vlabel.upcase %> 변경사유 펼치기"
-                          title="<%= versions[i - 1].vlabel.upcase %>→<%= v.vlabel.upcase %> 변경사유 펼치기"
-                          class="flex h-6 w-6 items-center justify-center rounded-full border border-line-soft bg-white text-line transition hover:border-cooa hover:text-cooa focus-visible:border-cooa focus-visible:text-cooa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/40">
-                    <%= ui_icon "caret", size: 14 %>
-                  </button>
-                <% else %>
-                  <span class="h-2 w-2 rounded-full bg-cooa/70"></span>
-                <% end %>
-                <span class="h-px w-3 bg-line-soft sm:w-5"></span>
-              </div>
+  <%# version-timeline 컨트롤러가 [첫 줄 + 변경사유 패널]을 함께 감쌈 — 패널은 첫 줄 밖(아래)이라 삭제버튼 위치 불변 %>
+  <div data-controller="version-timeline">
+    <%# 첫 줄(이름 + 타임라인 + 삭제) — 높이 고정(패널 토글과 무관). relative/pr-9가 삭제버튼 기준 %>
+    <div class="relative flex flex-col gap-3 pr-9 sm:flex-row sm:items-start sm:gap-4">
+      <%# 좌: 핸들 + 이름(줄바꿈 ellipsize) / 현재버전 칩은 아래 줄 — 고정폭 오버플로 제거 %>
+      <div class="flex min-w-0 shrink-0 flex-col gap-1 sm:w-[150px] sm:pt-2.5">
+        <div class="flex min-w-0 items-center gap-1.5">
+          <span draggable="true" data-action="dragstart->sortable#dragstart dragend->sortable#dragend" title="드래그하여 순서 변경"
+                class="shrink-0 cursor-grab select-none text-[13px] leading-none text-line opacity-0 transition-opacity group-hover/comp:opacity-100 active:cursor-grabbing">⠿</span>
+          <%= ui_icon "layers", size: 16, klass: "shrink-0 text-cooa" %>
+          <span data-controller="inline-edit" data-inline-edit-auto-value="<%= params[:rename_component].to_s == component.id.to_s %>" class="min-w-0 flex-1">
+            <span data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 이름 변경"
+                  class="block cursor-text truncate text-sm font-bold text-ink transition hover:text-cooa"><%= component.display_name %></span>
+            <%= form_with model: component, url: component_path(component), method: :patch,
+                  data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden" do |f| %>
+              <%= f.text_field :name, value: component.name,
+                    data: { "inline-edit-target": "input", action: "keydown->inline-edit#keydown blur->inline-edit#save" },
+                    class: "w-full rounded border border-cooa px-1 py-0.5 text-sm font-bold text-ink focus:outline-none" %>
             <% end %>
-            <%# 버전 노드 = 클릭: 파일 보기 / 드래그: 슬롯 채우기 %>
-            <button type="button" draggable="true" data-version-select-target="version"
-                    data-vid="<%= v.id %>" data-vlabel="<%= v.vlabel.upcase %>" data-comp="<%= component.id %>"
-                    data-action="dragstart->version-select#dragstart click->version-select#view"
-                    title="<%= v.vlabel.upcase %> — 클릭: 파일 보기 · 드래그: 슬롯 채우기"
-                    class="shrink-0 cursor-pointer rounded-lg p-0.5 transition hover:bg-accent hover:ring-2 hover:ring-cooa/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/40 active:cursor-grabbing">
-              <%= version_chip(v.vlabel.upcase, size: 30, active: v.current?) %>
-            </button>
-          <% end %>
-          <%# + 새 버전 (전체 페이지 폼 — 드로어 프레임 탈출) %>
-          <span class="h-px w-3 shrink-0 bg-line-soft sm:w-5"></span>
+          </span>
+        </div>
+      </div>
+
+      <%# 타임라인(칩) %>
+      <% if versions.any? %>
+        <div class="min-w-0 flex-1">
+          <%# 호버 ring 안 잘리게 패딩 + 슬림 스크롤바 %>
+          <div class="flex items-center overflow-x-auto scrollbar-slim px-1 py-2">
+            <% versions.each_with_index do |v, i| %>
+              <% if i.positive? %>
+                <%# 연결선 + (변경사유 있으면) ▾ 토글 / 없으면 빨간 점 %>
+                <div class="flex shrink-0 items-center">
+                  <span class="h-px w-3 bg-line-soft sm:w-5"></span>
+                  <% if v.change_reason.present? %>
+                    <button type="button"
+                            data-action="version-timeline#toggle" data-version-timeline-index-param="<%= i %>"
+                            data-version-timeline-target="dot" data-index="<%= i %>"
+                            aria-expanded="false" aria-controls="reason-<%= component.id %>-<%= i %>"
+                            aria-label="<%= versions[i - 1].vlabel.upcase %>→<%= v.vlabel.upcase %> 변경사유 펼치기"
+                            title="<%= versions[i - 1].vlabel.upcase %>→<%= v.vlabel.upcase %> 변경사유 펼치기"
+                            class="flex h-6 w-6 items-center justify-center rounded-full border border-line-soft bg-white text-line transition hover:border-cooa hover:text-cooa focus-visible:border-cooa focus-visible:text-cooa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/40">
+                      <%= ui_icon "caret", size: 14 %>
+                    </button>
+                  <% else %>
+                    <span class="h-2 w-2 rounded-full bg-cooa/70"></span>
+                  <% end %>
+                  <span class="h-px w-3 bg-line-soft sm:w-5"></span>
+                </div>
+              <% end %>
+              <%# 버전 노드 = 클릭: 파일 보기 / 드래그: 슬롯 채우기 %>
+              <button type="button" draggable="true" data-version-select-target="version"
+                      data-vid="<%= v.id %>" data-vlabel="<%= v.vlabel.upcase %>" data-comp="<%= component.id %>"
+                      data-action="dragstart->version-select#dragstart click->version-select#view"
+                      title="<%= v.vlabel.upcase %> — 클릭: 파일 보기 · 드래그: 슬롯 채우기"
+                      class="shrink-0 cursor-pointer rounded-lg p-0.5 transition hover:bg-accent hover:ring-2 hover:ring-cooa/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/40 active:cursor-grabbing">
+                <%= version_chip(v.vlabel.upcase, size: 30, active: v.current?) %>
+              </button>
+            <% end %>
+            <%# + 새 버전 (전체 페이지 폼 — 드로어 프레임 탈출) %>
+            <span class="h-px w-3 shrink-0 bg-line-soft sm:w-5"></span>
+            <%= link_to new_component_component_version_path(component), data: { turbo_frame: "_top" },
+                  title: "#{component.display_name}에 새 버전 추가",
+                  class: "flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border border-dashed border-line text-line transition hover:border-cooa hover:text-cooa" do %>
+              <%= ui_icon "plus", size: 16 %>
+            <% end %>
+          </div>
+        </div>
+      <% else %>
+        <div class="flex items-center gap-2 sm:pt-2.5">
+          <span class="text-[13px] text-line">버전 없음</span>
           <%= link_to new_component_component_version_path(component), data: { turbo_frame: "_top" },
                 title: "#{component.display_name}에 새 버전 추가",
-                class: "flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border border-dashed border-line text-line transition hover:border-cooa hover:text-cooa" do %>
-            <%= ui_icon "plus", size: 16 %>
+                class: "flex h-[28px] w-[28px] items-center justify-center rounded-md border border-dashed border-line text-line transition hover:border-cooa hover:text-cooa" do %>
+            <%= ui_icon "plus", size: 15 %>
           <% end %>
         </div>
+      <% end %>
 
-        <%# 변경사유 콜아웃 (연결선별, 기본 숨김) — 담당자별 피드백(어노테이션) %>
-        <% versions.each_with_index do |v, i| %>
-          <% next unless i.positive? && v.change_reason.present? %>
-          <% anns = versions[i - 1].annotations.sort_by { |a| [a.seq || 0, a.position || 0, a.id] } %>
-          <div data-version-timeline-target="panel" data-index="<%= i %>" id="reason-<%= component.id %>-<%= i %>" class="hidden">
-            <div class="ml-1 mt-3 max-w-xl rounded-xl border border-cooa/30 bg-accent p-3">
-              <div class="flex items-center gap-2">
-                <span class="rounded-md bg-cooa px-1.5 py-0.5 text-[10px] font-bold text-white"><%= versions[i - 1].vlabel.upcase %> → <%= v.vlabel.upcase %></span>
-                <span class="text-[11px] font-bold text-cooa">변경사유</span>
-              </div>
-              <% if anns.any? %>
-                <ul class="mt-2 space-y-1.5">
-                  <% anns.each do |a| %>
-                    <li class="flex items-center gap-2">
-                      <%= avatar(a.created_by, size: 18) %>
-                      <span class="min-w-0 flex-1 truncate text-[12.5px] text-ink/85"><%= a.comments.first&.body.presence || [a.before_text, a.after_text].compact.join(" → ").presence || a.category %></span>
-                    </li>
-                  <% end %>
-                </ul>
-              <% else %>
-                <p class="mt-2 text-[13px] leading-relaxed text-ink/85"><%= v.change_reason %></p>
-              <% end %>
-              <%= link_to comparison_path(from_id: versions[i - 1].id, to_id: v.id),
-                    class: "mt-2.5 inline-flex items-center gap-1.5 rounded-lg border border-cooa bg-white px-3 py-1.5 text-[12px] font-bold text-cooa transition hover:bg-cooa hover:text-white" do %>
-                <%= ui_icon "layers", size: 13 %> 비교 열기
-              <% end %>
+      <%# 삭제 — 첫 줄 우측 상하중앙, 호버 노출(패널 토글과 무관하게 고정) %>
+      <%= button_to component_path(component), method: :delete, title: "구성요소 삭제",
+            form: { class: "absolute right-1 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-150 group-hover/comp:opacity-100",
+                    data: { turbo_frame: "_top", turbo_confirm: "'#{component.display_name}' 및 모든 버전·피드백이 삭제됩니다. 계속할까요?" } },
+            class: "rounded p-1 text-line transition hover:bg-tint hover:text-warn" do %><%= ui_icon "trash", size: 14 %><% end %>
+    </div>
+
+    <%# 변경사유 콜아웃 (연결선별, 기본 숨김) — 첫 줄 아래로만 펼쳐짐 → 삭제버튼 위치 불변. 담당자별 피드백(어노테이션) %>
+    <% if versions.any? %>
+      <% versions.each_with_index do |v, i| %>
+        <% next unless i.positive? && v.change_reason.present? %>
+        <% anns = versions[i - 1].annotations.sort_by { |a| [a.seq || 0, a.position || 0, a.id] } %>
+        <div data-version-timeline-target="panel" data-index="<%= i %>" id="reason-<%= component.id %>-<%= i %>" class="hidden">
+          <div class="ml-1 mt-3 max-w-xl rounded-xl border border-cooa/30 bg-accent p-3">
+            <div class="flex items-center gap-2">
+              <span class="rounded-md bg-cooa px-1.5 py-0.5 text-[10px] font-bold text-white"><%= versions[i - 1].vlabel.upcase %> → <%= v.vlabel.upcase %></span>
+              <span class="text-[11px] font-bold text-cooa">변경사유</span>
             </div>
+            <% if anns.any? %>
+              <ul class="mt-2 space-y-1.5">
+                <% anns.each do |a| %>
+                  <li class="flex items-center gap-2">
+                    <%= avatar(a.created_by, size: 18) %>
+                    <span class="min-w-0 flex-1 truncate text-[12.5px] text-ink/85"><%= a.comments.first&.body.presence || [a.before_text, a.after_text].compact.join(" → ").presence || a.category %></span>
+                  </li>
+                <% end %>
+              </ul>
+            <% else %>
+              <p class="mt-2 text-[13px] leading-relaxed text-ink/85"><%= v.change_reason %></p>
+            <% end %>
+            <%# 비교 열기 — 풀페이지 버전 비교로 이탈(드로어 detail 프레임 밖). c-{from}-{to} 히스토리 탭 생성 %>
+            <%= link_to comparison_path(from_id: versions[i - 1].id, to_id: v.id), data: { turbo_frame: "_top" },
+                  class: "mt-2.5 inline-flex items-center gap-1.5 rounded-lg border border-cooa bg-white px-3 py-1.5 text-[12px] font-bold text-cooa transition hover:bg-cooa hover:text-white" do %>
+              <%= ui_icon "layers", size: 13 %> 비교 열기
+            <% end %>
           </div>
-        <% end %>
-      </div>
-    <% else %>
-      <div class="flex items-center gap-2 sm:pt-2.5">
-        <span class="text-[13px] text-line">버전 없음</span>
-        <%= link_to new_component_component_version_path(component), data: { turbo_frame: "_top" },
-              title: "#{component.display_name}에 새 버전 추가",
-              class: "flex h-[28px] w-[28px] items-center justify-center rounded-md border border-dashed border-line text-line transition hover:border-cooa hover:text-cooa" do %>
-          <%= ui_icon "plus", size: 15 %>
-        <% end %>
-      </div>
+        </div>
+      <% end %>
     <% end %>
   </div>
-
-  <%# 삭제 — 행 우측 상하중앙, 호버 노출(제목 옆 아님·타임라인과 안 겹침) %>
-  <%= button_to component_path(component), method: :delete, title: "구성요소 삭제",
-        form: { class: "absolute right-1 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-150 group-hover/comp:opacity-100",
-                data: { turbo_frame: "_top", turbo_confirm: "'#{component.display_name}' 및 모든 버전·피드백이 삭제됩니다. 계속할까요?" } },
-        class: "rounded p-1 text-line transition hover:bg-tint hover:text-warn" do %><%= ui_icon "trash", size: 14 %><% end %>
 </div>

@@ -67,11 +67,11 @@ class TreeCrudTest < ApplicationSystemTestCase
     assert_equal 1, item.components.reload.count
     assert_equal "제목 없음 구성요소", item.components.first.name, "자유 이름 기본값"
 
-    # ── 사이드바 "+" 즉시 루트 폴더 생성 → 트리 명명 ──
+    # ── 사이드바 "+" 즉시 루트 폴더 생성 → 사이드바에서 인라인 명명(대시보드 아님) ──
     visit root_path
     roots_before = Product.roots.count
     js_click("aside button[title='새 폴더']")
-    new_node # 대기(생성 완료)
+    assert_selector "aside form input[name='product[name]']", wait: 5 # 행동한 사이드바에서 입력칸 등장
     assert_equal roots_before + 1, Product.roots.count, "사이드바 + → 루트 폴더"
 
     # ── 폴더 삭제(연쇄: 하위 항목·구성요소까지) ──

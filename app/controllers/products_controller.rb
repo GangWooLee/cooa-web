@@ -17,7 +17,8 @@ class ProductsController < ApplicationController
     @product.name = default_name(@product) if @product.name.blank?
     if @product.save
       sync_members(@product) if @product.leaf? # 항목 생성 시 담당자(있으면)
-      redirect_to root_path(rename: @product.id)
+      # 사이드바(+)에서 만들면 사이드바에서, 그 외(대시보드 상단 아이콘)는 대시보드에서 인라인 명명
+      redirect_to root_path(params[:origin] == "side" ? { rename_side: @product.id } : { rename: @product.id })
     else
       redirect_back fallback_location: root_path
     end

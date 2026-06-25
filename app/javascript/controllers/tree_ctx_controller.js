@@ -35,7 +35,7 @@ export default class extends Controller {
   rename() {
     const id = this.node?.id
     this.hide()
-    const url = `/?rename=${id}` // 대시보드 트리에서 인라인 명명(기존 흐름 재사용)
+    const url = `/?rename_side=${id}` // 사이드바 트리에서 인라인 명명(행동한 곳에서 반응)
     if (window.Turbo) window.Turbo.visit(url); else window.location.assign(url)
   }
 
