@@ -16,6 +16,10 @@ module Web
     # Common ones are `templates`, `generators`, or `middleware`, for example.
     config.autoload_lib(ignore: %w[assets tasks])
 
+    # RLS policies, FORCE flags, and role grants live in raw SQL (ADR-002 §7).
+    # :sql (structure.sql) preserves them across schema load / test DB prep — :ruby (schema.rb) cannot.
+    config.active_record.schema_format = :sql
+
     # Configuration for the application, engines, and railties goes here.
     #
     # These settings can be overridden in specific environments using the files

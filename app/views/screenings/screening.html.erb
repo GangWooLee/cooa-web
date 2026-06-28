@@ -29,7 +29,8 @@
       <div class="border-b border-line-soft p-3">
         <h3 class="text-base font-bold text-ink">스크리닝 결과</h3>
         <% if @run %>
-          <% counts = @run.screening_findings.group(:decision).count %>
+          <%# reorder(nil): drop association default order(:position) — PG rejects ORDER BY cols not in GROUP BY %>
+          <% counts = @run.screening_findings.reorder(nil).group(:decision).count %>
           <div class="mt-2 flex flex-wrap items-center gap-1.5">
             <% Decidable::DECISIONS.each do |key, meta| %>
               <% next if key == "ok" %>
