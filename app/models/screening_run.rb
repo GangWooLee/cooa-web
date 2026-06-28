@@ -1,4 +1,5 @@
 class ScreeningRun < ApplicationRecord
+  include TenantScoped
   include Decidable
 
   belongs_to :component_version

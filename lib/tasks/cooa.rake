@@ -9,11 +9,10 @@ namespace :rls do
     schema_migrations ar_internal_metadata
     active_storage_attachments active_storage_blobs active_storage_variant_records
     ingredient_limits label_requirements ad_risk_expressions
+    users
   ].freeze
-  TEMP_EXEMPT_UNTIL_PHASE_0B = %w[
-    users products product_members product_properties components component_versions
-    annotations annotation_comments ingredients label_texts screening_runs screening_findings
-  ].freeze
+  # Phase 0b complete — all domain tables now carry RLS; nothing left to exempt temporarily.
+  TEMP_EXEMPT_UNTIL_PHASE_0B = %w[].freeze
 
   desc "Fail if any tenant-scoped table lacks ENABLE+FORCE RLS + a policy"
   task audit: :environment do
@@ -38,13 +37,25 @@ namespace :rls do
     puts "RLS audit OK — #{rows.size} tenant-scoped table(s) ENABLE+FORCE+policy (exempt: #{exempt.size})."
   end
 
-  desc "Grant the non-owner app role (cooa_app) DML on RLS-protected tables (structure.sql strips GRANTs)"
+  # 14 tenant-scoped tables (RLS) get DML; global KB + users + active_storage get read-only.
+  RLS_TABLES = %w[
+    organizations accounts role_assignments
+    products components component_versions annotations annotation_comments
+    ingredients label_texts screening_runs screening_findings product_members product_properties
+  ].freeze
+  READ_ONLY_TABLES = %w[
+    ingredient_limits label_requirements ad_risk_expressions users
+    active_storage_attachments active_storage_blobs active_storage_variant_records
+  ].freeze
+
+  desc "Grant the non-owner app role (cooa_app) privileges (structure.sql strips GRANTs — re-apply after schema load)"
   task grant_app: :environment do
     conn = ActiveRecord::Base.connection
     db = conn.current_database
     conn.execute(%(GRANT CONNECT ON DATABASE "#{db}" TO cooa_app))
     conn.execute("GRANT USAGE ON SCHEMA public TO cooa_app")
-    conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON organizations, accounts, role_assignments TO cooa_app")
-    puts "Granted cooa_app on #{db}."
+    conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON #{RLS_TABLES.join(', ')} TO cooa_app")
+    conn.execute("GRANT SELECT ON #{READ_ONLY_TABLES.join(', ')} TO cooa_app")
+    puts "Granted cooa_app on #{db} (#{RLS_TABLES.size} RLS + #{READ_ONLY_TABLES.size} read-only)."
   end
 end

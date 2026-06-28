@@ -199,8 +199,11 @@ CREATE TABLE public.annotation_comments (
     body text,
     created_at timestamp(6) without time zone NOT NULL,
     parent_id integer,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id uuid NOT NULL
 );
+
+ALTER TABLE ONLY public.annotation_comments FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -244,8 +247,11 @@ CREATE TABLE public.annotations (
     resolved_in_version_id integer,
     seq integer,
     status character varying DEFAULT 'open'::character varying,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id uuid NOT NULL
 );
+
+ALTER TABLE ONLY public.annotations FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -293,8 +299,11 @@ CREATE TABLE public.component_versions (
     image_name character varying,
     label character varying,
     updated_at timestamp(6) without time zone NOT NULL,
-    version_number integer NOT NULL
+    version_number integer NOT NULL,
+    tenant_id uuid NOT NULL
 );
+
+ALTER TABLE ONLY public.component_versions FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -327,8 +336,11 @@ CREATE TABLE public.components (
     name character varying,
     "position" integer DEFAULT 0,
     product_id integer NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id uuid NOT NULL
 );
+
+ALTER TABLE ONLY public.components FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -404,8 +416,11 @@ CREATE TABLE public.ingredients (
     inci_canonical character varying,
     inci_name character varying,
     "position" integer DEFAULT 0,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id uuid NOT NULL
 );
+
+ALTER TABLE ONLY public.ingredients FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -477,8 +492,11 @@ CREATE TABLE public.label_texts (
     created_at timestamp(6) without time zone NOT NULL,
     language character varying,
     text_type character varying DEFAULT 'label'::character varying,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id uuid NOT NULL
 );
+
+ALTER TABLE ONLY public.label_texts FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -530,8 +548,11 @@ CREATE TABLE public.product_members (
     product_id integer NOT NULL,
     role character varying NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    user_id integer NOT NULL
+    user_id integer NOT NULL,
+    tenant_id uuid NOT NULL
 );
+
+ALTER TABLE ONLY public.product_members FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -564,8 +585,11 @@ CREATE TABLE public.product_properties (
     "position" integer DEFAULT 0,
     product_id integer NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    value character varying
+    value character varying,
+    tenant_id uuid NOT NULL
 );
+
+ALTER TABLE ONLY public.product_properties FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -605,8 +629,11 @@ CREATE TABLE public.products (
     parent_id integer,
     "position" integer DEFAULT 0,
     product_type character varying DEFAULT '기획'::character varying,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id uuid NOT NULL
 );
+
+ALTER TABLE ONLY public.products FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -683,8 +710,11 @@ CREATE TABLE public.screening_findings (
     screening_run_id integer NOT NULL,
     severity character varying,
     subject character varying,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id uuid NOT NULL
 );
+
+ALTER TABLE ONLY public.screening_findings FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -721,8 +751,11 @@ CREATE TABLE public.screening_runs (
     requested_by_id integer,
     status character varying DEFAULT 'completed'::character varying,
     summary text,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id uuid NOT NULL
 );
+
+ALTER TABLE ONLY public.screening_runs FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -953,11 +986,27 @@ ALTER TABLE ONLY public.annotation_comments
 
 
 --
+-- Name: annotation_comments annotation_comments_tenant_id_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.annotation_comments
+    ADD CONSTRAINT annotation_comments_tenant_id_id_key UNIQUE (tenant_id, id);
+
+
+--
 -- Name: annotations annotations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.annotations
     ADD CONSTRAINT annotations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: annotations annotations_tenant_id_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.annotations
+    ADD CONSTRAINT annotations_tenant_id_id_key UNIQUE (tenant_id, id);
 
 
 --
@@ -977,11 +1026,27 @@ ALTER TABLE ONLY public.component_versions
 
 
 --
+-- Name: component_versions component_versions_tenant_id_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.component_versions
+    ADD CONSTRAINT component_versions_tenant_id_id_key UNIQUE (tenant_id, id);
+
+
+--
 -- Name: components components_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.components
     ADD CONSTRAINT components_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: components components_tenant_id_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.components
+    ADD CONSTRAINT components_tenant_id_id_key UNIQUE (tenant_id, id);
 
 
 --
@@ -1049,6 +1114,14 @@ ALTER TABLE ONLY public.products
 
 
 --
+-- Name: products products_tenant_id_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.products
+    ADD CONSTRAINT products_tenant_id_id_key UNIQUE (tenant_id, id);
+
+
+--
 -- Name: role_assignments role_assignments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1078,6 +1151,14 @@ ALTER TABLE ONLY public.screening_findings
 
 ALTER TABLE ONLY public.screening_runs
     ADD CONSTRAINT screening_runs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: screening_runs screening_runs_tenant_id_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.screening_runs
+    ADD CONSTRAINT screening_runs_tenant_id_id_key UNIQUE (tenant_id, id);
 
 
 --
@@ -1166,6 +1247,13 @@ CREATE INDEX index_annotation_comments_on_parent_id ON public.annotation_comment
 
 
 --
+-- Name: index_annotation_comments_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_annotation_comments_on_tenant_id ON public.annotation_comments USING btree (tenant_id);
+
+
+--
 -- Name: index_annotations_on_component_version_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1201,6 +1289,13 @@ CREATE INDEX index_annotations_on_resolved_in_version_id ON public.annotations U
 
 
 --
+-- Name: index_annotations_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_annotations_on_tenant_id ON public.annotations USING btree (tenant_id);
+
+
+--
 -- Name: index_component_versions_on_component_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1222,6 +1317,13 @@ CREATE INDEX index_component_versions_on_created_by_id ON public.component_versi
 
 
 --
+-- Name: index_component_versions_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_component_versions_on_tenant_id ON public.component_versions USING btree (tenant_id);
+
+
+--
 -- Name: index_components_on_product_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1233,6 +1335,13 @@ CREATE INDEX index_components_on_product_id ON public.components USING btree (pr
 --
 
 CREATE INDEX index_components_on_product_id_and_position ON public.components USING btree (product_id, "position");
+
+
+--
+-- Name: index_components_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_components_on_tenant_id ON public.components USING btree (tenant_id);
 
 
 --
@@ -1250,6 +1359,13 @@ CREATE INDEX index_ingredients_on_component_version_id ON public.ingredients USI
 
 
 --
+-- Name: index_ingredients_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ingredients_on_tenant_id ON public.ingredients USING btree (tenant_id);
+
+
+--
 -- Name: index_label_requirements_on_country; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1264,10 +1380,24 @@ CREATE INDEX index_label_texts_on_component_version_id ON public.label_texts USI
 
 
 --
+-- Name: index_label_texts_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_label_texts_on_tenant_id ON public.label_texts USING btree (tenant_id);
+
+
+--
 -- Name: index_product_members_on_product_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_product_members_on_product_id ON public.product_members USING btree (product_id);
+
+
+--
+-- Name: index_product_members_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_product_members_on_tenant_id ON public.product_members USING btree (tenant_id);
 
 
 --
@@ -1292,6 +1422,13 @@ CREATE INDEX index_product_properties_on_product_id_and_position ON public.produ
 
 
 --
+-- Name: index_product_properties_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_product_properties_on_tenant_id ON public.product_properties USING btree (tenant_id);
+
+
+--
 -- Name: index_products_on_owner_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1306,6 +1443,13 @@ CREATE INDEX index_products_on_parent_id ON public.products USING btree (parent_
 
 
 --
+-- Name: index_products_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_products_on_tenant_id ON public.products USING btree (tenant_id);
+
+
+--
 -- Name: index_role_assignments_on_tenant_id_and_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1317,6 +1461,13 @@ CREATE INDEX index_role_assignments_on_tenant_id_and_account_id ON public.role_a
 --
 
 CREATE INDEX index_screening_findings_on_screening_run_id ON public.screening_findings USING btree (screening_run_id);
+
+
+--
+-- Name: index_screening_findings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_screening_findings_on_tenant_id ON public.screening_findings USING btree (tenant_id);
 
 
 --
@@ -1341,10 +1492,65 @@ CREATE INDEX index_screening_runs_on_requested_by_id ON public.screening_runs US
 
 
 --
+-- Name: index_screening_runs_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_screening_runs_on_tenant_id ON public.screening_runs USING btree (tenant_id);
+
+
+--
 -- Name: uniq_role_assignment; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX uniq_role_assignment ON public.role_assignments USING btree (tenant_id, account_id, role_key, scope_id, market) NULLS NOT DISTINCT;
+
+
+--
+-- Name: annotation_comments annotation_comments_annotation_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.annotation_comments
+    ADD CONSTRAINT annotation_comments_annotation_tenant_fkey FOREIGN KEY (tenant_id, annotation_id) REFERENCES public.annotations(tenant_id, id);
+
+
+--
+-- Name: annotation_comments annotation_comments_parent_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.annotation_comments
+    ADD CONSTRAINT annotation_comments_parent_tenant_fkey FOREIGN KEY (tenant_id, parent_id) REFERENCES public.annotation_comments(tenant_id, id);
+
+
+--
+-- Name: annotations annotations_cv_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.annotations
+    ADD CONSTRAINT annotations_cv_tenant_fkey FOREIGN KEY (tenant_id, component_version_id) REFERENCES public.component_versions(tenant_id, id);
+
+
+--
+-- Name: annotations annotations_resolved_cv_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.annotations
+    ADD CONSTRAINT annotations_resolved_cv_tenant_fkey FOREIGN KEY (tenant_id, resolved_in_version_id) REFERENCES public.component_versions(tenant_id, id);
+
+
+--
+-- Name: component_versions component_versions_component_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.component_versions
+    ADD CONSTRAINT component_versions_component_tenant_fkey FOREIGN KEY (tenant_id, component_id) REFERENCES public.components(tenant_id, id);
+
+
+--
+-- Name: components components_product_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.components
+    ADD CONSTRAINT components_product_tenant_fkey FOREIGN KEY (tenant_id, product_id) REFERENCES public.products(tenant_id, id);
 
 
 --
@@ -1353,14 +1559,6 @@ CREATE UNIQUE INDEX uniq_role_assignment ON public.role_assignments USING btree 
 
 ALTER TABLE ONLY public.annotation_comments
     ADD CONSTRAINT fk_rails_246a8da3db FOREIGN KEY (author_id) REFERENCES public.users(id);
-
-
---
--- Name: label_texts fk_rails_2605f7cdb1; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.label_texts
-    ADD CONSTRAINT fk_rails_2605f7cdb1 FOREIGN KEY (component_version_id) REFERENCES public.component_versions(id);
 
 
 --
@@ -1380,43 +1578,11 @@ ALTER TABLE ONLY public.annotations
 
 
 --
--- Name: annotations fk_rails_489cf3ecb1; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.annotations
-    ADD CONSTRAINT fk_rails_489cf3ecb1 FOREIGN KEY (component_version_id) REFERENCES public.component_versions(id);
-
-
---
--- Name: component_versions fk_rails_49cb5aeac1; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.component_versions
-    ADD CONSTRAINT fk_rails_49cb5aeac1 FOREIGN KEY (component_id) REFERENCES public.components(id);
-
-
---
--- Name: annotation_comments fk_rails_608f9bfb3b; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.annotation_comments
-    ADD CONSTRAINT fk_rails_608f9bfb3b FOREIGN KEY (annotation_id) REFERENCES public.annotations(id);
-
-
---
 -- Name: role_assignments fk_rails_62bfe9a4bf; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.role_assignments
     ADD CONSTRAINT fk_rails_62bfe9a4bf FOREIGN KEY (tenant_id) REFERENCES public.organizations(id);
-
-
---
--- Name: product_members fk_rails_6dda92f725; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.product_members
-    ADD CONSTRAINT fk_rails_6dda92f725 FOREIGN KEY (product_id) REFERENCES public.products(id);
 
 
 --
@@ -1436,51 +1602,11 @@ ALTER TABLE ONLY public.annotations
 
 
 --
--- Name: products fk_rails_89506052d0; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.products
-    ADD CONSTRAINT fk_rails_89506052d0 FOREIGN KEY (parent_id) REFERENCES public.products(id);
-
-
---
--- Name: annotations fk_rails_911cdd80ea; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.annotations
-    ADD CONSTRAINT fk_rails_911cdd80ea FOREIGN KEY (resolved_in_version_id) REFERENCES public.component_versions(id);
-
-
---
--- Name: screening_findings fk_rails_94c9a6ad2d; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.screening_findings
-    ADD CONSTRAINT fk_rails_94c9a6ad2d FOREIGN KEY (screening_run_id) REFERENCES public.screening_runs(id);
-
-
---
--- Name: product_properties fk_rails_97d15debea; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.product_properties
-    ADD CONSTRAINT fk_rails_97d15debea FOREIGN KEY (product_id) REFERENCES public.products(id);
-
-
---
 -- Name: active_storage_variant_records fk_rails_993965df05; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.active_storage_variant_records
     ADD CONSTRAINT fk_rails_993965df05 FOREIGN KEY (blob_id) REFERENCES public.active_storage_blobs(id);
-
-
---
--- Name: annotation_comments fk_rails_c2d5d9ba85; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.annotation_comments
-    ADD CONSTRAINT fk_rails_c2d5d9ba85 FOREIGN KEY (parent_id) REFERENCES public.annotation_comments(id);
 
 
 --
@@ -1516,35 +1642,11 @@ ALTER TABLE ONLY public.component_versions
 
 
 --
--- Name: screening_runs fk_rails_eb7d3b7fc1; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.screening_runs
-    ADD CONSTRAINT fk_rails_eb7d3b7fc1 FOREIGN KEY (component_version_id) REFERENCES public.component_versions(id);
-
-
---
 -- Name: accounts fk_rails_ec5cb9c3f9; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT fk_rails_ec5cb9c3f9 FOREIGN KEY (tenant_id) REFERENCES public.organizations(id);
-
-
---
--- Name: ingredients fk_rails_f0c59eb302; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ingredients
-    ADD CONSTRAINT fk_rails_f0c59eb302 FOREIGN KEY (component_version_id) REFERENCES public.component_versions(id);
-
-
---
--- Name: components fk_rails_f80e155e03; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.components
-    ADD CONSTRAINT fk_rails_f80e155e03 FOREIGN KEY (product_id) REFERENCES public.products(id);
 
 
 --
@@ -1556,10 +1658,102 @@ ALTER TABLE ONLY public.screening_runs
 
 
 --
+-- Name: ingredients ingredients_cv_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredients
+    ADD CONSTRAINT ingredients_cv_tenant_fkey FOREIGN KEY (tenant_id, component_version_id) REFERENCES public.component_versions(tenant_id, id);
+
+
+--
+-- Name: label_texts label_texts_cv_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.label_texts
+    ADD CONSTRAINT label_texts_cv_tenant_fkey FOREIGN KEY (tenant_id, component_version_id) REFERENCES public.component_versions(tenant_id, id);
+
+
+--
+-- Name: product_members product_members_product_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.product_members
+    ADD CONSTRAINT product_members_product_tenant_fkey FOREIGN KEY (tenant_id, product_id) REFERENCES public.products(tenant_id, id);
+
+
+--
+-- Name: product_properties product_properties_product_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.product_properties
+    ADD CONSTRAINT product_properties_product_tenant_fkey FOREIGN KEY (tenant_id, product_id) REFERENCES public.products(tenant_id, id);
+
+
+--
+-- Name: products products_parent_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.products
+    ADD CONSTRAINT products_parent_tenant_fkey FOREIGN KEY (tenant_id, parent_id) REFERENCES public.products(tenant_id, id);
+
+
+--
+-- Name: screening_findings screening_findings_run_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.screening_findings
+    ADD CONSTRAINT screening_findings_run_tenant_fkey FOREIGN KEY (tenant_id, screening_run_id) REFERENCES public.screening_runs(tenant_id, id);
+
+
+--
+-- Name: screening_runs screening_runs_cv_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.screening_runs
+    ADD CONSTRAINT screening_runs_cv_tenant_fkey FOREIGN KEY (tenant_id, component_version_id) REFERENCES public.component_versions(tenant_id, id);
+
+
+--
 -- Name: accounts; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: annotation_comments; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.annotation_comments ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: annotations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.annotations ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: component_versions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.component_versions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: components; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.components ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: ingredients; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.ingredients ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: label_texts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.label_texts ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: organizations; Type: ROW SECURITY; Schema: public; Owner: -
@@ -1568,16 +1762,88 @@ ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: product_members; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.product_members ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: product_properties; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.product_properties ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: products; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: role_assignments; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.role_assignments ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: screening_findings; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.screening_findings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: screening_runs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.screening_runs ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: accounts tenant_isolation; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY tenant_isolation ON public.accounts USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+
+--
+-- Name: annotation_comments tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.annotation_comments USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+
+--
+-- Name: annotations tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.annotations USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+
+--
+-- Name: component_versions tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.component_versions USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+
+--
+-- Name: components tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.components USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+
+--
+-- Name: ingredients tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.ingredients USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+
+--
+-- Name: label_texts tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.label_texts USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
 
 
 --
@@ -1588,10 +1854,45 @@ CREATE POLICY tenant_isolation ON public.organizations USING ((id = (NULLIF(curr
 
 
 --
+-- Name: product_members tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.product_members USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+
+--
+-- Name: product_properties tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.product_properties USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+
+--
+-- Name: products tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.products USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+
+--
 -- Name: role_assignments tenant_isolation; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY tenant_isolation ON public.role_assignments USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+
+--
+-- Name: screening_findings tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.screening_findings USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+
+--
+-- Name: screening_runs tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.screening_runs USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
 
 
 --
@@ -1601,6 +1902,12 @@ CREATE POLICY tenant_isolation ON public.role_assignments USING ((tenant_id = (N
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260628000011'),
+('20260628000010'),
+('20260628000009'),
+('20260628000008'),
+('20260628000007'),
+('20260628000006'),
 ('20260628000005'),
 ('20260628000004'),
 ('20260628000003'),

@@ -5,6 +5,8 @@ class ApplicationController < ActionController::Base
   # Changes to the importmap will invalidate the etag for HTML responses
   stale_when_importmap_changes
 
+  before_action :set_current_tenant
+  around_action :scope_to_tenant
   before_action :set_current_user
   before_action :set_nav
   helper_method :current_user, :header_tabs
@@ -17,6 +19,18 @@ class ApplicationController < ActionController::Base
   end
 
   def current_user = Current.user
+
+  # Phase 0b: server-resolved tenant. Single demo tenant via session/seed; Phase 2 resolves it from the
+  # authenticated Account. NEVER trust a client-supplied tenant (ADR-002 §7 / ADR-003 §2.1).
+  def set_current_tenant
+    Current.tenant_id = (session[:tenant_id] ||= Organization.first!.id)
+  end
+
+  # Wrap the whole request (action + view render) in the tenant's RLS context so every query —
+  # incl. set_nav and views — runs scoped. SET LOCAL clears at transaction end (no pool leakage).
+  def scope_to_tenant(&block)
+    TenantContext.with_tenant(Current.tenant_id, &block)
+  end
 
   # 모든 화면 공통 셸 데이터 (사이드바 트리). 히스토리 탭은 header_tabs(렌더 시점)로 분리.
   def set_nav

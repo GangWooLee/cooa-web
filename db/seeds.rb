@@ -10,6 +10,10 @@ puts "Clearing..."
  ComponentVersion, Component, ProductMember, ProductProperty, Product, User,
  IngredientLimit, LabelRequirement, AdRiskExpression ].each(&:delete_all)
 
+# Phase 0b: 단일 데모 테넌트(org). 이후 모든 도메인 create는 TenantScoped concern이 tenant_id 자동 적재.
+demo_org = Organization.find_or_create_by!(name: "COOA Demo") { |o| o.region = "JP" }
+Current.tenant_id = demo_org.id
+
 # ── 사용자 / 팀 ─────────────────────────────────────────────────────────────
 kim  = User.create!(name: "김쿠아", role: "designer", avatar_color: "#8e0300", email: "kim@cooa.dev")
 song = User.create!(name: "송쿠아", role: "pm",       avatar_color: "#4f74e3", email: "song@cooa.dev")

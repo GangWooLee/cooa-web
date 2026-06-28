@@ -1,4 +1,5 @@
 class ScreeningFinding < ApplicationRecord
+  include TenantScoped
   include Decidable
 
   belongs_to :screening_run

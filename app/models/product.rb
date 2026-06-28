@@ -1,4 +1,5 @@
 class Product < ApplicationRecord
+  include TenantScoped
   # 자기참조 트리(노션형) — 루트=상위 개념, 자식=변형(국가·용량 등)
   belongs_to :parent, class_name: "Product", optional: true
   belongs_to :owner, class_name: "User", optional: true

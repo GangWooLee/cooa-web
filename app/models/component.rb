@@ -1,4 +1,5 @@
 class Component < ApplicationRecord
+  include TenantScoped
   belongs_to :product
   has_many :component_versions, -> { order(:version_number) }, dependent: :destroy
 

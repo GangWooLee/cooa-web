@@ -1,5 +1,6 @@
 # 어노테이션 = 아트워크 위 바운딩박스 피드백 (위치 + 카테고리 + 코멘트 스레드 + 해소상태)
 class Annotation < ApplicationRecord
+  include TenantScoped
   belongs_to :component_version
   belongs_to :created_by, class_name: "User", optional: true
   belongs_to :resolved_in_version, class_name: "ComponentVersion", optional: true

@@ -1,4 +1,5 @@
 class ComponentVersion < ApplicationRecord
+  include TenantScoped
   ARTWORK_TYPES = %w[image/png image/jpeg image/webp].freeze
   ARTWORK_MAX_BYTES = 10.megabytes
 
