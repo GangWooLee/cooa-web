@@ -1,0 +1,2 @@
+class ComponentVersionPolicy < ApplicationPolicy
+end

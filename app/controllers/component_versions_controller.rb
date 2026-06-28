@@ -3,6 +3,7 @@ class ComponentVersionsController < ApplicationController
   def show
     @version = ComponentVersion.includes(:created_by, :ingredients, :annotations,
                                          component: { product: {} }).find(params[:id])
+    authorize @version, :view_component_version?
     @component = @version.component
     @product   = @version.product
     @siblings  = @component.component_versions.sort_by(&:version_number)
@@ -14,6 +15,7 @@ class ComponentVersionsController < ApplicationController
 
   def new
     @component = Component.find(params[:component_id])
+    authorize @component, :upload_version?
     @version   = @component.component_versions.new(current: true)
   end
 
@@ -23,6 +25,7 @@ class ComponentVersionsController < ApplicationController
     @version.label          = "[#{@component.product.code}]"
     @version.created_by     = current_user
     @version.require_artwork = true
+    authorize @version, :upload_version?
     # with_lock으로 번호 채번 + current 단일성을 함께 직렬화(read-then-write 원자화)
     saved = false
     @component.with_lock do
@@ -39,11 +42,13 @@ class ComponentVersionsController < ApplicationController
 
   def edit
     @version   = ComponentVersion.find(params[:id])
+    authorize @version, :upload_version?
     @component = @version.component
   end
 
   def update
     @version   = ComponentVersion.find(params[:id])
+    authorize @version, :upload_version?
     @component = @version.component
     ok = false
     @component.with_lock do # current 단일성 read-then-write 원자화

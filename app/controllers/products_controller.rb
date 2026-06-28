@@ -5,6 +5,7 @@ class ProductsController < ApplicationController
   def show
     @product = Product.includes(:owner, :parent, :children, product_members: :user,
                                 components: { component_versions: [ :ingredients, { annotations: [ :created_by, :comments ] } ] }).find(params[:id])
+    authorize @product, :view_product?
     # 폴더는 드로어 대상 아님 — 풀요청이면 대시보드(해당 폴더 펼침)로(브레드크럼/직접 URL 방어)
     return redirect_to root_path(focus: @product.id) if @product.folder? && !turbo_frame_request?
     @ancestors = @product.self_and_ancestors
@@ -17,6 +18,8 @@ class ProductsController < ApplicationController
     @product = Product.new(product_params)
     apply_creation_context(@product) # parent_id(선택 기준) + position(형제 맨 아래)
     @product.name = default_name(@product) if @product.name.blank?
+    authorize @product, :manage_product?
+    authorize @product, :manage_members? if params[:members].present?
     if @product.save
       sync_members(@product) if @product.leaf? # 항목 생성 시 담당자(있으면)
       # 사이드바(+)에서 만들면 사이드바에서, 그 외(대시보드 상단 아이콘)는 대시보드에서 인라인 명명
@@ -30,6 +33,8 @@ class ProductsController < ApplicationController
   # return=tree(트리 인라인 rename)는 트리로, 그 외(드로어 편집)는 드로어로.
   def update
     @product = Product.find(params[:id])
+    authorize @product, :manage_product?
+    authorize @product, :manage_members? if params[:members].present?
     if @product.update(product_params)
       sync_members(@product) if @product.leaf?
       redirect_to(params[:return] == "tree" ? root_path : product_path(@product))
@@ -40,6 +45,7 @@ class ProductsController < ApplicationController
 
   def destroy
     product = Product.find(params[:id])
+    authorize product, :manage_product?
     product.destroy # children·components·versions·annotations 연쇄 삭제
     redirect_to root_path
   end
@@ -48,6 +54,7 @@ class ProductsController < ApplicationController
   # 자기·자손·비폴더 부모는 모델 검증(parent_not_self_or_descendant)이 거부 → 422(500 아님).
   def move
     node = Product.find(params[:id])
+    authorize node, :manage_product?
     node.parent_id = params[:parent_id].presence
     return head :unprocessable_entity unless node.valid?
 

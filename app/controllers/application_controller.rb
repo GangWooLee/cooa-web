@@ -5,17 +5,42 @@ class ApplicationController < ActionController::Base
   # Changes to the importmap will invalidate the etag for HTML responses
   stale_when_importmap_changes
 
+  include Pundit::Authorization
+
   before_action :set_current_tenant
   around_action :scope_to_tenant
   before_action :set_current_user
   before_action :set_nav
   helper_method :current_user, :header_tabs
 
+  # Strict Pundit (ADR-002 §0 BOLA defense): every action must authorize (or explicitly skip_authorization).
+  # verify_policy_scoped is enabled per-controller for index-like actions (DashboardController) — referencing
+  # :index here would raise on controllers without an :index action (raise_on_missing_callback_actions).
+  after_action :verify_authorized
+  rescue_from Pundit::NotAuthorizedError, with: :deny_access
+
   private
 
-  # 데모: 고정 사용자 자동 로그인 (인증 생략)
+  # Pundit "user" = role-resolution context. Phase 1 wraps Current.user; Phase 2 = Current.account (one line).
+  def pundit_user = Authz::AccessContext.new(actor: Current.user)
+
+  # deny → 403 for mutations/non-html (anti-enumeration; RLS already 404s other tenants' rows),
+  # redirect+alert for GET html. Persistent audit_log row = Phase 3 (Phase 1 = structured log).
+  def deny_access(exception)
+    Rails.logger.warn("[authz][deny] verb=#{exception.query} record=#{exception.record.class} user=#{Current.user&.id} tenant=#{Current.tenant_id}")
+    if request.get? && request.format.html?
+      redirect_to root_path, alert: "권한이 없습니다.", status: :see_other
+    else
+      head :forbidden
+    end
+  end
+
+  # 데모: 고정 사용자 자동 로그인 (인증 생략).
+  # [dev/test seam] params[:_as]=user_id로 현재 사용자 전환(세션 지속) — SoD 양성경로 시연·테스트용.
+  # production에선 무시. Phase 2에서 실인증(OIDC)으로 전면 교체.
   def set_current_user
-    Current.user = User.find_by(name: "김쿠아") || User.first
+    session[:current_user_id] = params[:_as] if params[:_as].present? && !Rails.env.production?
+    Current.user = User.find_by(id: session[:current_user_id]) || User.find_by(name: "김쿠아") || User.first
   end
 
   def current_user = Current.user
@@ -36,7 +61,7 @@ class ApplicationController < ActionController::Base
   def set_nav
     return unless nav_ready?
 
-    @tree_roots = Product.roots.includes(:children)
+    @tree_roots = policy_scope(Product.roots.includes(:children))
   end
 
   # 상단 히스토리 탭 — 렌더 시점에 계산해야 함. set_nav(before_action)는 액션의 TabHistory.track보다
@@ -50,7 +75,7 @@ class ApplicationController < ActionController::Base
 
   # 대시보드 셸의 제품 트리 행 (대시보드 index / 상세 풀요청 공용)
   def load_dashboard_rows
-    @rows = Product.tree_preorder(Product.roots.includes(:children, :owner, { product_members: :user },
-                                                          { components: :component_versions }))
+    @rows = Product.tree_preorder(policy_scope(Product.roots.includes(:children, :owner, { product_members: :user },
+                                                                       { components: :component_versions })))
   end
 end

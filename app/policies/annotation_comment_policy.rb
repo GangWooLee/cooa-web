@@ -1,0 +1,2 @@
+class AnnotationCommentPolicy < ApplicationPolicy
+end

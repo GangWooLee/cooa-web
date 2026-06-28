@@ -3,6 +3,7 @@ class ComparisonsController < ApplicationController
 
   # ③ 버전 비교 — 기준(이전) 버전의 어노테이션을 검토(현재) 버전에서 반영확인
   def show
+    authorize @from, :view_component_version?
     @annotations = @from.annotations.ordered.includes(:created_by, :resolved_by, comments: :author)
     @versions    = @component.versions_asc
     TabHistory.track(session, "c", "#{@from.id}-#{@to.id}") # 헤더 히스토리 — 버전 비교

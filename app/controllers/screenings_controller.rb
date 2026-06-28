@@ -3,21 +3,29 @@ class ScreeningsController < ApplicationController
 
   # ④ 인허가 스크리닝 화면
   def screening
+    authorize @version, :view_screening_findings?
     @run = latest_run
     TabHistory.track(session, "s", @version.id) # 헤더 히스토리 — 스크리닝
   end
 
   # 스크리닝 실행(룰엔진) — ran=1로 "방금 실행" 표시(스캔 애니메이션·순차 reveal 트리거)
   def run_screening
+    authorize @version, :run_screening?
     # 국가 미지정이면 실행 차단 — fact 0건으로 "적합" 거짓음성 방지(화면이 안내 배너 표시)
     return redirect_to screening_component_version_path(@version) if @country.blank?
     ScreeningService.new(@version, @country).run!(requested_by: current_user)
     redirect_to screening_component_version_path(@version, ran: 1)
   end
 
-  # RA 승인
+  # RA 승인 — 신원기반 SoD(승인자≠제출자, owner도 예외 없음). ScreeningRunPolicy#approve?.
   def approve_screening
-    latest_run&.update(status: "approved", approved_by: current_user, approved_at: Time.current)
+    run = latest_run
+    if run
+      authorize run, :approve?
+      run.update(status: "approved", approved_by: current_user, approved_at: Time.current)
+    else
+      skip_authorization
+    end
     redirect_to screening_component_version_path(@version)
   end
 

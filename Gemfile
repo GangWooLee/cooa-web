@@ -21,6 +21,9 @@ gem "tailwindcss-rails"
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
 gem "jbuilder"
 
+# Authorization (ADR-002 Layer B) — native Pundit policies; Cerbos at microservices extraction
+gem "pundit", "~> 2.4"
+
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"
 
