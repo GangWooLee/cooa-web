@@ -1,7 +1,6 @@
 require "test_helper"
 
 class ProductPropertiesControllerTest < ActionDispatch::IntegrationTest
-  setup { Rails.application.load_seed }
 
   def leaf = Product.find_by(code: "CO0001")
 

@@ -1,7 +1,6 @@
 require "test_helper"
 
 class ComponentsControllerTest < ActionDispatch::IntegrationTest
-  setup { Rails.application.load_seed }
 
   def item = Product.find_by(code: "CO0001")
 

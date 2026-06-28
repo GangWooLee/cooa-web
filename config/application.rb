@@ -20,6 +20,9 @@ module Web
     # :sql (structure.sql) preserves them across schema load / test DB prep — :ruby (schema.rb) cannot.
     config.active_record.schema_format = :sql
 
+    # Local account-picker login (no password) — dev/test only; production uses the OIDC broker (Phase 2b).
+    config.x.local_login_enabled = !Rails.env.production?
+
     # Configuration for the application, engines, and railties goes here.
     #
     # These settings can be overridden in specific environments using the files

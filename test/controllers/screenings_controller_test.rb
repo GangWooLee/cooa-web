@@ -1,7 +1,6 @@
 require "test_helper"
 
 class ScreeningsControllerTest < ActionDispatch::IntegrationTest
-  setup { Rails.application.load_seed }
 
   def hero_version
     Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box").component_versions.detect(&:current)

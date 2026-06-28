@@ -13,6 +13,9 @@ Rails.application.routes.draw do
   root "dashboard#index"
   get "/brands/:id", to: "dashboard#index", as: :brand        # 브랜드별 대시보드
 
+  # 로컬 account-picker 로그인 (dev/test; production은 Keycloak OIDC=Phase 2b). 비밀번호 없음.
+  resource :session, only: [:new, :create, :destroy]
+
   resources :products, only: [:show, :create, :update, :destroy] do  # ② 제품 트리 CRUD (생성=즉시·편집=인라인)
     patch :move, on: :member                                                      # 드래그앤드롭 트리 이동
     resources :components, only: [:create] do                                     # 구성요소 추가

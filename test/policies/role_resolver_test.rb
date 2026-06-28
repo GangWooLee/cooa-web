@@ -35,4 +35,22 @@ class RoleResolverTest < ActiveSupport::TestCase
     assert_respond_to resolver, :roles_on
     assert_equal [], resolver.roles_on(Product.new)
   end
+
+  # Phase 2a-1: AssignmentResolver is now the live app path (pundit_user = Current.account).
+  test "AssignmentResolver reads role_assignment for a seeded account" do
+    kim = Account.find_by!(email: "kim@cooa.dev")
+    assert_equal %w[brand_admin owner],
+                 Authz::RoleResolver::AssignmentResolver.new(kim).roles_on(Product.first).sort
+    lee = Account.find_by!(email: "lee@cooa.dev")
+    assert_equal %w[approver ra_reviewer],
+                 Authz::RoleResolver::AssignmentResolver.new(lee).roles_on(Product.first).sort
+  end
+
+  # The SoD gate: an Account actor must report its linked user_id (bigint), not its own uuid, so
+  # requested_by_id != actor_id compares in one space (else self-approval fails open — ADR-003).
+  test "AccessContext#actor_id bridges an Account to its linked user_id" do
+    kim_user = User.find_by!(name: "김쿠아")
+    assert_equal kim_user.id, Authz::AccessContext.new(actor: kim_user.account).actor_id
+    assert_equal kim_user.id, Authz::AccessContext.new(actor: kim_user).actor_id # bare User → own id
+  end
 end

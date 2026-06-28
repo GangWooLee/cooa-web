@@ -1,7 +1,6 @@
 require "test_helper"
 
 class TabsControllerTest < ActionDispatch::IntegrationTest
-  setup { Rails.application.load_seed }
 
   def hero_versions
     comp = Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box")

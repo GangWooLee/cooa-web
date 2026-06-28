@@ -2,7 +2,6 @@ require "test_helper"
 
 # 데모 4개 화면 + 인터랙션 end-to-end (시드 데이터 기반)
 class DemoFlowsTest < ActionDispatch::IntegrationTest
-  setup { Rails.application.load_seed }
 
   def hero_v(n)
     Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box")
@@ -28,21 +27,22 @@ class DemoFlowsTest < ActionDispatch::IntegrationTest
   # 신원기반 SoD(ADR-002 §8.2): 제출자(run)와 승인자가 달라야 함. owner도 예외 없음.
   test "④ 스크리닝 실행 + RA 승인 (maker-checker SoD)" do
     v = hero_v(5)
-    lee = User.find_by(name: "이쿠아") # RA → approver
+    lee = Account.find_by!(email: "lee@cooa.dev") # RA → approver
 
-    # 제출(run) = 고정 데모 사용자 김쿠아(designer)
+    # 제출(run) = 기본 로그인 김쿠아(owner)
     assert_difference -> { v.screening_runs.count }, 1 do
       post run_screening_component_version_path(v)
     end
     assert_redirected_to screening_component_version_path(v, ran: 1) # 스캔 애니메이션 트리거
 
-    # 음성: 제출자 김쿠아가 자기 run을 승인 시도 → SoD 거부(403), 승인 안 됨
+    # 음성: 제출자 김쿠아가 자기 run을 승인 시도 → SoD 거부(403), 승인 안 됨 (owner도 예외 없음)
     post approve_screening_component_version_path(v)
     assert_response :forbidden
     refute v.screening_runs.order(:created_at).last.approved?, "제출자 자가 승인은 거부되어야 함"
 
-    # 양성: 다른 신원 이쿠아(RA=approver)가 승인 → 통과 (_as = dev/test 사용자 전환 seam)
-    post approve_screening_component_version_path(v, params: { _as: lee.id })
+    # 양성: 다른 신원 이쿠아(RA=approver)로 전환해 승인 → 통과
+    sign_in_as(lee)
+    post approve_screening_component_version_path(v)
     assert v.screening_runs.order(:created_at).last.approved?, "제출자와 다른 approver는 승인 가능"
   end
 

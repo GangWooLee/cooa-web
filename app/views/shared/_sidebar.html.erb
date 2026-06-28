@@ -4,7 +4,11 @@
   <div class="flex min-w-0 items-center gap-2 px-3 pb-3 pt-4">
     <%= ui_icon "user", size: 24, klass: "shrink-0 text-ink" %>
     <span class="truncate text-[18px] font-bold text-ink"><%= current_user&.name %></span>
-    <span class="ml-auto rounded bg-tint px-1.5 py-0.5 text-[10px] text-line">데모</span>
+    <span class="ml-auto flex shrink-0 items-center gap-1.5">
+      <span class="rounded bg-tint px-1.5 py-0.5 text-[10px] text-line">데모</span>
+      <%= button_to "로그아웃", session_path, method: :delete, form: { class: "inline" },
+            class: "rounded px-1.5 py-0.5 text-[10px] text-line transition hover:bg-tint hover:text-cooa" %>
+    </span>
   </div>
 
   <%# 제품 디렉터리 트리 + 아트워크 찾기(클라이언트 필터) %>

@@ -45,6 +45,7 @@ CREATE TABLE public.accounts (
     deleted_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    user_id bigint,
     CONSTRAINT accounts_status_check CHECK (((status)::text = ANY ((ARRAY['invited'::character varying, 'active'::character varying, 'suspended'::character varying, 'deprovisioned'::character varying])::text[])))
 );
 
@@ -1191,6 +1192,13 @@ CREATE UNIQUE INDEX index_accounts_on_tenant_id_and_email ON public.accounts USI
 
 
 --
+-- Name: index_accounts_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_accounts_on_user_id ON public.accounts USING btree (user_id);
+
+
+--
 -- Name: index_active_storage_attachments_on_blob_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1610,6 +1618,14 @@ ALTER TABLE ONLY public.active_storage_variant_records
 
 
 --
+-- Name: accounts fk_rails_b1e30bebc8; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounts
+    ADD CONSTRAINT fk_rails_b1e30bebc8 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: active_storage_attachments fk_rails_c3b3935057; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1902,6 +1918,7 @@ CREATE POLICY tenant_isolation ON public.screening_runs USING ((tenant_id = (NUL
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260628000012'),
 ('20260628000011'),
 ('20260628000010'),
 ('20260628000009'),

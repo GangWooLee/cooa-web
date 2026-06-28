@@ -1,0 +1,26 @@
+<% content_for :title, "COOA 로그인" %>
+<div class="w-full max-w-md rounded-2xl border border-line bg-white p-8 shadow-sm">
+  <div class="text-[22px] font-bold text-ink">COOA</div>
+  <p class="mb-6 mt-1 flex items-center gap-1.5 text-[14px] text-line">
+    데모 계정을 선택해 로그인하세요
+    <span class="rounded bg-tint px-1.5 py-0.5 text-[11px]">데모</span>
+  </p>
+
+  <% if flash[:alert] %>
+    <p class="mb-4 rounded-lg bg-red-50 px-3 py-2 text-[13px] text-red-700"><%= flash[:alert] %></p>
+  <% end %>
+
+  <div class="flex flex-col gap-2">
+    <% @accounts.each do |account| %>
+      <%= button_to session_path, params: { account_id: account.id }, method: :post,
+            class: "flex w-full items-center gap-3 rounded-xl border border-line px-4 py-3 text-left transition hover:border-cooa hover:bg-tint" do %>
+        <span class="flex size-9 shrink-0 items-center justify-center rounded-full text-[13px] font-bold text-white"
+              style="background: <%= account.avatar_color || "#888" %>"><%= account.role_short %></span>
+        <span class="min-w-0">
+          <span class="block truncate text-[15px] font-semibold text-ink"><%= account.name %></span>
+          <span class="block truncate text-[12px] text-line"><%= account.role_label %> · <%= account.email %></span>
+        </span>
+      <% end %>
+    <% end %>
+  </div>
+</div>

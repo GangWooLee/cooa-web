@@ -2,7 +2,6 @@ require "test_helper"
 
 # 제품 트리 CRUD — 컨트롤러/리퀘스트 레벨(속성·파라미터·연쇄·검증 즉시 포착)
 class ProductsControllerTest < ActionDispatch::IntegrationTest
-  setup { Rails.application.load_seed }
 
   def folder = Product.find_by(name: "레티놀 3% 세럼")
 

@@ -2,7 +2,6 @@ require "test_helper"
 
 # 드로어/사이드바 UI 3건 회귀
 class DrawerUiTest < ActionDispatch::IntegrationTest
-  setup { Rails.application.load_seed }
 
   def hero = Product.find_by(code: "CO0001")
 

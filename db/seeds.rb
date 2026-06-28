@@ -7,7 +7,8 @@
 
 puts "Clearing..."
 [ ScreeningFinding, ScreeningRun, AnnotationComment, Annotation, LabelText, Ingredient,
- ComponentVersion, Component, ProductMember, ProductProperty, Product, User,
+ ComponentVersion, Component, ProductMember, ProductProperty, Product,
+ RoleAssignment, Account, User, # accounts.user_id FK → users: 계정/부여를 User보다 먼저 삭제
  IngredientLimit, LabelRequirement, AdRiskExpression ].each(&:delete_all)
 
 # Phase 0b: 단일 데모 테넌트(org). 이후 모든 도메인 create는 TenantScoped concern이 tenant_id 자동 적재.
@@ -20,6 +21,25 @@ song = User.create!(name: "송쿠아", role: "pm",       avatar_color: "#4f74e3"
 lee  = User.create!(name: "이쿠아", role: "ra",       avatar_color: "#d65f9a", email: "lee@cooa.dev")
 park = User.create!(name: "박쿠아", role: "scm",      avatar_color: "#5f9e57", email: "park@cooa.dev")
 TEAM = [ kim, song, lee, park ]
+
+# ── 인증 신원(Account) + 역할 부여(role_assignment) — Phase 2a-1 ──────────────
+# Account=로그인 신원, User=도메인 '사람'(Strategy B). role_assignment는 tenant-wide(scope_id=NULL).
+# 페르소나: 김=운영자(owner), 송=brand_admin, 이=RA(ra_reviewer+approver), 박=contributor.
+# idp_subject="local|*" → Phase 2b Keycloak OIDC가 동일 행 재사용. owner도 SoD 예외 없음.
+PERSONA_ROLES = {
+  "designer" => %w[owner brand_admin],
+  "pm"       => %w[brand_admin],
+  "ra"       => %w[ra_reviewer approver],
+  "scm"      => %w[contributor]
+}.freeze
+TEAM.each do |u|
+  acc = Account.create!(tenant_id: demo_org.id, user: u, email: u.email, status: "active",
+                        idp_subject: "local|#{u.name}")
+  PERSONA_ROLES.fetch(u.role).each do |rk|
+    RoleAssignment.create!(account: acc, tenant_id: demo_org.id, role_key: rk,
+                           scope_type: "tenant", scope_id: nil)
+  end
+end
 
 # ── 규제 데이터 (실제 CSV 큐레이션) ─────────────────────────────────────────
 puts "Regulatory facts..."
@@ -236,6 +256,7 @@ seed_ingredients(us5)
 ScreeningService.new(v5,  "JP").run!(requested_by: lee)   # 일본: 위반
 ScreeningService.new(us5, "US").run!(requested_by: lee)   # 미국: 적합
 
-puts "Seed done: users=#{User.count} products=#{Product.count}(roots=#{Product.roots.count}) " \
+puts "Seed done: users=#{User.count} accounts=#{Account.count} role_assignments=#{RoleAssignment.count} " \
+     "products=#{Product.count}(roots=#{Product.roots.count}) " \
      "components=#{Component.count} versions=#{ComponentVersion.count} " \
      "limits=#{IngredientLimit.count} ad=#{AdRiskExpression.count} runs=#{ScreeningRun.count}"

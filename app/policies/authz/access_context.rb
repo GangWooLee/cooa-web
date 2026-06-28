@@ -11,7 +11,10 @@ module Authz
       @cache = {}
     end
 
-    def actor_id = actor&.id
+    # SoD identity must live in the DOMAIN FK space (User bigint), not the Account uuid. An Account
+    # bridges via domain_user_id (its linked user_id); a bare User actor uses its own id. Otherwise
+    # requested_by_id(bigint) != actor_id(uuid) is always true → self-approval fail-open (ADR-003 gate).
+    def actor_id = actor.respond_to?(:domain_user_id) ? actor.domain_user_id : actor&.id
 
     def roles_on(record)
       key = [record.class.name, record.try(:id)]
