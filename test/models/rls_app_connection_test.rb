@@ -73,6 +73,14 @@ class RlsAppConnectionTest < ActiveSupport::TestCase
     assert_equal ["A-root"], names
   end
 
+  # The isolation FLOOR (P5 benchmark): with NO tenant context the policy casts the unset GUC to NULL and
+  # matches no row — a SELECT returns 0 (fail-CLOSED), never all rows. A regression here = a cross-tenant leak.
+  test "no tenant context → SELECT is fail-CLOSED (0 rows, not all)" do
+    Product.create!(tenant_id: @org_a.id, name: "floor", kind: "folder") # committed via owner
+    n = @app.select_value("SELECT COUNT(*) FROM products").to_i          # cooa_app, NO with_tenant
+    assert_equal 0, n, "an unset tenant GUC must expose 0 rows, not leak the table"
+  end
+
   # Sequence-grant regression: a same-tenant INSERT (bigserial PK → needs sequence USAGE) must SUCCEED.
   # Covers ALL domain bigserial INSERTs (products, screening_runs, …) — one GRANT ON ALL SEQUENCES.
   test "same-tenant domain INSERT succeeds (sequence USAGE granted)" do
