@@ -16,10 +16,12 @@ class ApprovalRequestsController < ApplicationController
   def approve
     req = ApprovalRequest.find(params[:id])
     authorize req, :approve? # M2 SoD (owner included) + pending + actor present
-    return market_ineligible!(req) unless market_eligible?(req) # M-4: jurisdiction re-check
+    return market_ineligible!(req) unless market_eligible?(req)                      # M-4: jurisdiction re-check
+    return step_up_required!(req) unless current_account.totp_enrolled?             # P6 #1: signature re-auth
+    return step_up_failed!(req) unless current_account.verify_totp(params[:totp_code])
     before = req.status
     begin
-      req.approve!(approver_id: current_account.user_id) # C1 staleness re-checked atomically inside (P2 M-2)
+      req.approve!(approver_id: current_account.user_id, re_auth_factor: "totp") # C1 re-checked atomically inside (P2 M-2)
     rescue ApprovalRequest::StaleReviewedTuple
       audit_stale(req)
       return redirect_back fallback_location: root_path, status: :see_other,
@@ -73,6 +75,24 @@ class ApprovalRequestsController < ApplicationController
                      outcome: "deny", denial_reason: "market_ineligible",
                      request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
     head :forbidden
+  end
+
+  # P6 #1 step-up (TOTP): an approver must re-authenticate at the signing moment. Not enrolled → send to
+  # enrollment; bad/absent code → deny + retry. Both are audited as a deny (abandoned/failed step-up trail).
+  def step_up_required!(req)
+    audit_step_up_deny(req, "step_up_not_enrolled")
+    redirect_to step_up_path, alert: "서명하려면 2단계 인증(TOTP) 등록이 필요합니다."
+  end
+
+  def step_up_failed!(req)
+    audit_step_up_deny(req, "step_up_failed")
+    redirect_back fallback_location: root_path, status: :see_other, alert: "인증 코드가 올바르지 않습니다. 다시 시도하세요."
+  end
+
+  def audit_step_up_deny(req, reason)
+    AuditLog.record!(action: "approve", resource_type: "ApprovalRequest", resource_id: req.id,
+                     outcome: "deny", denial_reason: reason,
+                     request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
   end
 
   def submit_notice(req)

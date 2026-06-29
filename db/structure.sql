@@ -56,6 +56,8 @@ CREATE TABLE public.accounts (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     user_id bigint,
+    totp_secret character varying,
+    totp_registered_at timestamp(6) without time zone,
     CONSTRAINT accounts_status_check CHECK (((status)::text = ANY ((ARRAY['invited'::character varying, 'active'::character varying, 'suspended'::character varying, 'deprovisioned'::character varying])::text[])))
 );
 
@@ -344,7 +346,10 @@ CREATE TABLE public.approval_steps (
     acted_at timestamp(6) without time zone NOT NULL,
     lock_version integer DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    re_auth_at timestamp(6) without time zone,
+    re_auth_factor character varying,
+    signed_c1_digest character varying
 );
 
 ALTER TABLE ONLY public.approval_steps FORCE ROW LEVEL SECURITY;
@@ -2263,6 +2268,7 @@ CREATE POLICY tenant_isolation ON public.screening_runs USING ((tenant_id = (NUL
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260630000002'),
 ('20260630000001'),
 ('20260629000003'),
 ('20260629000002'),

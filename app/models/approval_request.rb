@@ -37,11 +37,15 @@ class ApprovalRequest < ApplicationRecord
   # the component_version is locked FOR UPDATE and the reviewed-tuple re-compared inside the sign tx, so
   # content cannot diverge between the check and the signature (TOCTOU). Raises StaleReviewedTuple on
   # divergence. (Full edit/re-screen lock coordination is Phase 2b — see docs/authz-2a-freeze-spec.md.)
-  def approve!(approver_id:)
+  def approve!(approver_id:, re_auth_factor:)
     transaction do
       screening_run.component_version.lock! # FOR UPDATE — serialize vs concurrent edit/re-screen
       raise StaleReviewedTuple if ReviewedTuple.stale?(self)
-      approval_steps.create!(approver_id: approver_id, decision: "approved", meaning: "approved", acted_at: Time.current)
+      # P6 #1: persist the signing-moment re-auth evidence bound to the exact reviewed-tuple digest
+      # (Part-11 §11.50/§11.200). The controller verified the factor before calling this.
+      approval_steps.create!(approver_id: approver_id, decision: "approved", meaning: "approved",
+                             acted_at: Time.current, re_auth_at: Time.current, re_auth_factor: re_auth_factor,
+                             signed_c1_digest: ReviewedTuple.c1_digest(self))
       update!(status: "approved")
     end
   end

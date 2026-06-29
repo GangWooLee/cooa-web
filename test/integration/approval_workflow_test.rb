@@ -12,6 +12,7 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
 
   def submit! = post approval_requests_path, params: { screening_run_id: @run.id }
   def request_for = ApprovalRequest.find_by!(screening_run_id: @run.id)
+  def totp_for(account) = ROTP::TOTP.new(account.totp_secret).now # P6 #1: a valid step-up code for the approver
 
   test "M1: submit with an eligible distinct approver → pending (+ C1 captured)" do
     submit!
@@ -34,8 +35,9 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
     assert_equal "pending", req.reload.status
 
-    sign_in_as(Account.find_by!(email: "lee@cooa.dev"))
-    post approve_approval_request_path(req)
+    lee = Account.find_by!(email: "lee@cooa.dev")
+    sign_in_as(lee)
+    post approve_approval_request_path(req), params: { totp_code: totp_for(lee) }
     assert_equal "approved", req.reload.status
     assert_equal 1, req.approval_steps.count
     assert_equal User.find_by!(name: "이쿠아").id, req.approval_steps.first.approver_id
@@ -45,8 +47,9 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
     submit!
     req = request_for
     @run.component_version.label_texts.first.update!(content: "TAMPERED AFTER SUBMIT")
-    sign_in_as(Account.find_by!(email: "lee@cooa.dev"))
-    post approve_approval_request_path(req)
+    lee = Account.find_by!(email: "lee@cooa.dev")
+    sign_in_as(lee)
+    post approve_approval_request_path(req), params: { totp_code: totp_for(lee) }
     assert_equal "pending", req.reload.status, "stale tuple must not approve"
     assert AuditLog.where(outcome: "deny", denial_reason: "stale_reviewed_tuple").exists?
   end
@@ -56,9 +59,10 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
       submit!
     end
     req = request_for
-    sign_in_as(Account.find_by!(email: "lee@cooa.dev"))
+    lee = Account.find_by!(email: "lee@cooa.dev")
+    sign_in_as(lee)
     assert_difference -> { AuditLog.where(action: "approve", outcome: "allow", resource_type: "ApprovalRequest").count }, 1 do
-      post approve_approval_request_path(req)
+      post approve_approval_request_path(req), params: { totp_code: totp_for(lee) }
     end
   end
 
@@ -82,6 +86,40 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
     post approve_approval_request_path(req)
     assert_response :forbidden
     assert_equal "pending", req.reload.status
+  end
+
+  # P6 #1 step-up (TOTP): the signature requires a valid re-auth code bound to the C1 digest.
+  test "step-up: approve without a valid TOTP code is refused" do
+    submit!
+    req = request_for
+    sign_in_as(Account.find_by!(email: "lee@cooa.dev"))
+    post approve_approval_request_path(req) # no code
+    assert_equal "pending", req.reload.status, "no signature without re-auth"
+    assert AuditLog.where(outcome: "deny", denial_reason: "step_up_failed").exists?
+  end
+
+  test "step-up: a valid TOTP records re-auth evidence bound to the C1 digest" do
+    submit!
+    req = request_for
+    lee = Account.find_by!(email: "lee@cooa.dev")
+    sign_in_as(lee)
+    post approve_approval_request_path(req), params: { totp_code: totp_for(lee) }
+    assert_equal "approved", req.reload.status
+    step = req.approval_steps.first
+    assert step.re_auth_at.present?, "re-auth timestamp recorded"
+    assert_equal "totp", step.re_auth_factor
+    assert_equal ReviewedTuple.c1_digest(req), step.signed_c1_digest, "signature bound to the exact reviewed tuple"
+  end
+
+  test "step-up: an un-enrolled approver is sent to enrollment" do
+    submit!
+    req = request_for
+    lee = Account.find_by!(email: "lee@cooa.dev")
+    lee.update!(totp_secret: nil, totp_registered_at: nil) # un-enroll
+    sign_in_as(lee)
+    post approve_approval_request_path(req)
+    assert_redirected_to step_up_path
+    assert AuditLog.where(outcome: "deny", denial_reason: "step_up_not_enrolled").exists?
   end
 
   # Phase 3c: the screening screen renders the approval panel (catches ERB/policy/avatar errors).

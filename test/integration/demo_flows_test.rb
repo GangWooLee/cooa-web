@@ -43,9 +43,9 @@ class DemoFlowsTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
     assert_equal "pending", req.reload.status
 
-    # 양성: 다른 신원 이쿠아(approver)로 전환해 승인 → 통과
+    # 양성: 다른 신원 이쿠아(approver)로 전환해 승인 → 통과 (P6 #1: 서명 step-up TOTP 필요)
     sign_in_as(lee)
-    post approve_approval_request_path(req)
+    post approve_approval_request_path(req), params: { totp_code: ROTP::TOTP.new(lee.totp_secret).now }
     assert_equal "approved", req.reload.status
   end
 

@@ -60,6 +60,9 @@ Rails.application.routes.draw do
     end
   end
 
+  # 서명용 2단계 인증(TOTP) 등록 페이지 — 결재자가 authenticator에 추가 (P6 #1 step-up)
+  get "step-up", to: "step_up#show", as: :step_up
+
   # 상단 히스토리 탭 닫기(세션)
   delete "/tabs/:id", to: "tabs#destroy", as: :tab
 end

@@ -35,6 +35,7 @@ PERSONA_ROLES = {
 }.freeze
 TEAM.each do |u|
   acc = Account.create!(tenant_id: demo_org.id, user: u, email: u.email, status: "active")
+  acc.provision_totp! # P6 #1: demo accounts enrolled in TOTP step-up so approve works out-of-the-box
   PERSONA_ROLES.fetch(u.role).each do |rk|
     RoleAssignment.create!(account: acc, tenant_id: demo_org.id, role_key: rk,
                            scope_type: "tenant", scope_id: nil)

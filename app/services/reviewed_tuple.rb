@@ -30,6 +30,28 @@ module ReviewedTuple
       ScreeningService::DISCLAIMER_VERSION != approval_request.disclaimer_version # P2 review: captured but was not re-checked
   end
 
+  # P6 #1: a single canonical digest over the captured reviewed-tuple — the value the approver's step-up
+  # re-auth is BOUND to (recorded as approval_step.signed_c1_digest). One hash so the signature attests to
+  # the exact content/artwork/verdict/versions reviewed. (Equals live_c1_digest iff not stale.)
+  def c1_digest(approval_request)
+    Digest::SHA256.hexdigest([
+      approval_request.reviewed_content_snapshot_hash, approval_request.reviewed_artifact_digest,
+      approval_request.verdict_snapshot.to_json, approval_request.ruleset_version,
+      approval_request.engine_version, approval_request.disclaimer_version
+    ].join("||"))
+  end
+
+  # The same digest recomputed from the LIVE component_version (mirrors stale?'s live read) — used to prove
+  # the content has not drifted between challenge and commit.
+  def live_c1_digest(approval_request)
+    run = approval_request.screening_run
+    cv = run.component_version
+    Digest::SHA256.hexdigest([
+      content_snapshot_hash(cv), artifact_digest(cv), verdict_snapshot(run).to_json,
+      ScreeningService::RULESET_VERSION, ScreeningService::ENGINE_VERSION, ScreeningService::DISCLAIMER_VERSION
+    ].join("||"))
+  end
+
   # label_texts (text_type,language,country,id) + ingredients (position,id) — deterministic; the string
   # format need only be stable (it is a hash input, never displayed).
   def content_snapshot_hash(component_version)
