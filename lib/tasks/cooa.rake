@@ -46,6 +46,7 @@ namespace :rls do
   READ_ONLY_TABLES = %w[
     ingredient_limits label_requirements ad_risk_expressions users
     active_storage_attachments active_storage_blobs active_storage_variant_records
+    schema_migrations ar_internal_metadata
   ].freeze
 
   desc "Grant the non-owner app role (cooa_app) privileges (structure.sql strips GRANTs — re-apply after schema load)"

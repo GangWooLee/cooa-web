@@ -10,6 +10,13 @@ if Rails.env.production? && !Rails.configuration.x.local_login_enabled && ENV["K
 end
 
 if Rails.env.test? || ENV["KC_ISSUER"].present?
+  # Local Keycloak (start-dev) serves OIDC discovery over plain HTTP; SWD defaults to HTTPS and would
+  # SSL-handshake-fail against it. Allow http discovery ONLY for an http issuer (dev). Prod = https.
+  if ENV["KC_ISSUER"].to_s.start_with?("http://")
+    require "swd"
+    SWD.url_builder = URI::HTTP
+  end
+
   Rails.application.config.middleware.use OmniAuth::Builder do
     provider :openid_connect,
              discovery: true,                       # endpoints + JWKS from issuer/.well-known (lazy)
