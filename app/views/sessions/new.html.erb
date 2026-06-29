@@ -23,4 +23,12 @@
       <% end %>
     <% end %>
   </div>
+
+  <%# Keycloak SSO — shown only when the OIDC broker is configured (Phase 2b). POST (omniauth-rails_csrf_protection). %>
+  <% if ENV["KC_ISSUER"].present? %>
+    <div class="mt-4 border-t border-line pt-4">
+      <%= button_to "Keycloak로 로그인", "/auth/openid_connect", method: :post,
+            class: "flex w-full items-center justify-center rounded-xl bg-ink px-4 py-3 text-[14px] font-semibold text-white transition hover:opacity-90" %>
+    </div>
+  <% end %>
 </div>

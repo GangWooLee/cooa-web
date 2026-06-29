@@ -15,6 +15,9 @@ Rails.application.routes.draw do
 
   # 로컬 account-picker 로그인 (dev/test; production은 Keycloak OIDC=Phase 2b). 비밀번호 없음.
   resource :session, only: [:new, :create, :destroy]
+  # Keycloak OIDC (Phase 2b). The request phase /auth/openid_connect is handled by the OmniAuth middleware.
+  match "/auth/:provider/callback", to: "sessions#omniauth_callback", via: %i[get post]
+  get "/auth/failure", to: "sessions#auth_failure"
 
   resources :products, only: [:show, :create, :update, :destroy] do  # ② 제품 트리 CRUD (생성=즉시·편집=인라인)
     patch :move, on: :member                                                      # 드래그앤드롭 트리 이동

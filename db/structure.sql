@@ -1192,6 +1192,13 @@ CREATE UNIQUE INDEX index_accounts_on_tenant_id_and_email ON public.accounts USI
 
 
 --
+-- Name: index_accounts_on_tenant_id_and_idp_subject; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_accounts_on_tenant_id_and_idp_subject ON public.accounts USING btree (tenant_id, idp_subject) WHERE (idp_subject IS NOT NULL);
+
+
+--
 -- Name: index_accounts_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1918,6 +1925,7 @@ CREATE POLICY tenant_isolation ON public.screening_runs USING ((tenant_id = (NUL
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260629000001'),
 ('20260628000012'),
 ('20260628000011'),
 ('20260628000010'),

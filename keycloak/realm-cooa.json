@@ -1,0 +1,49 @@
+{
+  "realm": "cooa",
+  "enabled": true,
+  "displayName": "COOA (demo)",
+  "sslRequired": "none",
+  "loginWithEmailAllowed": true,
+  "registrationAllowed": false,
+  "clients": [
+    {
+      "clientId": "cooa-rails",
+      "name": "COOA Rails RP",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "cooa-rails-dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:3000/auth/openid_connect/callback"],
+      "webOrigins": ["http://localhost:3000"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/session/new"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "kim", "email": "kim@cooa.dev", "firstName": "김", "lastName": "쿠아",
+      "enabled": true, "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "demo1234", "temporary": false }]
+    },
+    {
+      "username": "song", "email": "song@cooa.dev", "firstName": "송", "lastName": "쿠아",
+      "enabled": true, "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "demo1234", "temporary": false }]
+    },
+    {
+      "username": "lee", "email": "lee@cooa.dev", "firstName": "이", "lastName": "쿠아",
+      "enabled": true, "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "demo1234", "temporary": false }]
+    },
+    {
+      "username": "park", "email": "park@cooa.dev", "firstName": "박", "lastName": "쿠아",
+      "enabled": true, "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "demo1234", "temporary": false }]
+    }
+  ]
+}

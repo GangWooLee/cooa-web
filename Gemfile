@@ -24,6 +24,11 @@ gem "jbuilder"
 # Authorization (ADR-002 Layer B) — native Pundit policies; Cerbos at microservices extraction
 gem "pundit", "~> 2.4"
 
+# Authentication broker (ADR-003 Phase 2b) — OIDC RP for Keycloak (maintained underscore gem) +
+# request-phase CSRF protection (CVE-2015-9284). Active only when KC_ISSUER is set (or in test).
+gem "omniauth_openid_connect", "~> 0.8"
+gem "omniauth-rails_csrf_protection", "~> 1.0"
+
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"
 
