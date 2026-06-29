@@ -26,7 +26,8 @@ module ReviewedTuple
       artifact_digest(cv) != approval_request.reviewed_artifact_digest ||
       verdict_snapshot(run) != approval_request.verdict_snapshot ||
       ScreeningService::RULESET_VERSION != approval_request.ruleset_version ||
-      ScreeningService::ENGINE_VERSION != approval_request.engine_version
+      ScreeningService::ENGINE_VERSION != approval_request.engine_version ||
+      ScreeningService::DISCLAIMER_VERSION != approval_request.disclaimer_version # P2 review: captured but was not re-checked
   end
 
   # label_texts (text_type,language,country,id) + ingredients (position,id) — deterministic; the string

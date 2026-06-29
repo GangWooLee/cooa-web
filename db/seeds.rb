@@ -25,7 +25,8 @@ TEAM = [ kim, song, lee, park ]
 # ── 인증 신원(Account) + 역할 부여(role_assignment) — Phase 2a-1 ──────────────
 # Account=로그인 신원, User=도메인 '사람'(Strategy B). role_assignment는 tenant-wide(scope_id=NULL).
 # 페르소나: 김=운영자(owner), 송=brand_admin, 이=RA(ra_reviewer+approver), 박=contributor.
-# idp_subject="local|*" → Phase 2b Keycloak OIDC가 동일 행 재사용. owner도 SoD 예외 없음.
+# idp_subject=nil(미바인딩) → Phase 2b 첫 OIDC 로그인이 verified email로 동일 행에 바인딩. idp_subject는
+# 실 IdP subject만 담음(센티넬 없음 — crafted auth.uid가 시드행과 충돌 불가, P2 리뷰). owner도 SoD 예외 없음.
 PERSONA_ROLES = {
   "designer" => %w[owner brand_admin],
   "pm"       => %w[brand_admin],
@@ -33,8 +34,7 @@ PERSONA_ROLES = {
   "scm"      => %w[contributor]
 }.freeze
 TEAM.each do |u|
-  acc = Account.create!(tenant_id: demo_org.id, user: u, email: u.email, status: "active",
-                        idp_subject: "local|#{u.name}")
+  acc = Account.create!(tenant_id: demo_org.id, user: u, email: u.email, status: "active")
   PERSONA_ROLES.fetch(u.role).each do |rk|
     RoleAssignment.create!(account: acc, tenant_id: demo_org.id, role_key: rk,
                            scope_type: "tenant", scope_id: nil)

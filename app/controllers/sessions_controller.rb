@@ -52,15 +52,14 @@ class SessionsController < ApplicationController
 
   # First OIDC login binds the IdP subject to a PRE-PROVISIONED, UNBOUND account by VERIFIED email only.
   # Defenses (P2 C-1 / ADR-002 §0 BOLA): (1) require the email_verified claim — auth.info.email is
-  # otherwise attacker-assertable; (2) bind ONLY an UNBOUND account — idp_subject nil or the local
-  # sentinel "local|*" (db/seeds). An account already bound to a REAL IdP subject is NEVER rebound
-  # (account-takeover + owner DoS). Single-use invitation gating is Phase 2b.
+  # otherwise attacker-assertable; (2) bind ONLY an UNBOUND account (idp_subject IS NULL) — one already
+  # bound to a real subject is NEVER rebound (account-takeover + owner DoS). idp_subject holds ONLY real
+  # IdP subjects (no sentinel), so a crafted auth.uid cannot collide with a seeded row. Invitation = 2b.
   def bind_first_login(auth)
     return nil unless oidc_email_verified?(auth)
     email = auth.info&.email
     return nil if email.blank?
-    account = Account.active.where(tenant_id: Current.tenant_id, email: email)
-                     .where("idp_subject IS NULL OR idp_subject LIKE 'local|%'").first
+    account = Account.active.find_by(tenant_id: Current.tenant_id, email: email, idp_subject: nil)
     account&.update!(idp_subject: auth.uid)
     account
   end

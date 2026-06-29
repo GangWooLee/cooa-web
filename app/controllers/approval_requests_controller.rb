@@ -16,7 +16,7 @@ class ApprovalRequestsController < ApplicationController
   def approve
     req = ApprovalRequest.find(params[:id])
     authorize req, :approve? # M2 SoD (owner included) + pending + actor present
-    return market_ineligible!(req) unless market_eligible_to_approve?(req) # M-4: jurisdiction re-check
+    return market_ineligible!(req) unless market_eligible?(req) # M-4: jurisdiction re-check
     before = req.status
     begin
       req.approve!(approver_id: current_account.user_id) # C1 staleness re-checked atomically inside (P2 M-2)
@@ -34,6 +34,7 @@ class ApprovalRequestsController < ApplicationController
   def reject
     req = ApprovalRequest.find(params[:id])
     authorize req, :reject?
+    return market_ineligible!(req) unless market_eligible?(req) # M-4: same jurisdiction gate as approve
     before = req.status
     req.reject!(approver_id: current_account.user_id, reason: params[:reason])
     audit!(req, action: "reject", before: before)
@@ -58,10 +59,11 @@ class ApprovalRequestsController < ApplicationController
                      request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
   end
 
-  # M-4 (P2): the acting approver must be eligible for THIS request's market (role_assignment.market NULL
-  # or == req.market) — the same DB-backed eligibility M1 checked at submit. Kept out of the pure policy so
-  # ApprovalRequestPolicy stays unit-testable. Dormant until market-scoped grants are issued (grants=NULL).
-  def market_eligible_to_approve?(req)
+  # M-4 (P2): the acting approver/rejecter must be eligible for THIS request's market (role_assignment.market
+  # NULL or == req.market) — the same DB-backed eligibility M1 checked at submit. Gates BOTH approve and
+  # reject (symmetric, P2 review). Kept out of the pure policy so ApprovalRequestPolicy stays unit-testable.
+  # Dormant until market-scoped grants are issued (all current grants = NULL).
+  def market_eligible?(req)
     EligibleApproverService.eligible_user_ids(market: req.market, exclude_user_id: req.submitter_id)
                            .include?(current_account.user_id)
   end

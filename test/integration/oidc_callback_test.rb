@@ -43,11 +43,10 @@ class OidcCallbackTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_path
   end
 
-  test "unverified email is rejected — no rebind (P2 C-1)" do
-    before = Account.find_by!(email: "lee@cooa.dev").idp_subject # local sentinel from seed
+  test "unverified email is rejected — no binding (P2 C-1)" do
     oidc_callback(uid: "kc-unv", email: "lee@cooa.dev", email_verified: false)
     assert_redirected_to new_session_path
-    assert_equal before, Account.find_by!(email: "lee@cooa.dev").idp_subject, "no rebind on unverified email"
+    assert_nil Account.find_by!(email: "lee@cooa.dev").idp_subject # unbound (seed) stays unbound
   end
 
   test "an account already bound to another subject is NOT rebound (account-takeover defense, P2 C-1)" do
