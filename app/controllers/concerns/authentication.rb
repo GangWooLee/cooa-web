@@ -70,7 +70,7 @@ module Authentication
   # Per-request revocation (ADR-003 §3.3): re-read inside the tenant tx; a status change or token_version
   # bump (suspend/deprovision/role-change/logout-everywhere) invalidates the live session immediately.
   def verify_revocation
-    fresh = Account.find_by(id: Current.account.id)
+    fresh = Account.find_by(id: Current.account.id) # unscoped on purpose — must see suspended/deprovisioned rows to detect the transition (do not add .active) (P3 L4)
     return if fresh&.active? && fresh.token_version == session[:token_version]
 
     reset_session

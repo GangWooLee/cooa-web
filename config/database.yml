@@ -12,7 +12,7 @@ default: &default
 # App runtime = cooa_app. When COOA_DB_USER is set (migrations/seed/grant), it overrides → owner.
 app_role: &app_role
   username: <%= ENV.fetch("COOA_DB_USER") { ENV.fetch("COOA_APP_USER", "cooa_app") } %>
-  password: <%= ENV["COOA_DB_USER"] ? ENV.fetch("COOA_DB_PASSWORD", "") : ENV.fetch("COOA_APP_PASSWORD", "cooa_dev_pw") %>
+  password: <%= ENV["COOA_DB_USER"] ? ENV.fetch("COOA_DB_PASSWORD", "") : ENV.fetch("COOA_APP_PASSWORD") { Rails.env.production? ? raise("COOA_APP_PASSWORD required in production") : "cooa_dev_pw" } %>
 
 development:
   <<: [*default, *app_role]

@@ -12,6 +12,9 @@ module TenantScoped
   private
 
   def assign_current_tenant
+    # ||= keeps an explicit value (seed/test). A nil Current.tenant_id assigns nil → RLS WITH CHECK + the
+    # NOT NULL column fail-CLOSED (the row is rejected), never a cross-tenant leak. Intentional — no raise
+    # (would break factories that set the RLS context out-of-band). (P3 L1)
     self.tenant_id ||= Current.tenant_id
   end
 end

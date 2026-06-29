@@ -30,14 +30,14 @@
 
 ### 감사
 - append-only(BEFORE UPDATE/DELETE 트리거 + FORCE RLS) **해시체인** SHA256(prev‖canonical), `audit:verify` 갭탐지. allow/deny 양쪽. 전이=요청 tx와 원자적.
-- ❌ `policy_version` 컬럼 존재하나 **미주입**(default 0); `on_behalf_of`/`impersonation_context` 컬럼 부재.
+- `policy_version`는 매 row에 `MATRIX_VERSION` 주입(P2 M-3 ✅). ❌ `on_behalf_of`/`impersonation_context` 컬럼 부재(break-glass P6와 함께).
 
 ## 2. 갭 4분류 원장
 | bucket | 항목 |
 |---|---|
 | **DONE** | RLS 17·합성FK·cooa_app·SET LOCAL·서버 tenant·OIDC·token_version 폐기·세션회전·SoD·M1/M2·C1 재검증·해시체인 |
 | **2a-blocker** | **step-up(TOTP)** · **break-glass**(+audit on_behalf_of/impersonation_context 컬럼) · **last-owner zero-window 가드** |
-| **2a-fix-bug** | **policy_version 주입**(MATRIX_VERSION 배선) |
+| **2a-fix-bug → DONE(P2)** | policy_version 주입 ✅ · C1 TOCTOU atomic 재검 ✅ · OIDC BOLA ✅ · deny-감사 GUC ✅ (P2에서 전부 해소) |
 | **2b-backlog** | RAG격리 · ComponentVersion TOCTOU 비관락 · quorum/join-rule · product/component-scoped role · region RLS · SCIM · 초대토큰 · 7년보존 · crypto-shred · audit 조회 게이트 |
 | **cut** | tier-SSO · 조직계층(reporting_edge) · delegation 엔진 · HRD/multi-org · multi-market roll-up |
 
@@ -51,8 +51,10 @@
 1. **[blocker] step-up TOTP** — approval_steps에 re_auth_at/factor 추가 + TOTP 챌린지·검증 + reviewed_* digest 서버바인딩 + 성공 후 세션 회전. (규제 e-서명 법적유효성)
 2. **[blocker] break-glass** — impersonation_session + RFC8693(aud=target) + PDP가 impersonation_context면 approve/서명 거부 + audit on_behalf_of/impersonation_context 컬럼 + 상시배너. (XL)
 3. **[blocker] last-owner 가드** — deprovision/suspend 전 active-owner 카운트, 0이면 거부/`pending_owner_recovery`. (S; recovery는 break-glass 재사용)
-4. **[fix-bug] policy_version 주입** — MATRIX_VERSION(또는 git SHA) → 모든 AuditLog.record!에 바인딩. (1~2h)
-5. **[doc] TOCTOU 명시** — approve 경로 "SI=best-effort staleness, pooled=비관락 2b" 주석 + 테스트.
+4. ~~[fix-bug] policy_version 주입~~ → **P2 M-3 완료**(`MATRIX_VERSION` 주입).
+5. ~~[doc] TOCTOU 명시~~ → **P2 M-2 완료**(stale 재검을 `approve!` 트랜잭션 내부로; 전체 락-조율만 2b 잔류, `approval_request.rb` 주석).
+
+> **P2 완료**: 위 4·5 + OIDC BOLA·deny-감사 GUC 해소. 남은 2a 블로커 = **step-up·break-glass·last-owner**(전부 기능, P6 사양).
 
 ## 5. 동결 판단: CONDITIONAL NO-GO → 위 1~4 해소 시 SAFE TO FREEZE
 - **위험한 구멍 0** — 미구현은 전부 안전한 연기(RLS+합성FK가 Postgres층을 닫음).
