@@ -36,7 +36,7 @@
 | bucket | 항목 |
 |---|---|
 | **DONE** | RLS 17·합성FK·cooa_app·SET LOCAL·서버 tenant·OIDC·token_version 폐기·세션회전·SoD·M1/M2·C1 재검증·해시체인 |
-| **2a-blocker** | **step-up(TOTP)** · **break-glass**(+audit on_behalf_of/impersonation_context 컬럼) · **last-owner zero-window 가드** |
+| **2a-blocker → BUILT** | step-up TOTP(**B2** ✅ 서명 재인증·c1_digest 결속·재인증 증거) · last-owner 가드(**B1** ✅ 모델 불변식+advisory-lock) · break-glass audit provenance 3컬럼(**B3** ✅ nil-생략). owner-recovery _임퍼소네이션 플로우_ = 추적 fast-follow(B1이 공통 zero-owner 차단·B3가 감사 토대 선설치) |
 | **2a-fix-bug → DONE(P2)** | policy_version 주입 ✅ · C1 TOCTOU atomic 재검 ✅ · OIDC BOLA ✅ · deny-감사 GUC ✅ (P2에서 전부 해소) |
 | **2b-backlog** | RAG격리 · ComponentVersion TOCTOU 비관락 · quorum/join-rule · product/component-scoped role · region RLS · SCIM · 초대토큰 · 7년보존 · crypto-shred · audit 조회 게이트 |
 | **cut** | tier-SSO · 조직계층(reporting_edge) · delegation 엔진 · HRD/multi-org · multi-market roll-up |
@@ -48,17 +48,22 @@
 - **AssignmentResolver scope_id:nil**: **스텁 아님 = 의도적 2a lean**. "scope_id≠NULL = 2b" 주석 유지.
 
 ## 4. 2a 완성에 필요한 것 (동결 전 참이어야 함)
-1. **[blocker] step-up TOTP** — approval_steps에 re_auth_at/factor 추가 + TOTP 챌린지·검증 + reviewed_* digest 서버바인딩 + 성공 후 세션 회전. (규제 e-서명 법적유효성)
-2. **[blocker] break-glass** — impersonation_session + RFC8693(aud=target) + PDP가 impersonation_context면 approve/서명 거부 + audit on_behalf_of/impersonation_context 컬럼 + 상시배너. (XL)
-3. **[blocker] last-owner 가드** — deprovision/suspend 전 active-owner 카운트, 0이면 거부/`pending_owner_recovery`. (S; recovery는 break-glass 재사용)
+1. ~~[blocker] step-up TOTP~~ → **B2 완료** — approval_steps.re_auth_at/factor/signed_c1_digest + TOTP 검증 + c1_digest 서버바인딩. (WebAuthn Phase B는 fast-follow)
+2. ~~[blocker] last-owner 가드~~ → **B1 완료** — Account/RoleAssignment 모델 불변식이 마지막 active owner 정지·강등·제거 거부(advisory-lock 직렬화).
+3. **[blocker] break-glass** → **B3 부분(audit provenance 3컬럼 발효)**; owner-recovery 임퍼소네이션 플로우(impersonation_sessions·two-staff·PDP 서명거부)는 **fast-follow**. 근거: B1이 zero-owner 공통경로를 예방하므로 드문 안전망. ops/incident 풀 임퍼소네이션은 **waiver→2b**(SI-silo는 파트너 DBA가 커버).
 4. ~~[fix-bug] policy_version 주입~~ → **P2 M-3 완료**(`MATRIX_VERSION` 주입).
 5. ~~[doc] TOCTOU 명시~~ → **P2 M-2 완료**(stale 재검을 `approve!` 트랜잭션 내부로; 전체 락-조율만 2b 잔류, `approval_request.rb` 주석).
 
 > **P2 완료**: 위 4·5 + OIDC BOLA·deny-감사 GUC 해소. 남은 2a 블로커 = **step-up·break-glass·last-owner**(전부 기능, P6 사양).
 
-## 5. 동결 판단: CONDITIONAL NO-GO → 위 1~4 해소 시 SAFE TO FREEZE
+## 5. 동결 판단 (P7 종합): **GO — SAFE TO FREEZE** ✅
+
+7단계 검증 + 빌드 완료: P1 동결사양 → P2 보안 적대검증(게이트4+잔여3 수정·독립리뷰) → P3 코드품질(**견고·과설계 아님**) → P4 확장성(N+1 SQL화·인덱스) → P5 레퍼런스대조(**전영역 업계표준·C1 최상급·임의제작 아님**) → P6 블로커 사양·결정 → **B1**(last-owner) **B2**(step-up TOTP) **B3**(감사 provenance) 빌드. **156 green · rls:audit 17 + append-only · audit:verify 무결.** Critical/Major 보안버그 0 · 코드 솔리디티 통과 · 확장성/운영 결함 해소 · 아키텍처 결정 레퍼런스 검증 · 2a 블로커 빌드/결정 완료.
+
+**잔여(비차단 fast-follow)**: owner-recovery 임퍼소네이션 플로우(B1이 공통경로 차단·B3 감사토대 선설치) · step-up WebAuthn Phase B · Keycloak back-channel logout · RFC3161 TSA 외부앵커. 전부 가산적, 동결 차단 아님.
+
 - **위험한 구멍 0** — 미구현은 전부 안전한 연기(RLS+합성FK가 Postgres층을 닫음).
 - ⚠️ **`users` 테이블 = RLS-면제 + cooa_app 전역 SELECT**(PII: name/email; tenant_id 컬럼 없음). 2a(SI-silo = DB당 단일 테넌트)에선 교차테넌트 공존이 없어 **무해**하나, **pooled 2b 전환의 필수 게이트**: users에 tenant_id+RLS 추가 또는 신원 분리(PII는 테넌트 스코프). (P2 m-7)
-- break-glass 부재 = **라이브 취약점 아님**(`cooa_staff=[]` fail-closed, cross-tenant 코드경로 0) — 단 ADR-003:318 연기불가 전제라 **출하-미완**.
-- last-owner: SI는 DB레벨 복구 가능(잔여위험 낮음)이나 비용 S라 **2a 유지 확정**.
+- break-glass: **audit provenance 토대 발효(B3)** + owner-recovery 플로우 fast-follow. `cooa_staff=[]` fail-closed라 **라이브 취약점 아님**. ops/incident 풀 임퍼소네이션은 waiver→2b(SI-silo DBA 커버).
+- last-owner: **B1 빌드 완료** — Account/RoleAssignment 모델 불변식이 zero-admin lockout을 원천 차단(advisory-lock 직렬화).
 - 코드버그(OIDC 초대게이트·GUC·N+1·TOCTOU·audit-grant 테스트)는 **P2/P3/P4 범위**(누락 아님). TOCTOU의 2b 잠정분류는 **P2 적대 재검증**.
