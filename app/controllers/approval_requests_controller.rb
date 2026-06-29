@@ -9,18 +9,24 @@ class ApprovalRequestsController < ApplicationController
     req = ApprovalRequest.submit_for!(run, submitter_id: current_account.user_id)
     audit!(req, action: "submit_for_approval", before: nil)
     redirect_back fallback_location: root_path, status: :see_other, notice: submit_notice(req)
+  rescue ActiveRecord::RecordNotUnique # m-2 (P2): concurrent submit → idempotent, not a 500
+    redirect_back fallback_location: root_path, status: :see_other, notice: "이미 상신된 결재입니다."
   end
 
   def approve
     req = ApprovalRequest.find(params[:id])
     authorize req, :approve? # M2 SoD (owner included) + pending + actor present
-    if ReviewedTuple.stale?(req)
+    return market_ineligible!(req) unless market_eligible_to_approve?(req) # M-4: jurisdiction re-check
+    before = req.status
+    begin
+      req.approve!(approver_id: current_account.user_id) # C1 staleness re-checked atomically inside (P2 M-2)
+    rescue ApprovalRequest::StaleReviewedTuple
       audit_stale(req)
       return redirect_back fallback_location: root_path, status: :see_other,
                            alert: "검토 내용이 변경되어 승인할 수 없습니다. 재스크리닝 후 재제출하세요."
+    rescue ActiveRecord::RecordNotUnique # m-2 (P2): concurrent approve → already decided, not a 500
+      return redirect_back fallback_location: root_path, status: :see_other, notice: "이미 처리된 결재입니다."
     end
-    before = req.status
-    req.approve!(approver_id: current_account.user_id)
     audit!(req, action: "approve", before: before)
     redirect_back fallback_location: root_path, status: :see_other, notice: "승인되었습니다."
   end
@@ -32,6 +38,8 @@ class ApprovalRequestsController < ApplicationController
     req.reject!(approver_id: current_account.user_id, reason: params[:reason])
     audit!(req, action: "reject", before: before)
     redirect_back fallback_location: root_path, status: :see_other, notice: "반려되었습니다."
+  rescue ActiveRecord::RecordNotUnique # m-2 (P2): concurrent reject → already decided, not a 500
+    redirect_back fallback_location: root_path, status: :see_other, notice: "이미 처리된 결재입니다."
   end
 
   private
@@ -48,6 +56,21 @@ class ApprovalRequestsController < ApplicationController
     AuditLog.record!(action: "approve", resource_type: "ApprovalRequest", resource_id: req.id,
                      outcome: "deny", denial_reason: "stale_reviewed_tuple",
                      request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
+  end
+
+  # M-4 (P2): the acting approver must be eligible for THIS request's market (role_assignment.market NULL
+  # or == req.market) — the same DB-backed eligibility M1 checked at submit. Kept out of the pure policy so
+  # ApprovalRequestPolicy stays unit-testable. Dormant until market-scoped grants are issued (grants=NULL).
+  def market_eligible_to_approve?(req)
+    EligibleApproverService.eligible_user_ids(market: req.market, exclude_user_id: req.submitter_id)
+                           .include?(current_account.user_id)
+  end
+
+  def market_ineligible!(req)
+    AuditLog.record!(action: "approve", resource_type: "ApprovalRequest", resource_id: req.id,
+                     outcome: "deny", denial_reason: "market_ineligible",
+                     request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
+    head :forbidden
   end
 
   def submit_notice(req)

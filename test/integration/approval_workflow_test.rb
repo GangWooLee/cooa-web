@@ -71,6 +71,19 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
     assert_equal "rejected", req.approval_steps.first.decision
   end
 
+  # P2 M-4: an approver scoped to another market cannot sign off (jurisdiction). Dormant until
+  # market-scoped grants exist (seeds use market=NULL) — this proves the guard once they do.
+  test "M-4: an approver scoped to another market cannot approve" do
+    submit! # JP request
+    req = request_for
+    lee = Account.find_by!(email: "lee@cooa.dev")
+    lee.role_assignments.update_all(market: "CN") # 이쿠아 now CN-only → not eligible for JP
+    sign_in_as(lee)
+    post approve_approval_request_path(req)
+    assert_response :forbidden
+    assert_equal "pending", req.reload.status
+  end
+
   # Phase 3c: the screening screen renders the approval panel (catches ERB/policy/avatar errors).
   test "the screening screen renders the approval panel across states" do
     get screening_component_version_path(@v)

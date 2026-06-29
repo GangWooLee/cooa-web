@@ -34,11 +34,8 @@ class SessionsController < ApplicationController
     auth = request.env["omniauth.auth"]
     return reject!("인증 정보가 없습니다.") if auth.nil?
 
-    account = Account.find_by(tenant_id: Current.tenant_id, idp_subject: auth.uid) # returning user
-    if account.nil? && auth.info&.email.present?                                    # first OIDC login
-      account = Account.active.find_by(tenant_id: Current.tenant_id, email: auth.info.email)
-      account&.update!(idp_subject: auth.uid)                                       # bind subject (keep roles)
-    end
+    account = Account.find_by(tenant_id: Current.tenant_id, idp_subject: auth.uid) # returning user (bound)
+    account ||= bind_first_login(auth)                                             # first login (guarded)
     return reject!("허가되지 않은 계정입니다.") unless account&.active?
 
     reset_session
@@ -52,6 +49,26 @@ class SessionsController < ApplicationController
   end
 
   private
+
+  # First OIDC login binds the IdP subject to a PRE-PROVISIONED, UNBOUND account by VERIFIED email only.
+  # Defenses (P2 C-1 / ADR-002 §0 BOLA): (1) require the email_verified claim — auth.info.email is
+  # otherwise attacker-assertable; (2) bind ONLY an UNBOUND account — idp_subject nil or the local
+  # sentinel "local|*" (db/seeds). An account already bound to a REAL IdP subject is NEVER rebound
+  # (account-takeover + owner DoS). Single-use invitation gating is Phase 2b.
+  def bind_first_login(auth)
+    return nil unless oidc_email_verified?(auth)
+    email = auth.info&.email
+    return nil if email.blank?
+    account = Account.active.where(tenant_id: Current.tenant_id, email: email)
+                     .where("idp_subject IS NULL OR idp_subject LIKE 'local|%'").first
+    account&.update!(idp_subject: auth.uid)
+    account
+  end
+
+  def oidc_email_verified?(auth)
+    raw = auth.extra&.raw_info
+    raw && (raw["email_verified"] == true || raw["email_verified"].to_s == "true")
+  end
 
   def reject!(message)
     redirect_to new_session_path, alert: message, status: :see_other

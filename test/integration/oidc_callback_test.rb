@@ -14,9 +14,10 @@ class OidcCallbackTest < ActionDispatch::IntegrationTest
     OmniAuth.config.test_mode = false
   end
 
-  def oidc_callback(uid:, email: nil, name: "OIDC User", extra: nil)
-    hash = { provider: "openid_connect", uid: uid, info: { email: email, name: name } }
-    hash[:extra] = extra if extra
+  def oidc_callback(uid:, email: nil, name: "OIDC User", email_verified: true, extra: nil)
+    raw = { email_verified: email_verified }
+    raw.merge!(extra[:raw_info]) if extra && extra[:raw_info]
+    hash = { provider: "openid_connect", uid: uid, info: { email: email, name: name }, extra: { raw_info: raw } }
     OmniAuth.config.mock_auth[:openid_connect] = OmniAuth::AuthHash.new(hash)
     get "/auth/openid_connect/callback"
   end
@@ -40,6 +41,20 @@ class OidcCallbackTest < ActionDispatch::IntegrationTest
   test "unknown email is rejected" do
     oidc_callback(uid: "kc-x", email: "stranger@evil.test")
     assert_redirected_to new_session_path
+  end
+
+  test "unverified email is rejected — no rebind (P2 C-1)" do
+    before = Account.find_by!(email: "lee@cooa.dev").idp_subject # local sentinel from seed
+    oidc_callback(uid: "kc-unv", email: "lee@cooa.dev", email_verified: false)
+    assert_redirected_to new_session_path
+    assert_equal before, Account.find_by!(email: "lee@cooa.dev").idp_subject, "no rebind on unverified email"
+  end
+
+  test "an account already bound to another subject is NOT rebound (account-takeover defense, P2 C-1)" do
+    Account.find_by!(email: "lee@cooa.dev").update!(idp_subject: "kc-lee-legit")
+    oidc_callback(uid: "kc-attacker", email: "lee@cooa.dev") # verified email, different subject
+    assert_redirected_to new_session_path
+    assert_equal "kc-lee-legit", Account.find_by!(email: "lee@cooa.dev").idp_subject
   end
 
   test "inactive account is rejected" do

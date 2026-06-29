@@ -22,6 +22,12 @@ class AuditLogTest < ActiveSupport::TestCase
     assert_equal "JP", a.region
   end
 
+  test "record! stamps the current policy_version (P2 M-3)" do
+    a = AuditLog.record!(action: "approve", resource_type: "X", resource_id: 1, outcome: "allow")
+    assert_equal Authz::PermissionMatrix::MATRIX_VERSION, a.policy_version
+    refute_equal 0, a.policy_version, "policy_version must not be the unstamped default"
+  end
+
   test "allow requires a domain actor (fail-CLOSED for unlinked accounts)" do
     Current.account = nil
     assert_raises(RuntimeError) { AuditLog.record!(action: "x", resource_type: "Y", outcome: "allow") }

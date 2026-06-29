@@ -26,6 +26,7 @@ class RlsAppConnectionTest < ActiveSupport::TestCase
     owner.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON #{RLS_TABLES} TO cooa_app")
     owner.execute("GRANT SELECT ON #{READ_ONLY} TO cooa_app")
     owner.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO cooa_app") # bigserial INSERT
+    owner.execute("GRANT SELECT, INSERT ON audit_logs TO cooa_app")                    # append-only (no UPDATE/DELETE)
 
     @org_a = Organization.create!(name: "App Tenant A", region: "JP")
     @org_b = Organization.create!(name: "App Tenant B", region: "US")
@@ -90,5 +91,30 @@ class RlsAppConnectionTest < ActiveSupport::TestCase
                      "VALUES ('#{@org_b.id}', 'evil', 'folder', 0, now(), now())")
       end
     end
+  end
+
+  # Audit append-only under cooa_app (P2 M-1 + m-1): INSERT REQUIRES the tenant GUC — so the deny-audit
+  # path must re-establish it (rescue_from runs after the request tx unwinds, GUC cleared); UPDATE/DELETE
+  # are denied (SELECT/INSERT-only grant + immutable trigger). test=owner suites mask this (BYPASSRLS).
+  test "audit_logs needs tenant context to INSERT and is immutable under cooa_app" do
+    cols = "(tenant_id, action, resource_type, outcome, tenant_seq, chain_hash)"
+    vals = "('#{@org_a.id}', 'probe', 'X', 'deny', 1, 'h')"
+    # (a) no GUC → RLS WITH CHECK blocks (the M-1 failure mode the rescue must avoid)
+    assert_raises(ActiveRecord::StatementInvalid) { @app.execute("INSERT INTO audit_logs #{cols} VALUES #{vals}") }
+    # (b) with the tenant context → succeeds
+    id = TenantContext.with_tenant(@org_a.id, connection: @app) do
+      @app.execute("INSERT INTO audit_logs #{cols} VALUES #{vals}")
+      @app.select_value("SELECT id FROM audit_logs WHERE action = 'probe'")
+    end
+    assert id, "deny audit row persists when the tenant context is set"
+    # (c) UPDATE / DELETE denied (append-only)
+    assert_raises(ActiveRecord::StatementInvalid) do
+      TenantContext.with_tenant(@org_a.id, connection: @app) { @app.execute("UPDATE audit_logs SET action='x' WHERE id=#{id}") }
+    end
+    assert_raises(ActiveRecord::StatementInvalid) do
+      TenantContext.with_tenant(@org_a.id, connection: @app) { @app.execute("DELETE FROM audit_logs WHERE id=#{id}") }
+    end
+  ensure
+    ActiveRecord::Base.connection.execute("TRUNCATE audit_logs")
   end
 end

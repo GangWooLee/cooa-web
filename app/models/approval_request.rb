@@ -7,6 +7,8 @@ class ApprovalRequest < ApplicationRecord
   STATUSES = %w[pending blocked_no_approver approved rejected cancelled].freeze
   TERMINAL = %w[approved rejected cancelled].freeze
 
+  StaleReviewedTuple = Class.new(StandardError) # C1 re-check failed inside approve! (TOCTOU defense, P2 M-2)
+
   belongs_to :screening_run
   belongs_to :submitter, class_name: "User"
   has_many :approval_steps, dependent: :destroy
@@ -31,9 +33,14 @@ class ApprovalRequest < ApplicationRecord
     req
   end
 
-  # M2 (SoD) + C1 (staleness) are checked by the policy/controller BEFORE these run.
+  # M2 (SoD) is checked by the policy BEFORE this. C1 staleness is re-verified ATOMICALLY here (P2 M-2):
+  # the component_version is locked FOR UPDATE and the reviewed-tuple re-compared inside the sign tx, so
+  # content cannot diverge between the check and the signature (TOCTOU). Raises StaleReviewedTuple on
+  # divergence. (Full edit/re-screen lock coordination is Phase 2b — see docs/authz-2a-freeze-spec.md.)
   def approve!(approver_id:)
     transaction do
+      screening_run.component_version.lock! # FOR UPDATE — serialize vs concurrent edit/re-screen
+      raise StaleReviewedTuple if ReviewedTuple.stale?(self)
       approval_steps.create!(approver_id: approver_id, decision: "approved", meaning: "approved", acted_at: Time.current)
       update!(status: "approved")
     end

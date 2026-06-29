@@ -38,15 +38,21 @@ class ApplicationController < ActionController::Base
   # Persist the denial (ADR-002 §5.4 — deny spikes signal BOLA probing). Best-effort: an audit failure
   # must never turn a clean 403 into a 500.
   def audit_deny(exception)
+    return if Current.tenant_id.blank? # deny before tenant context — nothing to scope to; logged above
     record = exception.record
     klass = record.is_a?(Class) ? record : record.class
-    AuditLog.record!(
-      action: exception.query.to_s.delete_suffix("?"),
-      resource_type: klass.name,
-      resource_id: (record.try(:id) unless record.is_a?(Class)),
-      outcome: "deny", denial_reason: "pundit",
-      request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent
-    )
+    # rescue_from runs AFTER the around_action RLS tx has unwound, so app.current_tenant_id is cleared.
+    # Re-establish it in a fresh tenant tx — otherwise the INSERT fails RLS WITH CHECK under cooa_app and
+    # the deny is silently lost in production (P2 M-1). Still best-effort (a failure must not 500 a 403).
+    TenantContext.with_tenant(Current.tenant_id) do
+      AuditLog.record!(
+        action: exception.query.to_s.delete_suffix("?"),
+        resource_type: klass.name,
+        resource_id: (record.try(:id) unless record.is_a?(Class)),
+        outcome: "deny", denial_reason: "pundit",
+        request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent
+      )
+    end
   rescue => e
     Rails.logger.error("[audit] deny logging failed: #{e.class}: #{e.message}")
   end

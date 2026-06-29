@@ -3,6 +3,10 @@ module Authz
   # external_collaborator entries are "scoped" in the ADR — RLS + resource scoping enforce the
   # scope; the verb set here is the ceiling. cooa_staff has NO standing grants (break-glass only).
   module PermissionMatrix
+    # Bump on any MATRIX change — stamped into every audit_log row (policy_version) so a regulatory
+    # sign-off is attributable to the exact role→verb policy in force (P2 M-3). Integer = audit column type.
+    MATRIX_VERSION = 1
+
     MATRIX = {
       "viewer" => %w[
         view_tenant view_product view_component_version view_screening_findings

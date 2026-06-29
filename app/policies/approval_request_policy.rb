@@ -11,6 +11,10 @@ class ApprovalRequestPolicy < ApplicationPolicy
     can?(:reject) && record.pending? && actor_present? && submitter_distinct?
   end
 
+  # NOTE (P2 M-4): the approver's MARKET eligibility (role_assignment.market NULL or == record.market) is
+  # re-checked in ApprovalRequestsController#approve, not here — it is a DB-backed eligibility (like M1),
+  # kept out of this policy so it stays pure/unit-testable. Dormant until market-scoped grants are issued.
+
   private
 
   def actor_present? = context.actor_id.present?

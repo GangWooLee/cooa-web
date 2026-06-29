@@ -6,6 +6,8 @@ class AuditLog < ApplicationRecord
 
   belongs_to :organization, foreign_key: :tenant_id, optional: true
 
+  validates :outcome, inclusion: { in: %w[allow deny] } # m-4 (P2): reject non-canonical outcomes
+
   before_create :assign_chain
 
   # The single write API. tenant/actor/region come from Current; request_id/source_ip/user_agent from
@@ -13,18 +15,23 @@ class AuditLog < ApplicationRecord
   # silently pass an authorized action); deny may have a nil actor (pre-auth/unlinked probe — recording
   # it is the point: deny spikes signal BOLA).
   def self.record!(action:, resource_type:, outcome:, resource_id: nil, denial_reason: nil,
+                   policy_version: Authz::PermissionMatrix::MATRIX_VERSION,
                    before: nil, after: nil, request_id: nil, source_ip: nil, user_agent: nil)
     account = Current.account
     actor_id = account&.domain_user_id
-    if outcome.to_s == "allow" && actor_id.nil?
-      raise "AuditLog allow requires a domain actor (actor_id is nil — unlinked Account?)"
+    # Fail-CLOSED: only an explicit deny may have a nil actor (pre-auth probe). Anything else — incl. a
+    # typo'd outcome (m-4) — REQUIRES a domain actor, so a non-canonical outcome cannot slip an
+    # authorized action through actorless.
+    if actor_id.nil? && outcome.to_s != "deny"
+      raise "AuditLog #{outcome} requires a domain actor (actor_id is nil — unlinked Account?)"
     end
 
     create!(
       tenant_id: Current.tenant_id, region: account&.organization&.region,
       actor_id: actor_id, actor_account_id: account&.id,
       action: action.to_s, resource_type: resource_type.to_s, resource_id: resource_id,
-      outcome: outcome.to_s, denial_reason: denial_reason, before: before, after: after,
+      outcome: outcome.to_s, denial_reason: denial_reason, policy_version: policy_version,
+      before: before, after: after,
       request_id: request_id, source_ip: source_ip, user_agent: user_agent
     )
   end
