@@ -16,7 +16,8 @@ class AuditLog < ApplicationRecord
   # it is the point: deny spikes signal BOLA).
   def self.record!(action:, resource_type:, outcome:, resource_id: nil, denial_reason: nil,
                    policy_version: Authz::PermissionMatrix::MATRIX_VERSION,
-                   before: nil, after: nil, request_id: nil, source_ip: nil, user_agent: nil)
+                   before: nil, after: nil, request_id: nil, source_ip: nil, user_agent: nil,
+                   on_behalf_of_account_id: nil, impersonation_session_id: nil, impersonation_context: nil)
     account = Current.account
     actor_id = account&.domain_user_id
     # Fail-CLOSED: only an explicit deny may have a nil actor (pre-auth probe). Anything else — incl. a
@@ -32,7 +33,9 @@ class AuditLog < ApplicationRecord
       action: action.to_s, resource_type: resource_type.to_s, resource_id: resource_id,
       outcome: outcome.to_s, denial_reason: denial_reason, policy_version: policy_version,
       before: before, after: after,
-      request_id: request_id, source_ip: source_ip, user_agent: user_agent
+      request_id: request_id, source_ip: source_ip, user_agent: user_agent,
+      on_behalf_of_account_id: on_behalf_of_account_id, impersonation_session_id: impersonation_session_id,
+      impersonation_context: impersonation_context
     )
   end
 
@@ -56,12 +59,20 @@ class AuditLog < ApplicationRecord
   end
 
   def canonical_body
-    AuditLogHash.canonical(
+    fields = {
       tenant_id: tenant_id, tenant_seq: tenant_seq, region: region,
       actor_id: actor_id, actor_account_id: actor_account_id,
       action: action, resource_type: resource_type, resource_id: resource_id,
       outcome: outcome, denial_reason: denial_reason, policy_version: policy_version,
       before: before, after: after, ts: ts.utc.iso8601(6)
-    )
+    }
+    # nil-OMISSION (P6 #2): a normal (non-impersonated) row serializes EXACTLY as before these columns
+    # existed → existing chains stay valid; provenance is hashed only when actually set.
+    unless on_behalf_of_account_id.nil? && impersonation_session_id.nil? && impersonation_context.nil?
+      fields[:on_behalf_of_account_id] = on_behalf_of_account_id
+      fields[:impersonation_session_id] = impersonation_session_id
+      fields[:impersonation_context] = impersonation_context
+    end
+    AuditLogHash.canonical(fields)
   end
 end

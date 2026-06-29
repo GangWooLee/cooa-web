@@ -410,7 +410,10 @@ CREATE TABLE public.audit_logs (
     tenant_seq bigint NOT NULL,
     prev_chain_hash character varying,
     chain_hash character varying NOT NULL,
-    ts timestamp(6) without time zone DEFAULT now() NOT NULL
+    ts timestamp(6) without time zone DEFAULT now() NOT NULL,
+    on_behalf_of_account_id uuid,
+    impersonation_session_id bigint,
+    impersonation_context jsonb
 );
 
 ALTER TABLE ONLY public.audit_logs FORCE ROW LEVEL SECURITY;
@@ -2268,6 +2271,7 @@ CREATE POLICY tenant_isolation ON public.screening_runs USING ((tenant_id = (NUL
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260630000003'),
 ('20260630000002'),
 ('20260630000001'),
 ('20260629000003'),

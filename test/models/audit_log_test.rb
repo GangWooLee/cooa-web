@@ -22,6 +22,20 @@ class AuditLogTest < ActiveSupport::TestCase
     assert_equal "JP", a.region
   end
 
+  test "impersonation provenance is OMITTED from the canonical when absent (chains stay compatible, P6 #2)" do
+    a = AuditLog.record!(action: "approve", resource_type: "X", resource_id: 1, outcome: "allow")
+    refute_includes a.send(:canonical_body), "on_behalf_of", "a normal row must not carry the new fields in its hash"
+    assert_equal a.chain_hash, a.expected_chain_hash
+  end
+
+  test "impersonation provenance is recorded + hashed when present (P6 #2)" do
+    a = AuditLog.record!(action: "manage_members", resource_type: "Account", resource_id: 1, outcome: "allow",
+                         on_behalf_of_account_id: @account.id, impersonation_context: { "category" => "owner_recovery" })
+    assert_includes a.send(:canonical_body), "on_behalf_of"
+    assert_equal a.chain_hash, a.expected_chain_hash, "a row WITH provenance still verifies"
+    assert_equal({ "category" => "owner_recovery" }, a.impersonation_context)
+  end
+
   test "record! stamps the current policy_version (P2 M-3)" do
     a = AuditLog.record!(action: "approve", resource_type: "X", resource_id: 1, outcome: "allow")
     assert_equal Authz::PermissionMatrix::MATRIX_VERSION, a.policy_version
