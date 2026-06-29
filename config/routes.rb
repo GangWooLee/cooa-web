@@ -34,9 +34,9 @@ Rails.application.routes.draw do
 
   resources :component_versions, only: [:show, :edit, :update], path: "versions" do
     member do
-      get  :screening,         to: "screenings#screening"          # ④ 인허가 스크리닝 화면
-      post :run_screening,     to: "screenings#run_screening"      # 스크리닝 실행(룰엔진)
-      post :approve_screening, to: "screenings#approve_screening"  # RA 승인
+      get  :screening,     to: "screenings#screening"      # ④ 인허가 스크리닝 화면
+      post :run_screening, to: "screenings#run_screening"  # 스크리닝 실행(룰엔진)
+      # 승인은 Phase 3c에서 approval_requests로 이전(레거시 approve_screening 은퇴)
     end
     resources :annotations, only: [:create]                        # 바운딩박스 피드백 생성
   end

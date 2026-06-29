@@ -5,6 +5,7 @@ class ScreeningsController < ApplicationController
   def screening
     authorize @version, :view_screening_findings?
     @run = latest_run
+    @approval_request = ApprovalRequest.find_by(screening_run_id: @run.id) if @run # Phase 3c 결재 패널
     TabHistory.track(session, "s", @version.id) # 헤더 히스토리 — 스크리닝
   end
 
@@ -15,18 +16,6 @@ class ScreeningsController < ApplicationController
     return redirect_to screening_component_version_path(@version) if @country.blank?
     ScreeningService.new(@version, @country).run!(requested_by: current_user)
     redirect_to screening_component_version_path(@version, ran: 1)
-  end
-
-  # RA 승인 — 신원기반 SoD(승인자≠제출자, owner도 예외 없음). ScreeningRunPolicy#approve?.
-  def approve_screening
-    run = latest_run
-    if run
-      authorize run, :approve?
-      run.update(status: "approved", approved_by: current_user, approved_at: Time.current)
-    else
-      skip_authorization
-    end
-    redirect_to screening_component_version_path(@version)
   end
 
   private

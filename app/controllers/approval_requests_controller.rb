@@ -1,5 +1,5 @@
-# Approval workflow (Phase 3b, ADR-002 §5.3). ADDITIVE — the demo still uses screenings#approve_screening
-# until 3c flips the UI. submit (create) captures the C1 reviewed-tuple + runs M1; approve re-validates C1
+# Approval workflow (Phase 3b/3c, ADR-002 §5.3). The demo screening screen submits/approves here (the
+# legacy screening-level approve was retired in 3c). submit (create) captures the C1 reviewed-tuple + runs M1; approve re-validates C1
 # (stale → deny) + enforces M2 SoD (policy); every transition is an audit_log row (atomic with the request tx).
 class ApprovalRequestsController < ApplicationController
   # create = submit_for_approval from a screening_run; the run's owning product gates the verb.

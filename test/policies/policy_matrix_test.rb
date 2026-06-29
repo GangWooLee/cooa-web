@@ -56,22 +56,24 @@ class PolicyMatrixTest < ActiveSupport::TestCase
   end
 end
 
-# SoD lives in ScreeningRunPolicy, not the matrix — verified with a stub run.
-class ScreeningRunSoDTest < ActiveSupport::TestCase
+# SoD lives in ApprovalRequestPolicy (Phase 3b/3c), not the matrix — verified with a stub request.
+class ApprovalRequestSoDTest < ActiveSupport::TestCase
   StubContext = Struct.new(:roles, :actor_id) do
     def roles_on(_record) = roles
   end
-  Run = Struct.new(:requested_by_id)
+  Req = Struct.new(:submitter_id, :status) do
+    def pending? = status == "pending"
+  end
 
-  def policy(roles, actor_id, requested_by_id)
-    ScreeningRunPolicy.new(StubContext.new(roles, actor_id), Run.new(requested_by_id))
+  def policy(roles, actor_id, submitter_id, status: "pending")
+    ApprovalRequestPolicy.new(StubContext.new(roles, actor_id), Req.new(submitter_id, status))
   end
 
   test "approver who is not the submitter may approve" do
     assert policy(%w[approver], 2, 1).approve?
   end
 
-  test "approver who IS the submitter is denied (SoD)" do
+  test "submitter is denied (SoD)" do
     refute policy(%w[approver], 1, 1).approve?
   end
 
@@ -81,5 +83,13 @@ class ScreeningRunSoDTest < ActiveSupport::TestCase
 
   test "non-approver role cannot approve even if distinct" do
     refute policy(%w[contributor], 2, 1).approve?
+  end
+
+  test "nil actor (unlinked Account) fails closed" do
+    refute policy(%w[approver], nil, 1).approve?
+  end
+
+  test "a non-pending request cannot be approved" do
+    refute policy(%w[approver], 2, 1, status: "approved").approve?
   end
 end

@@ -24,26 +24,29 @@ class DemoFlowsTest < ActionDispatch::IntegrationTest
     assert_match "변경사유", response.body
   end
 
-  # 신원기반 SoD(ADR-002 §8.2): 제출자(run)와 승인자가 달라야 함. owner도 예외 없음.
-  test "④ 스크리닝 실행 + RA 승인 (maker-checker SoD)" do
+  # 신원기반 SoD(ADR-002 §8.2): 제출자와 승인자가 달라야 함. owner도 예외 없음. (Phase 3c: approval_request 흐름)
+  test "④ 스크리닝 실행 + 결재 상신 + 승인 (maker-checker SoD)" do
     v = hero_v(5)
     lee = Account.find_by!(email: "lee@cooa.dev") # RA → approver
 
-    # 제출(run) = 기본 로그인 김쿠아(owner)
+    # 실행(run) + 상신 = 기본 로그인 김쿠아(owner)
     assert_difference -> { v.screening_runs.count }, 1 do
       post run_screening_component_version_path(v)
     end
-    assert_redirected_to screening_component_version_path(v, ran: 1) # 스캔 애니메이션 트리거
+    run = v.screening_runs.order(:created_at).last
+    post approval_requests_path(screening_run_id: run.id)
+    req = ApprovalRequest.find_by!(screening_run_id: run.id)
+    assert_equal "pending", req.status
 
-    # 음성: 제출자 김쿠아가 자기 run을 승인 시도 → SoD 거부(403), 승인 안 됨 (owner도 예외 없음)
-    post approve_screening_component_version_path(v)
+    # 음성: 제출자 김쿠아 자가 승인 → SoD 거부(403), 승인 안 됨 (owner도 예외 없음)
+    post approve_approval_request_path(req)
     assert_response :forbidden
-    refute v.screening_runs.order(:created_at).last.approved?, "제출자 자가 승인은 거부되어야 함"
+    assert_equal "pending", req.reload.status
 
-    # 양성: 다른 신원 이쿠아(RA=approver)로 전환해 승인 → 통과
+    # 양성: 다른 신원 이쿠아(approver)로 전환해 승인 → 통과
     sign_in_as(lee)
-    post approve_screening_component_version_path(v)
-    assert v.screening_runs.order(:created_at).last.approved?, "제출자와 다른 approver는 승인 가능"
+    post approve_approval_request_path(req)
+    assert_equal "approved", req.reload.status
   end
 
   test "③ 비교 렌더 + 어노테이션 코멘트/해소/생성" do

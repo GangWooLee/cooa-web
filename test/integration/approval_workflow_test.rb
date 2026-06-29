@@ -70,4 +70,16 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
     assert_equal "rejected", req.reload.status
     assert_equal "rejected", req.approval_steps.first.decision
   end
+
+  # Phase 3c: the screening screen renders the approval panel (catches ERB/policy/avatar errors).
+  test "the screening screen renders the approval panel across states" do
+    get screening_component_version_path(@v)
+    assert_response :success
+    assert_match "결재 상신", response.body # no request yet → submit button (김쿠아 owner)
+    submit!
+    get screening_component_version_path(@v)
+    assert_response :success
+    assert_match "결재 대기", response.body # pending; 김쿠아=submitter → SoD note, no approve button
+    assert_match "SoD", response.body
+  end
 end
