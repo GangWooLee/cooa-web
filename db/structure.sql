@@ -1375,6 +1375,13 @@ CREATE INDEX idx_on_tenant_id_resource_type_resource_id_ts_0d52db2ecc ON public.
 
 
 --
+-- Name: idx_ra_eligible_approver; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_ra_eligible_approver ON public.role_assignments USING btree (tenant_id, role_key) WHERE (scope_id IS NULL);
+
+
+--
 -- Name: idx_unique_product_code; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2256,6 +2263,7 @@ CREATE POLICY tenant_isolation ON public.screening_runs USING ((tenant_id = (NUL
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260630000001'),
 ('20260629000003'),
 ('20260629000002'),
 ('20260629000001'),

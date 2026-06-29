@@ -13,5 +13,6 @@ class RoleAssignment < ApplicationRecord
   validates :scope_type, inclusion: { in: SCOPE_TYPES }
   validates :market, inclusion: { in: MARKETS }, allow_nil: true
 
+  scope :active, -> { where("expires_at IS NULL OR expires_at > ?", Time.current) } # SQL expiry (P4) — SQL twin of active?
   def active? = expires_at.nil? || expires_at.future?
 end

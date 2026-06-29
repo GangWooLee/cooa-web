@@ -41,11 +41,13 @@ module Authz
     class AssignmentResolver
       def initialize(account) = @account = account
 
+      # record-INDEPENDENT (tenant-wide grants only in 2a), so memoize per-actor: AccessContext caches by
+      # [class, id], which misses across N distinct records in a list view — re-running the SAME query N times
+      # (P4 ①b). @all_roles is request-lived (resolver built per request). Re-check when scope_id grants land (2b).
       def roles_on(_record)
         return [] unless @account
 
-        RoleAssignment.where(account_id: @account.id, scope_id: nil)
-                      .select(&:active?).map(&:role_key).uniq
+        @all_roles ||= RoleAssignment.active.where(account_id: @account.id, scope_id: nil).distinct.pluck(:role_key)
       end
     end
   end

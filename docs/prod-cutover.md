@@ -105,3 +105,31 @@ CREATE ROLE cooa_app LOGIN PASSWORD '<COOA_APP_PASSWORD>'
 - `audit_logs` 보존/아카이브 정책(7년 무결).
 - vestigial `screening_runs` 승인 컬럼(status/approved_by_id/approved_at) 드롭 마이그.
 - AI-엔진 데이터 인프라(Qdrant/OpenSearch/BGE-M3)는 **별개 트랙**(이 런북 범위 밖).
+
+---
+
+## 12. 운영 SOP (P4 — 스케일/운영 검증)
+**키 로테이션 (3개 시크릿)**
+- `COOA_APP_PASSWORD`(cooa_app): `ALTER ROLE cooa_app PASSWORD '<new>'` → 시크릿 매니저 갱신 → 앱 롤링 재시작. (미설정 시 prod는 부팅 fail-fast — `database.yml`)
+- `KC_CLIENT_SECRET`: Keycloak에서 client secret 재발급(kcadm/REST) → 시크릿 갱신 → 재시작.
+- `SECRET_KEY_BASE`: ⚠️ 로테이션 시 **세션 쿠키 암호화 키가 바뀌어 전 세션 무효화**(강제 전체 로그아웃). 무중단 필요 시 `secret_key_base` rotations 설정 후 단계적 폐기.
+
+**커넥션 풀링**
+- `TenantContext.with_tenant`는 `set_config(...,true)`=**SET LOCAL**(트랜잭션 경계) → **PgBouncer 트랜잭션 풀링 모드 지원**(session 풀링 불필요; 세션 레벨 SET/prepared state 없음). 풀드 컷오버 시 transaction pooling 사용.
+
+**백업/복원 vs 해시체인**
+- domain+audit 정합을 위해 **단일 일관 스냅샷**(PITR 또는 단일 트랜잭션 덤프) 강제. 부분 백업 혼합 금지.
+- `audit:verify`는 **tail 절단(최근 이력 유실)을 못 잡음**(1..N 연속이면 PASS) — 복원 후 최신 `tenant_seq`를 외부 기록과 대조.
+
+**모니터링**
+- `audit:detect_bola`(deny 급증=BOLA 신호)를 야간 recurring으로 등록(`config/recurring.yml`). 알림 싱크 연동은 2b.
+- 배포 게이트 `rls:audit`/`audit:verify`를 **체크인된 배포 스크립트**로 고정(사람 누락 방지; 2b에 블로킹 CI로 승격).
+
+## 13. 2b 스케일 게이트 (트리거 명시 — 2a에선 손대지 말 것)
+- **audit_logs RANGE 파티셔닝(by `ts`) + DROP 아카이빙** — 불변 트리거가 DELETE 차단 → DROP만이 purge 경로. 트리거: 풀드 전환 OR 단일테이블 >~1천만 행.
+- **요청-수명 트랜잭션 풀 점유** — `scope_to_tenant`가 액션+렌더 전체를 1 tx로 핀. 트리거: 2b 부하테스트서 connection 고갈 관측.
+- **`detect_bola` 알림 채널** + **`rls:audit`/`audit:verify` 블로킹 CI 스텝** — 트리거: 풀드 SaaS 출시 전.
+- **advisory lock 32-bit 충돌**(`hashtext(uuid)`) — 트리거: 테넌트 수천 도달(정확성은 `UNIQUE(tenant,seq)`가 보증, throughput만).
+- **dashboard `tree_preorder` N+1**(루트만 preload) — 트리거: 대형 제품트리. flat 로드+Ruby 그룹핑으로 O(1) 쿼리화.
+- **`users` 테이블 tenant_id+RLS**(2a RLS-면제) — 트리거: pooled 멀티테넌트(freeze spec §5).
+- **인덱스**: `idx_ra_eligible_approver`(P4 ②)는 이미 추가(2a 무영향·2b 헤지). silo의 0-선택도 `tenant_id` 인덱스는 2b 풀드에서 발효.

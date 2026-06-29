@@ -9,12 +9,10 @@ module EligibleApproverService
   module_function
 
   def eligible_user_ids(market:, exclude_user_id: nil)
-    RoleAssignment.where(role_key: ELIGIBLE_ROLES, scope_id: nil)
+    RoleAssignment.active.where(role_key: ELIGIBLE_ROLES, scope_id: nil) # expiry/join pushed to SQL (P4 ①)
                   .where("market IS NULL OR market = ?", market)
-                  .includes(:account)
-                  .select(&:active?)
-                  .filter_map { |ra| ra.account&.user_id }
-                  .uniq - [exclude_user_id].compact
+                  .joins(:account).distinct.pluck("accounts.user_id")
+                  .compact - [exclude_user_id].compact
   end
 
   def any?(market:, exclude_user_id: nil)
