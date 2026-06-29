@@ -6,6 +6,12 @@
 class ScreeningService
   Result = Struct.new(:decision, :findings, :summary)
 
+  # C1 reviewed-tuple versioning (ADR-002 §5.3) — bump when rules/engine/disclaimer change so an approval
+  # signed under an older version is detectable as stale at re-validation. Strings (not integers).
+  RULESET_VERSION = "1.0".freeze
+  ENGINE_VERSION = "v1".freeze
+  DISCLAIMER_VERSION = "1.0".freeze
+
   def initialize(version, country)
     @version = version
     @country = country

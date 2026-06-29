@@ -52,6 +52,14 @@ Rails.application.routes.draw do
   # ③ 버전 비교 (가치 라벨 없는 버전쌍 선택)
   get "versions/:from_id/compare/:to_id", to: "comparisons#show", as: :comparison
 
+  # ④ 승인 워크플로 (Phase 3b) — submit(create) / approve / reject. 데모 UI 플립은 3c.
+  resources :approval_requests, only: [:create] do
+    member do
+      post :approve
+      post :reject
+    end
+  end
+
   # 상단 히스토리 탭 닫기(세션)
   delete "/tabs/:id", to: "tabs#destroy", as: :tab
 end
