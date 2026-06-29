@@ -13,6 +13,20 @@ module TenantRls
     execute "GRANT SELECT, INSERT, UPDATE, DELETE ON #{table} TO cooa_app"
   end
 
+  # Append-only variant (ADR-002 §5.4 audit_log): same tenant-isolation policy, but cooa_app gets
+  # SELECT+INSERT only (NO update/delete) — immutability. (A trigger in the migration enforces it even
+  # for the owner.) The real grant source of truth is cooa.rake (structure.sql strips GRANTs).
+  def enable_append_only_rls!(table)
+    execute "ALTER TABLE #{table} ENABLE ROW LEVEL SECURITY"
+    execute "ALTER TABLE #{table} FORCE ROW LEVEL SECURITY"
+    execute <<~SQL
+      CREATE POLICY tenant_isolation ON #{table}
+        USING      (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
+        WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
+    SQL
+    execute "GRANT SELECT, INSERT ON #{table} TO cooa_app"
+  end
+
   def disable_tenant_rls!(table)
     execute "DROP POLICY IF EXISTS tenant_isolation ON #{table}"
     execute "ALTER TABLE #{table} NO FORCE ROW LEVEL SECURITY"

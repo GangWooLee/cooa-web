@@ -35,6 +35,20 @@ namespace :rls do
       abort "RLS audit FAILED — tenant tables missing ENABLE+FORCE+policy: #{bad.map { |r| r['relname'] }.join(', ')}"
     end
     puts "RLS audit OK — #{rows.size} tenant-scoped table(s) ENABLE+FORCE+policy (exempt: #{exempt.size})."
+
+    # Append-only guard: such tables must have NO cooa_app UPDATE/DELETE + an immutability trigger.
+    conn = ActiveRecord::Base.connection
+    APPEND_ONLY_TABLES.each do |t|
+      privs = conn.select_values(<<~SQL)
+        SELECT privilege_type FROM information_schema.role_table_grants
+        WHERE grantee = 'cooa_app' AND table_schema = 'public' AND table_name = '#{t}'
+      SQL
+      leaked = privs & %w[UPDATE DELETE]
+      abort "append-only #{t}: cooa_app has #{leaked.join(',')} (must be SELECT/INSERT only)" if leaked.any?
+      trig = conn.select_value("SELECT 1 FROM pg_trigger WHERE tgrelid = '#{t}'::regclass AND NOT tgisinternal LIMIT 1")
+      abort "append-only #{t}: missing immutability trigger" if trig.nil?
+    end
+    puts "Append-only OK — #{APPEND_ONLY_TABLES.size} table(s): no cooa_app UPDATE/DELETE + trigger."
   end
 
   # 14 tenant-scoped tables (RLS) get DML; global KB + users + active_storage get read-only.
@@ -48,6 +62,9 @@ namespace :rls do
     active_storage_attachments active_storage_blobs active_storage_variant_records
     schema_migrations ar_internal_metadata
   ].freeze
+  # Append-only (ADR-002 §5.4): cooa_app gets SELECT+INSERT only — no UPDATE/DELETE (a trigger enforces
+  # immutability even for the owner). RLS still applies (these ARE tenant-scoped).
+  APPEND_ONLY_TABLES = %w[audit_logs].freeze
 
   desc "Grant the non-owner app role (cooa_app) privileges (structure.sql strips GRANTs — re-apply after schema load)"
   task grant_app: :environment do
@@ -57,9 +74,10 @@ namespace :rls do
     conn.execute("GRANT USAGE ON SCHEMA public TO cooa_app")
     conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON #{RLS_TABLES.join(', ')} TO cooa_app")
     conn.execute("GRANT SELECT ON #{READ_ONLY_TABLES.join(', ')} TO cooa_app")
+    conn.execute("GRANT SELECT, INSERT ON #{APPEND_ONLY_TABLES.join(', ')} TO cooa_app") # append-only: no update/delete
     # Domain bigserial PKs need sequence USAGE for INSERT (else "permission denied for sequence").
     conn.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO cooa_app")
     conn.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO cooa_app")
-    puts "Granted cooa_app on #{db} (#{RLS_TABLES.size} RLS + #{READ_ONLY_TABLES.size} read-only + sequences)."
+    puts "Granted cooa_app on #{db} (#{RLS_TABLES.size} RLS + #{READ_ONLY_TABLES.size} read-only + #{APPEND_ONLY_TABLES.size} append-only + sequences)."
   end
 end

@@ -27,11 +27,28 @@ class ApplicationController < ActionController::Base
   # redirect+alert for GET html. Persistent audit_log row = Phase 3 (Phase 1 = structured log).
   def deny_access(exception)
     Rails.logger.warn("[authz][deny] verb=#{exception.query} record=#{exception.record.class} account=#{Current.account&.id} tenant=#{Current.tenant_id}")
+    audit_deny(exception)
     if request.get? && request.format.html?
       redirect_to root_path, alert: "권한이 없습니다.", status: :see_other
     else
       head :forbidden
     end
+  end
+
+  # Persist the denial (ADR-002 §5.4 — deny spikes signal BOLA probing). Best-effort: an audit failure
+  # must never turn a clean 403 into a 500.
+  def audit_deny(exception)
+    record = exception.record
+    klass = record.is_a?(Class) ? record : record.class
+    AuditLog.record!(
+      action: exception.query.to_s.delete_suffix("?"),
+      resource_type: klass.name,
+      resource_id: (record.try(:id) unless record.is_a?(Class)),
+      outcome: "deny", denial_reason: "pundit",
+      request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent
+    )
+  rescue => e
+    Rails.logger.error("[audit] deny logging failed: #{e.class}: #{e.message}")
   end
 
   # 모든 화면 공통 셸 데이터 (사이드바 트리). 히스토리 탭은 header_tabs(렌더 시점)로 분리.

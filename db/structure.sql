@@ -24,6 +24,16 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
 
 
+--
+-- Name: audit_logs_immutable(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.audit_logs_immutable() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+  BEGIN RAISE EXCEPTION 'audit_logs is append-only (% blocked)', TG_OP; END $$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -284,6 +294,55 @@ CREATE TABLE public.ar_internal_metadata (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+
+--
+-- Name: audit_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.audit_logs (
+    id bigint NOT NULL,
+    tenant_id uuid NOT NULL,
+    region character varying,
+    actor_id bigint,
+    actor_account_id uuid,
+    action character varying NOT NULL,
+    resource_type character varying NOT NULL,
+    resource_id bigint,
+    outcome character varying NOT NULL,
+    denial_reason character varying,
+    policy_version integer DEFAULT 0 NOT NULL,
+    before jsonb,
+    after jsonb,
+    source_ip inet,
+    request_id character varying,
+    user_agent character varying,
+    tenant_seq bigint NOT NULL,
+    prev_chain_hash character varying,
+    chain_hash character varying NOT NULL,
+    ts timestamp(6) without time zone DEFAULT now() NOT NULL
+);
+
+ALTER TABLE ONLY public.audit_logs FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: audit_logs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.audit_logs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: audit_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.audit_logs_id_seq OWNED BY public.audit_logs.id;
 
 
 --
@@ -855,6 +914,13 @@ ALTER TABLE ONLY public.annotations ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: audit_logs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.audit_logs ALTER COLUMN id SET DEFAULT nextval('public.audit_logs_id_seq'::regclass);
+
+
+--
 -- Name: component_versions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1019,6 +1085,14 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 
 --
+-- Name: audit_logs audit_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.audit_logs
+    ADD CONSTRAINT audit_logs_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: component_versions component_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1171,6 +1245,13 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: idx_on_tenant_id_resource_type_resource_id_ts_0d52db2ecc; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_tenant_id_resource_type_resource_id_ts_0d52db2ecc ON public.audit_logs USING btree (tenant_id, resource_type, resource_id, ts);
+
+
+--
 -- Name: idx_unique_product_code; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1308,6 +1389,34 @@ CREATE INDEX index_annotations_on_resolved_in_version_id ON public.annotations U
 --
 
 CREATE INDEX index_annotations_on_tenant_id ON public.annotations USING btree (tenant_id);
+
+
+--
+-- Name: index_audit_logs_on_tenant_id_and_actor_id_and_ts; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_audit_logs_on_tenant_id_and_actor_id_and_ts ON public.audit_logs USING btree (tenant_id, actor_id, ts);
+
+
+--
+-- Name: index_audit_logs_on_tenant_id_and_outcome; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_audit_logs_on_tenant_id_and_outcome ON public.audit_logs USING btree (tenant_id, outcome);
+
+
+--
+-- Name: index_audit_logs_on_tenant_id_and_tenant_seq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_audit_logs_on_tenant_id_and_tenant_seq ON public.audit_logs USING btree (tenant_id, tenant_seq);
+
+
+--
+-- Name: index_audit_logs_on_tenant_id_and_ts; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_audit_logs_on_tenant_id_and_ts ON public.audit_logs USING btree (tenant_id, ts);
 
 
 --
@@ -1518,6 +1627,13 @@ CREATE INDEX index_screening_runs_on_tenant_id ON public.screening_runs USING bt
 --
 
 CREATE UNIQUE INDEX uniq_role_assignment ON public.role_assignments USING btree (tenant_id, account_id, role_key, scope_id, market) NULLS NOT DISTINCT;
+
+
+--
+-- Name: audit_logs audit_logs_no_mutate; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER audit_logs_no_mutate BEFORE DELETE OR UPDATE ON public.audit_logs FOR EACH ROW EXECUTE FUNCTION public.audit_logs_immutable();
 
 
 --
@@ -1755,6 +1871,12 @@ ALTER TABLE public.annotation_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.annotations ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: audit_logs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: component_versions; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1842,6 +1964,13 @@ CREATE POLICY tenant_isolation ON public.annotations USING ((tenant_id = (NULLIF
 
 
 --
+-- Name: audit_logs tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.audit_logs USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+
+--
 -- Name: component_versions tenant_isolation; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -1925,6 +2054,7 @@ CREATE POLICY tenant_isolation ON public.screening_runs USING ((tenant_id = (NUL
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260629000002'),
 ('20260629000001'),
 ('20260628000012'),
 ('20260628000011'),
