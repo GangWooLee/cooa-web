@@ -9,6 +9,9 @@ class Account < ApplicationRecord
   belongs_to :user, optional: true
   has_many :role_assignments, dependent: :destroy
 
+  before_update :guard_last_owner_on_deactivate # P6 #3: refuse suspend/deprovision of the last active owner
+  before_destroy :guard_last_owner_on_destroy
+
   validates :email, presence: true
   validates :status, inclusion: { in: STATUSES }
 
@@ -25,4 +28,22 @@ class Account < ApplicationRecord
 
   # Revoke-all: every bump invalidates outstanding sessions/tokens (ADR-003 §3.3). Checked per-request.
   def bump_token_version! = increment!(:token_version)
+
+  private
+
+  # Suspend/deprovision an account that is CURRENTLY an active owner → must leave another active owner.
+  def guard_last_owner_on_deactivate
+    return unless status_changed? && status_was == "active" && !active?
+    LastOwnerGuard.ensure_owner_remains!(tenant_id, id) if owner_grant?
+  end
+
+  # Destroy cascades role_assignments (dependent: :destroy) — the RoleAssignment guard also fires — but
+  # guard here too so the refusal is explicit regardless of callback ordering.
+  def guard_last_owner_on_destroy
+    LastOwnerGuard.ensure_owner_remains!(tenant_id, id) if active? && owner_grant?
+  end
+
+  def owner_grant?
+    role_assignments.active.exists?(role_key: "owner", scope_id: nil)
+  end
 end

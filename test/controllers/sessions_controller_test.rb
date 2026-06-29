@@ -38,7 +38,11 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "suspended account is signed out" do
-    Account.find_by!(email: "kim@cooa.dev").update!(status: "suspended")
+    kim = Account.find_by!(email: "kim@cooa.dev")
+    # kim is the demo's sole owner; add a co-owner so the suspend isn't refused by the last-owner guard (P6 #3)
+    RoleAssignment.create!(tenant_id: kim.tenant_id, account: Account.find_by!(email: "lee@cooa.dev"),
+                           role_key: "owner", scope_type: "tenant", scope_id: nil)
+    kim.update!(status: "suspended")
     get root_path
     assert_redirected_to new_session_path
   end

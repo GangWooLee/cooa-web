@@ -13,6 +13,24 @@ class RoleAssignment < ApplicationRecord
   validates :scope_type, inclusion: { in: SCOPE_TYPES }
   validates :market, inclusion: { in: MARKETS }, allow_nil: true
 
+  before_destroy :guard_last_owner          # P6 #3: removing the last owner grant is refused
+  before_update :guard_last_owner_on_expire # …as is expiring it
+
   scope :active, -> { where("expires_at IS NULL OR expires_at > ?", Time.current) } # SQL expiry (P4) — SQL twin of active?
   def active? = expires_at.nil? || expires_at.future?
+
+  private
+
+  def guard_last_owner
+    return unless owner_grant? && active? && account&.active?
+    LastOwnerGuard.ensure_owner_remains!(tenant_id, account_id)
+  end
+
+  def guard_last_owner_on_expire
+    return unless owner_grant? && account&.active?
+    return unless expires_at_changed? && (expires_at_was.nil? || expires_at_was > Time.current) && !active?
+    LastOwnerGuard.ensure_owner_remains!(tenant_id, account_id)
+  end
+
+  def owner_grant? = role_key == "owner" && scope_id.nil?
 end
