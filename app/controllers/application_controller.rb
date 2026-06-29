@@ -45,7 +45,7 @@ class ApplicationController < ActionController::Base
   # 먼저 실행되므로 거기서 계산하면 "들어간 페이지"의 탭이 한 스텝 늦게 보임. 렌더 시점엔 track 이후라
   # 현재 항목이 포함됨(들어간 즉시 표시). lazy 메모이즈로 요청당 1회.
   def header_tabs
-    @header_tabs ||= (nav_ready? ? TabHistory.descriptors(session) : [])
+    @header_tabs ||= (nav_ready? && Current.tenant_id ? TabHistory.descriptors(session) : [])
   end
 
   def nav_ready? = ActiveRecord::Base.connection.schema_cache.data_source_exists?("products")

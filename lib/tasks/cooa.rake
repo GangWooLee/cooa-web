@@ -56,6 +56,9 @@ namespace :rls do
     conn.execute("GRANT USAGE ON SCHEMA public TO cooa_app")
     conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON #{RLS_TABLES.join(', ')} TO cooa_app")
     conn.execute("GRANT SELECT ON #{READ_ONLY_TABLES.join(', ')} TO cooa_app")
-    puts "Granted cooa_app on #{db} (#{RLS_TABLES.size} RLS + #{READ_ONLY_TABLES.size} read-only)."
+    # Domain bigserial PKs need sequence USAGE for INSERT (else "permission denied for sequence").
+    conn.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO cooa_app")
+    conn.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO cooa_app")
+    puts "Granted cooa_app on #{db} (#{RLS_TABLES.size} RLS + #{READ_ONLY_TABLES.size} read-only + sequences)."
   end
 end

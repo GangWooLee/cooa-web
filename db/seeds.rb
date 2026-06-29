@@ -8,11 +8,11 @@
 puts "Clearing..."
 [ ScreeningFinding, ScreeningRun, AnnotationComment, Annotation, LabelText, Ingredient,
  ComponentVersion, Component, ProductMember, ProductProperty, Product,
- RoleAssignment, Account, User, # accounts.user_id FK → users: 계정/부여를 User보다 먼저 삭제
+ RoleAssignment, Account, Organization, User, # FK 순서: 부여→계정→조직(계정.tenant_id)→User(계정.user_id)
  IngredientLimit, LabelRequirement, AdRiskExpression ].each(&:delete_all)
 
 # Phase 0b: 단일 데모 테넌트(org). 이후 모든 도메인 create는 TenantScoped concern이 tenant_id 자동 적재.
-demo_org = Organization.find_or_create_by!(name: "COOA Demo") { |o| o.region = "JP" }
+demo_org = Organization.find_or_create_by!(id: TenantConfig::DEMO_TENANT_ID) { |o| o.name = "COOA Demo"; o.region = "JP" }
 Current.tenant_id = demo_org.id
 
 # ── 사용자 / 팀 ─────────────────────────────────────────────────────────────

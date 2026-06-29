@@ -1,25 +1,28 @@
-# Phase 2a-1 authentication (ADR-003). The Account is the authenticated principal; its linked User is
-# the domain person / display source (Strategy B). Tenant is SERVER-resolved from the account — never a
-# client claim (ADR-002 §7 / ADR-003 §2.1). Revocation (token_version/status) is checked every request.
+# Phase 2a auth (ADR-003). The Account is the authenticated principal; its linked User is the domain
+# person / display source (Strategy B). The tenant is resolved from the CONNECTION (TenantConfig) — never
+# the account's claim — and set BEFORE the RLS transaction opens, so account lookups run tenant-scoped
+# (under cooa_app a pre-context query on the RLS-protected accounts table fail-closes → 0 rows). Revocation
+# (token_version/status) is checked every request.
 module Authentication
   extend ActiveSupport::Concern
 
   IDLE_TIMEOUT = 60.minutes
 
   included do
-    before_action :resolve_account
-    before_action :set_current_tenant
-    around_action :scope_to_tenant
+    before_action :set_connection_tenant   # from TenantConfig (ENV/constant) — no DB query
+    around_action :scope_to_tenant          # open the RLS tx (SET LOCAL) — must precede account lookups
+    before_action :resolve_account          # inside the tx → accounts is RLS-scoped to this tenant
+    before_action :validate_tenant_match    # defense: the account must belong to the connection tenant
     before_action :verify_revocation
     helper_method :current_account, :current_user
   end
 
   class_methods do
-    # Pre-login actions (SessionsController#new/#create) opt out of the auth gate.
+    # Pre-login actions (SessionsController#new/#create) KEEP the tenant context (so the picker can query
+    # accounts within this tenant) and skip only the authentication steps.
     def allow_unauthenticated_access(**options)
       skip_before_action :resolve_account, **options
-      skip_before_action :set_current_tenant, **options
-      skip_around_action :scope_to_tenant, **options
+      skip_before_action :validate_tenant_match, **options
       skip_before_action :verify_revocation, **options
     end
   end
@@ -28,6 +31,16 @@ module Authentication
 
   def current_account = Current.account
   def current_user = Current.account&.user # domain person — write-sites & views unchanged (Strategy B)
+
+  # Tenant from the connection (SI silo ENV / demo constant), NOT the account. Set before scope_to_tenant.
+  def set_connection_tenant
+    Current.tenant_id = TenantConfig.connection_tenant_id
+  end
+
+  # Wrap the request (action + view render) in the tenant's RLS context; SET LOCAL clears at tx end.
+  def scope_to_tenant(&block)
+    TenantContext.with_tenant(Current.tenant_id, &block)
+  end
 
   def resolve_account
     Current.account = Account.active.find_by(id: session[:account_id])
@@ -44,14 +57,14 @@ module Authentication
     (last = session[:last_seen]).present? && Time.current.to_i - last.to_i > IDLE_TIMEOUT.to_i
   end
 
-  # From the authenticated account only — runs before scope_to_tenant opens the RLS transaction.
-  def set_current_tenant
-    Current.tenant_id = Current.account&.tenant_id
-  end
+  # The signed-in account must belong to the connection-resolved tenant — a cookie carrying an account_id
+  # from another tenant must never be honored.
+  def validate_tenant_match
+    return if Current.account.nil? || Current.account.tenant_id == Current.tenant_id
 
-  # Wrap the request (action + view render) in the tenant's RLS context; SET LOCAL clears at tx end.
-  def scope_to_tenant(&block)
-    TenantContext.with_tenant(Current.tenant_id, &block)
+    Rails.logger.warn("[auth][tenant-mismatch] account=#{Current.account.id} tenant=#{Current.tenant_id}")
+    reset_session
+    require_login
   end
 
   # Per-request revocation (ADR-003 §3.3): re-read inside the tenant tx; a status change or token_version

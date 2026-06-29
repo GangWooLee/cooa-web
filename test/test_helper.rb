@@ -14,7 +14,7 @@ module ActiveSupport
     # (same "COOA Demo" org as db/seeds) + a Current context, so inline-built records resolve to ONE
     # tenant — otherwise composite FKs reject the mix.
     setup do
-      org = Organization.find_or_create_by!(name: "COOA Demo") { |o| o.region = "JP" }
+      org = Organization.find_or_create_by!(id: TenantConfig::DEMO_TENANT_ID) { |o| o.name = "COOA Demo"; o.region = "JP" }
       Current.tenant_id = org.id
     end
   end
