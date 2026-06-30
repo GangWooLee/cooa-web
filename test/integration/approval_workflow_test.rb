@@ -122,6 +122,23 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
     assert AuditLog.where(outcome: "deny", denial_reason: "step_up_not_enrolled").exists?
   end
 
+  # 데모 한정 단락(config.x.step_up_required=false): 코드 없이 승인. prod 불변식은 production.rb가 강제(여기 미적용).
+  test "step-up: demo bypass approves without a code (re_auth_factor=demo_bypass, C1 결속 유지)" do
+    submit!
+    req = request_for
+    lee = Account.find_by!(email: "lee@cooa.dev")
+    sign_in_as(lee)
+    Rails.configuration.x.step_up_required = false
+    post approve_approval_request_path(req) # no code
+    assert_equal "approved", req.reload.status
+    step = req.approval_steps.first
+    assert_equal "demo_bypass", step.re_auth_factor
+    assert_nil step.re_auth_at, "단락이라 재인증 시각 없음"
+    assert_equal ReviewedTuple.c1_digest(req), step.signed_c1_digest, "바이패스도 C1 결속 유지"
+  ensure
+    Rails.configuration.x.step_up_required = true
+  end
+
   # Phase 3c: the screening screen renders the approval panel (catches ERB/policy/avatar errors).
   test "the screening screen renders the approval panel across states" do
     get screening_component_version_path(@v)

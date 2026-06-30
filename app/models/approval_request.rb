@@ -44,7 +44,8 @@ class ApprovalRequest < ApplicationRecord
       # P6 #1: persist the signing-moment re-auth evidence bound to the exact reviewed-tuple digest
       # (Part-11 §11.50/§11.200). The controller verified the factor before calling this.
       approval_steps.create!(approver_id: approver_id, decision: "approved", meaning: "approved",
-                             acted_at: Time.current, re_auth_at: Time.current, re_auth_factor: re_auth_factor,
+                             acted_at: Time.current, re_auth_factor: re_auth_factor,
+                             re_auth_at: (re_auth_factor == "demo_bypass" ? nil : Time.current), # 데모 단락=재인증 없음
                              signed_c1_digest: ReviewedTuple.c1_digest(self))
       update!(status: "approved")
     end

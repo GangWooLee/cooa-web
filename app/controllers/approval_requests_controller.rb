@@ -17,11 +17,13 @@ class ApprovalRequestsController < ApplicationController
     req = ApprovalRequest.find(params[:id])
     authorize req, :approve? # M2 SoD (owner included) + pending + actor present
     return market_ineligible!(req) unless market_eligible?(req)                      # M-4: jurisdiction re-check
-    return step_up_required!(req) unless current_account.totp_enrolled?             # P6 #1: signature re-auth
-    return step_up_failed!(req) unless current_account.verify_totp(params[:totp_code])
+    if step_up_enforced?                                                            # P6 #1: signature re-auth (prod 항상·데모만 단락)
+      return step_up_required!(req) unless current_account.totp_enrolled?
+      return step_up_failed!(req) unless current_account.verify_totp(params[:totp_code])
+    end
     before = req.status
     begin
-      req.approve!(approver_id: current_account.user_id, re_auth_factor: "totp") # C1 re-checked atomically inside (P2 M-2)
+      req.approve!(approver_id: current_account.user_id, re_auth_factor: step_up_enforced? ? "totp" : "demo_bypass") # C1 재검은 원자 tx 내부(P2 M-2)
     rescue ApprovalRequest::StaleReviewedTuple
       audit_stale(req)
       return redirect_back fallback_location: root_path, status: :see_other,
@@ -75,6 +77,12 @@ class ApprovalRequestsController < ApplicationController
                      outcome: "deny", denial_reason: "market_ineligible",
                      request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
     head :forbidden
+  end
+
+  # P6 #1: 서명 재인증은 prod에서 무조건 강제(`|| production?`) + dev/test 기본 ON(`config.x.step_up_required`).
+  # 데모만 opt-out(COOA_DEMO_STEP_UP_OFF=development.rb) — prod는 끌 수 없음. 단락 시 re_auth_factor='demo_bypass'.
+  def step_up_enforced?
+    Rails.configuration.x.step_up_required || Rails.env.production?
   end
 
   # P6 #1 step-up (TOTP): an approver must re-authenticate at the signing moment. Not enrolled → send to

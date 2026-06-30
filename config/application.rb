@@ -23,6 +23,10 @@ module Web
     # Local account-picker login (no password) — dev/test only; production uses the OIDC broker (Phase 2b).
     config.x.local_login_enabled = !Rails.env.production?
 
+    # 승인 서명 step-up(TOTP) 강제 — 기본 ON(prod·test·dev 전부). 데모 한정 단락은 development.rb에서만
+    # opt-out(prod에선 production.rb가 무조건 true로 재단언; Part-11 §11.200 불변식).
+    config.x.step_up_required = true
+
     # Configuration for the application, engines, and railties goes here.
     #
     # These settings can be overridden in specific environments using the files
