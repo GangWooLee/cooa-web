@@ -25,10 +25,11 @@ Rails.application.configure do
   config.active_storage.service = :local
 
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
+  # ⚠️ cutover: upstream(LB/리버스 프록시)이 TLS 종단이면 아래 force_ssl 대신 이걸 켜라 (prod-cutover.md §9).
   # config.assume_ssl = true
 
-  # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  # config.force_ssl = true
+  # Force all access over SSL + Strict-Transport-Security + secure cookies (prod-cutover.md §9 — 기본 활성).
+  config.force_ssl = true
 
   # Skip http-to-https redirect for the default health check endpoint.
   # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }

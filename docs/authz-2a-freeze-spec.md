@@ -67,3 +67,17 @@
 - break-glass: **audit provenance 토대 발효(B3)** + owner-recovery 플로우 fast-follow. `cooa_staff=[]` fail-closed라 **라이브 취약점 아님**. ops/incident 풀 임퍼소네이션은 waiver→2b(SI-silo DBA 커버).
 - last-owner: **B1 빌드 완료** — Account/RoleAssignment 모델 불변식이 zero-admin lockout을 원천 차단(advisory-lock 직렬화).
 - 코드버그(OIDC 초대게이트·GUC·N+1·TOCTOU·audit-grant 테스트)는 **P2/P3/P4 범위**(누락 아님). TOCTOU의 2b 잠정분류는 **P2 적대 재검증**.
+
+## 6. Fast-follow 백로그 (배포 후·비차단 — 단일 소스)
+2a는 동결 GO. 아래는 *가산적*이라 동결을 막지 않으며, 우선순위순으로 처리한다(중복 추적 방지 = 이 섹션이 단일 소스).
+
+**Fast-follow (2a 직후 우선):**
+- **owner-recovery 임퍼소네이션 플로우** — B1이 zero-owner 공통경로 차단·B3가 감사 provenance 컬럼 선설치. 남은 것: `impersonation_sessions` 테이블 + two-staff 승인 + PDP 서명거부 + UI. (P6 #2 설계 완료)
+- **step-up WebAuthn Phase B** — 현 `/step-up`은 평문 시크릿 노출·QR 미지원(TOTP Phase A). WebAuthn/FIDO2(피싱저항 AAL2, P5 우선) + QR 등록 UX.
+- **AR_ENCRYPTION_* graceful 로테이션** — initializer에 `previous:` 키체인 배선(현 단일 키 = 로테이션 시 fleet 재등록). (배포준비 감사 발견)
+- **데모 step-up 단락 옵션** — web-demo에 결재 노출 시 `local_login_enabled` 게이트에 데모 한정 step-up 단락 PR(prod always-on 불변 유지). (배포준비 감사 발견)
+
+**2b 백로그 (pooled SaaS/Enterprise — 트리거 구동):**
+- Keycloak back-channel logout · RFC3161 TSA 외부 타임스탬프 앵커 · `users` tenant_id+RLS(pooled 게이트) · SCIM/디프로비전 · 초대 single-use 토큰 · crypto-shredding(PIPA) · region RLS 강제 · product/component-scoped grant(ReBAC 트리거) · audit RANGE 파티셔닝·7년 보존 · RAG/벡터 격리 · 외부 PDP(Cerbos — AI코어 분리=다중서비스 트리거).
+
+> 상세 트리거·근거: P5 `docs/authz-reference-benchmark.md` · P4 `docs/prod-cutover.md` §13(2b 스케일 게이트) · 메모리 [[cooa-rbac-authz-design]]·[[cooa-auth-adr003]].

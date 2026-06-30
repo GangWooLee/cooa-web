@@ -5,6 +5,13 @@
 #  · 히어로: 레티놀 3% 세럼 / 일본(CO0001) / 단상자 v5 → v6 비교.
 # ============================================================================
 
+# 프로덕션 가드: 데모 시드를 prod에 주입 금지 — db:prepare(fresh DB서 db:seed 자동 실행)가 데모 org/계정을
+# prod에 넣는 것을 차단한다. cutover는 db:schema:load + db:migrate(no-seed) 경로(prod-cutover.md §7).
+# 의도적 데모 시드가 정말 필요하면 COOA_ALLOW_DEMO_SEED=1로만 강제. (test/dev는 production?=false라 무영향)
+if Rails.env.production? && ENV["COOA_ALLOW_DEMO_SEED"] != "1"
+  abort("[seeds] production 환경에서 데모 시드는 금지입니다 (필요 시 COOA_ALLOW_DEMO_SEED=1).")
+end
+
 puts "Clearing..."
 [ ScreeningFinding, ScreeningRun, AnnotationComment, Annotation, LabelText, Ingredient,
  ComponentVersion, Component, ProductMember, ProductProperty, Product,
