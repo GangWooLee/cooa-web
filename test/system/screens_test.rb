@@ -2,7 +2,6 @@ require "application_system_test_case"
 
 # 화면 캡처 + 핵심 인터랙션(뷰어 포커스) 검증
 class ScreensTest < ApplicationSystemTestCase
-  setup { Rails.application.load_seed }
 
   def hero
     Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box")
@@ -100,14 +99,14 @@ class ScreensTest < ApplicationSystemTestCase
     assert_text "이전"
 
     # 반응형 + 가로 오버플로 0 검증 (1366·1280px)
-    page.driver.browser.manage.window.resize_to(1366, 900)
+    page.current_window.resize_to(1366, 900)
     visit root_path
     assert_text "레티놀 3% 세럼"
     sleep 0.5
     save_screenshot(dir.join("6_dashboard_1366.png"))
 
     [1366, 1280].each do |w|
-      page.driver.browser.manage.window.resize_to(w, 860)
+      page.current_window.resize_to(w, 860)
       visit comparison_path(from_id: v5.id, to_id: v6.id)
       assert_text "피드백"
       sleep 0.9
@@ -122,7 +121,7 @@ class ScreensTest < ApplicationSystemTestCase
   test "version file: view, add, edit" do
     dir = Rails.root.join("tmp/screens")
     FileUtils.mkdir_p(dir)
-    page.driver.browser.manage.window.resize_to(1440, 900)
+    page.current_window.resize_to(1440, 900)
     prod    = Product.find_by(code: "CO0001")
     barcode = prod.components.find_by(component_type: "barcode") # 원래 아트워크 없음
 

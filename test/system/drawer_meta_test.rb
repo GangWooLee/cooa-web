@@ -2,13 +2,12 @@ require "application_system_test_case"
 
 # 드로어 메타 — 커스텀 속성(Notion식) + 자유 역할 담당자(동적 행)
 class DrawerMetaTest < ApplicationSystemTestCase
-  setup { Rails.application.load_seed }
 
   def leaf = Product.find_by(code: "CO0001")
 
   # 드로어 진입 + Stimulus 연결 정착(무거운 대시보드 뒤 드로어라 연결이 느릴 수 있음)
   def visit_drawer(product)
-    page.driver.browser.manage.window.resize_to(1440, 900)
+    page.current_window.resize_to(1440, 900)
     visit product_path(product)
     assert_selector "#detail", wait: 10
     sleep 0.3

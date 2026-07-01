@@ -1,7 +1,6 @@
 require "application_system_test_case"
 
 class DrawerSidebarTest < ApplicationSystemTestCase
-  setup { Rails.application.load_seed }
 
   # 같은 구성요소 행의 삭제버튼(absolute form) top 좌표
   def delete_top
@@ -17,7 +16,7 @@ class DrawerSidebarTest < ApplicationSystemTestCase
   end
 
   test "Fix3+Fix1: 변경사유 토글을 열어도 삭제버튼 위치 고정 + 비교 열기 작동" do
-    page.driver.browser.manage.window.resize_to(1440, 900)
+    page.current_window.resize_to(1440, 900)
     hero = Product.find_by(code: "CO0001")
     visit product_path(hero)
     assert_selector "button[data-action*='version-timeline#toggle']", wait: 6
@@ -34,9 +33,9 @@ class DrawerSidebarTest < ApplicationSystemTestCase
   end
 
   test "Fix2: 사이드바 '+' 새 폴더 → 사이드바에서 인라인 입력 등장·포커스" do
-    page.driver.browser.manage.window.resize_to(1440, 900)
+    page.current_window.resize_to(1440, 900)
     visit root_path
-    within("aside") { find("button[title='새 폴더']").click }
+    within("#app-sidebar") { find("button[title='새 폴더']").click }
     assert_selector "aside form input[name='product[name]']", wait: 6
     focused = page.evaluate_script("document.activeElement && document.activeElement.getAttribute('name')")
     assert_equal "product[name]", focused, "새 폴더 입력칸이 사이드바에서 포커스되어야 함"

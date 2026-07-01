@@ -1,7 +1,6 @@
 require "application_system_test_case"
 
 class CompareFocusTest < ApplicationSystemTestCase
-  setup { Rails.application.load_seed }
 
   def comp = Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box")
   def scale_of
@@ -15,7 +14,7 @@ class CompareFocusTest < ApplicationSystemTestCase
   end
 
   test "비교: 초기 무선택(전 박스 선명) → 클릭 포커스 → 재클릭 흐림해제(줌 유지)" do
-    page.driver.browser.manage.window.resize_to(1440, 900)
+    page.current_window.resize_to(1440, 900)
     # 어노테이션이 있는 히어로 비교(v5→v6)
     from = comp.component_versions.find_by(version_number: 5)
     to   = comp.component_versions.find_by(version_number: 6)

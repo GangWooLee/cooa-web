@@ -1,7 +1,6 @@
 require "application_system_test_case"
 
 class SidebarToggleTest < ApplicationSystemTestCase
-  setup { Rails.application.load_seed }
 
   def sidebar_right
     page.evaluate_script("(() => { const e=document.getElementById('app-sidebar'); return e ? Math.round(e.getBoundingClientRect().right) : -999 })()")
@@ -11,7 +10,7 @@ class SidebarToggleTest < ApplicationSystemTestCase
   TOGGLE = "header button[title='사이드바 접기/펼치기']".freeze
 
   test "상단바 토글로 사이드바 닫기/열기 + 쿠키로 네비 후 유지" do
-    page.driver.browser.manage.window.resize_to(1440, 900)
+    page.current_window.resize_to(1440, 900)
     visit root_path
     assert_selector "#app-sidebar", wait: 6
     assert_selector TOGGLE, visible: true # 토글은 상단바에 항상 노출

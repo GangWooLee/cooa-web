@@ -2,7 +2,6 @@ require "application_system_test_case"
 
 # 트리: 즉시 생성 → 트리에서 인라인 명명(Notion식, 드로어 안 띄움) · 자유 구성요소 · 연쇄삭제
 class TreeCrudTest < ApplicationSystemTestCase
-  setup { Rails.application.load_seed }
 
   # 호버 노출(opacity-0) 컨트롤은 좌표 클릭이 불안정 → JS 클릭으로 견고하게
   def js_click(css)
@@ -36,7 +35,7 @@ class TreeCrudTest < ApplicationSystemTestCase
   end
 
   def create_folder_via_toolbar
-    page.driver.browser.manage.window.resize_to(1440, 900)
+    page.current_window.resize_to(1440, 900)
     visit root_path
     find("button.bg-cooa-gradient[title='새 폴더']").click # 툴바 폴더 아이콘(사이드바와 구분)
     new_node # 대기 + 폴더 반환
@@ -101,7 +100,7 @@ class TreeCrudTest < ApplicationSystemTestCase
   end
 
   test "선택 기준 생성: 폴더 선택 → 상단 폴더 아이콘 = 자식" do
-    page.driver.browser.manage.window.resize_to(1440, 900)
+    page.current_window.resize_to(1440, 900)
     retinol = Product.find_by(name: "레티놀 3% 세럼")
     visit root_path
     before = retinol.children.count
@@ -114,7 +113,7 @@ class TreeCrudTest < ApplicationSystemTestCase
   end
 
   test "드래그앤드롭: 리프를 다른 폴더 안으로 이동(재배치)" do
-    page.driver.browser.manage.window.resize_to(1440, 900)
+    page.current_window.resize_to(1440, 900)
     leaf = Product.find_by(code: "CO0001") # 레티놀 하위
     dest = Product.find_by(name: "비타민C 브라이트닝 앰플") # 다른 루트 폴더
     visit root_path
@@ -124,7 +123,7 @@ class TreeCrudTest < ApplicationSystemTestCase
   end
 
   test "리프 메타 인라인 편집(국가 select — 표시=한글·저장=코드)" do
-    page.driver.browser.manage.window.resize_to(1440, 900)
+    page.current_window.resize_to(1440, 900)
     leaf = Product.find_by(code: "CO0001")
     visit product_path(leaf)
     assert_selector "#detail", wait: 10

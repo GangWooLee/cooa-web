@@ -33,6 +33,9 @@
 # Ignore key files for decrypting credentials and more.
 /config/*.key
 
+# E2E: Playwright node deps(재생성 가능·큼). package.json/package-lock.json은 커밋(버전핀 재현성).
+/node_modules
+
 
 /app/assets/builds/*
 !/app/assets/builds/.keep

@@ -1,0 +1,6 @@
+{
+  "//": "E2E 전용(capybara-playwright-driver). 버전은 Gemfile의 playwright-ruby-client와 정확히 일치시킬 것(드리프트 시 driver 실패). caret(^) 금지.",
+  "devDependencies": {
+    "playwright": "1.60.0"
+  }
+}

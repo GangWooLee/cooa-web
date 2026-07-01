@@ -78,3 +78,5 @@ group :test do
 end
 
 gem "rotp", "~> 6.3"
+
+gem "capybara-playwright-driver", "~> 0.5.9", group: :test
