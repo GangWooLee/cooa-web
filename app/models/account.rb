@@ -17,8 +17,6 @@ class Account < ApplicationRecord
 
   scope :active, -> { where(status: "active") }
 
-  encrypts :totp_secret # P6 #1: per-account step-up factor, encrypted at rest (AR encryption)
-
   # Display delegation — views/helpers keep calling .name/.avatar_color/.role_* on the principal.
   delegate :name, :initial, :role_label, :role_short, :avatar_color, to: :user, allow_nil: true
 
@@ -30,22 +28,6 @@ class Account < ApplicationRecord
 
   # Revoke-all: every bump invalidates outstanding sessions/tokens (ADR-003 §3.3). Checked per-request.
   def bump_token_version! = increment!(:token_version)
-
-  # P6 #1 step-up (TOTP). Secret is AR-encrypted; verify allows ±1 time-step (30s) drift each way.
-  def totp_enrolled? = totp_registered_at.present? && totp_secret.present?
-
-  def provision_totp!
-    update!(totp_secret: ROTP::Base32.random, totp_registered_at: Time.current)
-  end
-
-  def verify_totp(code)
-    return false unless totp_enrolled? && code.present?
-    ROTP::TOTP.new(totp_secret, issuer: "COOA").verify(code.to_s.strip, drift_behind: 30, drift_ahead: 30).present?
-  end
-
-  def totp_provisioning_uri
-    ROTP::TOTP.new(totp_secret, issuer: "COOA").provisioning_uri(email)
-  end
 
   private
 

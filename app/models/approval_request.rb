@@ -1,13 +1,14 @@
-# Approval aggregate (ADR-002 §5.3) — the regulatory sign-off, independent of the screening evidence.
-# Signs the C1 reviewed-tuple (what the RA reviewed), enforces M1 (eligible-approver) at submit and
-# M2 (identity SoD) at approve. One request per screening_run (UNIQUE(tenant_id, screening_run_id)).
+# 버전 리뷰 요청(리프레임 — ADR-002 §5.3 후신). 규제 전자서명이 아니라 GitHub PR-approve식 경량 검토:
+# 리뷰어가 한 버전(직전 대비 변경)이 제대로 반영됐는지 "검토 확인" 또는 "변경 요청"한다. 선형 체인이라
+# merge 없음. 신원기반 SoD(리뷰어≠요청자)는 정책에서, 리뷰 중 변경(stale) 차단은 confirm_review!에서.
+# 한 버전(screening_run)당 1요청 (UNIQUE(tenant_id, screening_run_id)). 규제 사인오프는 고객 내부 시스템.
 class ApprovalRequest < ApplicationRecord
   include TenantScoped
 
-  STATUSES = %w[pending blocked_no_approver approved rejected cancelled].freeze
-  TERMINAL = %w[approved rejected cancelled].freeze
+  STATUSES = %w[pending reviewed changes_requested cancelled].freeze
+  TERMINAL = %w[reviewed changes_requested cancelled].freeze
 
-  StaleReviewedTuple = Class.new(StandardError) # C1 re-check failed inside approve! (TOCTOU defense, P2 M-2)
+  StaleReviewedTuple = Class.new(StandardError) # 리뷰 중 콘텐츠 변경 재검 실패(TOCTOU 경량 가드)
 
   belongs_to :screening_run
   belongs_to :submitter, class_name: "User"
@@ -17,44 +18,38 @@ class ApprovalRequest < ApplicationRecord
   validates :market, presence: true
 
   def pending? = status == "pending"
+  def reviewed? = status == "reviewed"
+  def changes_requested? = status == "changes_requested"
   def terminal? = TERMINAL.include?(status)
 
-  # M1 + C1 capture. Idempotent per run: re-submitting a blocked_no_approver request re-evaluates and may
-  # flip to pending; a terminal request is returned untouched. The reviewed-tuple is captured regardless
-  # of M1 (it records what WOULD be reviewed); status reflects whether an eligible approver exists.
+  # 리뷰 요청 + 콘텐츠 스냅샷 캡처. run당 멱등: terminal이면 그대로 반환, 아니면 pending. (M1 하드 게이트
+  # 폐지 — 적격 리뷰어 부재는 컨트롤러/UI의 소프트 안내로 처리.)
   def self.submit_for!(screening_run, submitter_id:)
     req = find_or_initialize_by(tenant_id: Current.tenant_id, screening_run_id: screening_run.id)
     return req if req.terminal?
 
     req.assign_attributes(submitter_id: submitter_id, market: screening_run.country,
-                          reviewed_at: Time.current, **ReviewedTuple.capture(screening_run))
-    req.status = EligibleApproverService.any?(market: req.market, exclude_user_id: submitter_id) ? "pending" : "blocked_no_approver"
+                          reviewed_at: Time.current, status: "pending", **ReviewedTuple.capture(screening_run))
     req.save!
     req
   end
 
-  # M2 (SoD) is checked by the policy BEFORE this. C1 staleness is re-verified ATOMICALLY here (P2 M-2):
-  # the component_version is locked FOR UPDATE and the reviewed-tuple re-compared inside the sign tx, so
-  # content cannot diverge between the check and the signature (TOCTOU). Raises StaleReviewedTuple on
-  # divergence. (Full edit/re-screen lock coordination is Phase 2b — see docs/authz-2a-freeze-spec.md.)
-  def approve!(approver_id:, re_auth_factor:)
+  # SoD(리뷰어≠요청자)는 정책이 먼저 확인. 리뷰 중 콘텐츠 변경(stale)은 여기서 원자적으로 재검:
+  # component_version을 FOR UPDATE로 잠그고 스냅샷 재비교 → 확인-커밋 사이 콘텐츠 발산 차단(TOCTOU).
+  # 발산 시 StaleReviewedTuple. (전체 편집/재스크리닝 락 조율은 Phase 2b.)
+  def confirm_review!(reviewer_id:)
     transaction do
-      screening_run.component_version.lock! # FOR UPDATE — serialize vs concurrent edit/re-screen
+      screening_run.component_version.lock! # FOR UPDATE — 동시 편집/재스크리닝과 직렬화
       raise StaleReviewedTuple if ReviewedTuple.stale?(self)
-      # P6 #1: persist the signing-moment re-auth evidence bound to the exact reviewed-tuple digest
-      # (Part-11 §11.50/§11.200). The controller verified the factor before calling this.
-      approval_steps.create!(approver_id: approver_id, decision: "approved", meaning: "approved",
-                             acted_at: Time.current, re_auth_factor: re_auth_factor,
-                             re_auth_at: (re_auth_factor == "demo_bypass" ? nil : Time.current), # 데모 단락=재인증 없음
-                             signed_c1_digest: ReviewedTuple.c1_digest(self))
-      update!(status: "approved")
+      approval_steps.create!(approver_id: reviewer_id, decision: "confirmed", acted_at: Time.current)
+      update!(status: "reviewed")
     end
   end
 
-  def reject!(approver_id:, reason: nil)
+  def request_changes!(reviewer_id:, reason: nil)
     transaction do
-      approval_steps.create!(approver_id: approver_id, decision: "rejected", meaning: "rejected", reason: reason, acted_at: Time.current)
-      update!(status: "rejected")
+      approval_steps.create!(approver_id: reviewer_id, decision: "changes_requested", reason: reason, acted_at: Time.current)
+      update!(status: "changes_requested")
     end
   end
 end

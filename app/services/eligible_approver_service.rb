@@ -1,8 +1,6 @@
-# M1 — eligible-approver invariant (ADR-002 §6 note + §8.2). The tenant must have >=1 approve-eligible
-# identity DISTINCT from the submitter, or submit_for_approval yields blocked_no_approver (not pending).
-# Only `owner` and `approver` carry the `approve` verb (PermissionMatrix) — brand_admin does NOT.
-# Runs under the current tenant's RLS context (RoleAssignment is tenant-scoped). scope_id IS NULL =
-# tenant-wide (the AssignmentResolver convention; product-scoped grants await scope_id↔domain-id work).
+# 적격 리뷰어 조회(리프레임: M1 소프트 신호). 요청자와 구별된, 검토 verb(approve) 보유 신원이 있는지 —
+# 리뷰 요청 UI의 소프트 안내("리뷰어 미배정")에 쓰인다(하드 차단 폐지). `owner`·`approver`만 검토 verb를
+# 가짐(PermissionMatrix). 현 테넌트 RLS 컨텍스트에서 동작. scope_id IS NULL = 테넌트 전역.
 module EligibleApproverService
   ELIGIBLE_ROLES = %w[owner approver].freeze
 

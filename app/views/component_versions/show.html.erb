@@ -25,11 +25,14 @@
     </div>
   </div>
 
-  <%# 본문: 좌 아트워크 / 우 메타 %>
-  <div class="flex min-h-0 flex-1 flex-col lg:flex-row">
+  <%# 본문: 좌 아트워크(피드백 박스·Shift+드래그) / 우 메타+피드백+리뷰 %>
+  <div data-controller="version-feedback"
+       data-action="artwork-viewer:focus->version-feedback#onFocus artwork-viewer:draw->version-feedback#onDraw"
+       class="flex min-h-0 flex-1 flex-col lg:flex-row">
     <div class="min-h-0 min-w-0 flex-1 p-3" style="min-height:380px">
       <% if artwork?(@version) %>
-        <%= render "shared/artwork_viewer", image_src: artwork_src(@version), boxes: [], zoom: true %>
+        <%= render "shared/artwork_viewer", image_src: artwork_src(@version),
+              boxes: annotation_boxes(@annotations), drawable: policy(@version).leave_feedback?, zoom: true %>
       <% else %>
         <div class="flex h-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-line bg-tint-2 text-line">
           <%= ui_icon "doc", size: 32, klass: "text-line" %>
@@ -40,7 +43,8 @@
       <% end %>
     </div>
 
-    <aside class="flex w-full shrink-0 flex-col border-t border-line bg-white lg:w-[340px] lg:border-l lg:border-t-0">
+    <aside class="flex w-full shrink-0 flex-col border-t border-line bg-white lg:w-[380px] lg:border-l lg:border-t-0">
+      <%# 메타(컴팩트) %>
       <div class="border-b border-line-soft p-4">
         <div class="flex items-center gap-2">
           <%= version_chip(@version.vlabel.upcase, size: 34, active: @version.current?) %>
@@ -62,25 +66,107 @@
           <% end %>
           <dt class="font-bold text-line">생성일</dt>
           <dd class="text-ink"><%= @version.created_at.strftime("%Y.%m.%d %H:%M") %></dd>
+          <% if @version.ingredients.any? %>
+            <dt class="font-bold text-line">전성분</dt>
+            <dd class="text-ink"><%= @version.ingredients.size %>종</dd>
+          <% end %>
         </dl>
       </div>
 
-      <%# 성분(읽기 전용) %>
-      <% if @version.ingredients.any? %>
-        <div class="min-h-0 flex-1 overflow-auto p-4">
-          <h3 class="mb-2 text-[13px] font-bold text-ink">전성분 <span class="text-line">(<%= @version.ingredients.size %>)</span></h3>
-          <ul class="space-y-1">
-            <% @version.ingredients.each do |ing| %>
-              <li class="flex items-center justify-between gap-2 rounded-md border border-line-soft px-2 py-1 text-[12.5px]">
-                <span class="min-w-0 truncate text-ink"><%= ing.inci_name %></span>
-                <% if ing.declared_pct.present? %><span class="shrink-0 font-bold text-line"><%= ing.declared_pct %>%</span><% end %>
-              </li>
-            <% end %>
-          </ul>
+      <%# 피드백(검토 단위 ②: 누구나 남기고, 리뷰어가 반영 확인) — 단일 버전에서도 자유롭게 %>
+      <div data-version-feedback-target="list" class="flex min-h-0 flex-1 flex-col">
+        <div class="border-b border-line-soft p-3">
+          <h3 class="text-base font-bold text-ink">피드백 <span class="text-line">(<%= @annotations.size %>)</span></h3>
+          <p class="text-xs text-line">
+            <% if policy(@version).leave_feedback? %>아트워크에서 <b>Shift+드래그</b>로 영역을 표시해 남기세요 · <% end %>
+            <b style="color:#5f8f2e"><%= @annotations.count(&:resolved?) %> 반영</b> / <b style="color:#8e0300"><%= @annotations.count(&:open?) %> 미반영</b>
+          </p>
         </div>
-      <% else %>
-        <div class="flex-1"></div>
+        <div class="min-h-0 flex-1 space-y-2 overflow-auto p-3">
+          <% if @annotations.any? %>
+            <% @annotations.each do |a| %>
+              <button type="button" data-seq="<%= a.seq %>" data-action="version-feedback#focusFromList"
+                      class="block w-full rounded-lg border border-line-soft p-2.5 text-left transition hover:border-cooa">
+                <div class="flex items-center justify-between">
+                  <span class="flex items-center gap-2">
+                    <span class="flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold text-white" style="background:<%= a.box_color %>"><%= a.seq %></span>
+                    <span class="rounded bg-tint px-1.5 py-0.5 text-[11px] text-ink/70"><%= a.category %></span>
+                  </span>
+                  <span class="rounded-full px-2 py-0.5 text-[11px] font-bold" style="color:<%= a.status_meta[:color] %>;background:<%= a.status_meta[:bg] %>"><%= a.status_meta[:label] %></span>
+                </div>
+                <p class="mt-1 line-clamp-2 text-[12.5px] text-ink/80"><%= a.comments.first&.body %></p>
+              </button>
+            <% end %>
+          <% else %>
+            <p class="py-8 text-center text-[13px] text-line">아직 피드백이 없습니다.</p>
+          <% end %>
+        </div>
+      </div>
+
+      <%# 피드백 상세(어노테이션별, 기본 숨김) %>
+      <% @annotations.each do |a| %>
+        <div data-version-feedback-target="detail" data-seq="<%= a.seq %>" class="hidden min-h-0 flex-1 flex-col">
+          <div class="flex items-center gap-2 border-b border-line-soft p-3">
+            <button type="button" data-action="version-feedback#backToList" class="text-sm text-line hover:text-cooa">← 목록</button>
+            <span class="flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold text-white" style="background:<%= a.box_color %>"><%= a.seq %></span>
+            <span class="rounded bg-tint px-1.5 py-0.5 text-[11px] text-ink/70"><%= a.category %></span>
+            <span class="ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold" style="color:<%= a.status_meta[:color] %>;background:<%= a.status_meta[:bg] %>"><%= a.status_meta[:label] %></span>
+          </div>
+          <div class="min-h-0 flex-1 overflow-auto p-3">
+            <p class="mb-2 text-[11px] text-line">← 캔버스에서 이 영역이 확대됩니다.</p>
+            <div class="mt-1 space-y-2">
+              <% a.comments.each do |c| %>
+                <div class="rounded-lg border border-line-soft p-2">
+                  <div class="flex items-center gap-1.5"><%= avatar(c.author, size: 20) %><span class="text-xs font-bold text-ink"><%= c.author&.name %></span><span class="text-[10px] text-line"><%= c.author&.role_short %></span></div>
+                  <p class="mt-1 text-[12.5px] text-ink/85"><%= c.body %></p>
+                </div>
+              <% end %>
+            </div>
+            <%= form_with url: annotation_comments_path(a), class: "mt-2 flex gap-1" do %>
+              <%= text_field_tag :body, nil, placeholder: "코멘트 추가", class: "min-w-0 flex-1 rounded border border-line-soft px-2 py-1 text-xs" %>
+              <%= submit_tag "등록", class: "cursor-pointer rounded bg-cooa px-2 py-1 text-xs font-bold text-white" %>
+            <% end %>
+          </div>
+          <%# 반영 확인(검토 ②) — 리뷰어(resolve_feedback) %>
+          <% if policy(a).resolve_feedback? %>
+            <div class="border-t border-line-soft p-3">
+              <% if a.resolved? %>
+                <div class="flex items-center justify-between text-xs">
+                  <span class="font-bold" style="color:#5f8f2e">✓ <%= a.resolved_in_version&.vlabel || @version.vlabel %>에서 반영 확인</span>
+                  <%= button_to "다시 열기", reopen_annotation_path(a), method: :patch, class: "cursor-pointer rounded border border-line px-2 py-1 text-line" %>
+                </div>
+              <% else %>
+                <%= button_to "✓ 반영됨으로 표시", resolve_annotation_path(a, resolved_in_version_id: @version.id), method: :patch,
+                      class: "w-full cursor-pointer rounded-lg py-2 text-[13px] font-bold text-white", style: "background:#5f8f2e" %>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
       <% end %>
+
+      <%# 새 피드백 (Shift+드래그 시 표시) %>
+      <% if policy(@version).leave_feedback? %>
+        <div data-version-feedback-target="newForm" class="hidden flex-1 flex-col border-t border-line-soft p-3">
+          <div class="mb-2 flex items-center justify-between">
+            <h4 class="text-sm font-bold text-ink">새 피드백 (<%= @version.vlabel %>)</h4>
+            <button type="button" data-action="version-feedback#backToList" class="text-xs text-line">취소</button>
+          </div>
+          <%= form_with url: component_version_annotations_path(@version), class: "space-y-2" do %>
+            <%= hidden_field_tag :box_x, nil, data: { version_feedback_target: "newX" } %>
+            <%= hidden_field_tag :box_y, nil, data: { version_feedback_target: "newY" } %>
+            <%= hidden_field_tag :box_w, nil, data: { version_feedback_target: "newW" } %>
+            <%= hidden_field_tag :box_h, nil, data: { version_feedback_target: "newH" } %>
+            <select name="category" class="w-full rounded border border-line-soft px-2 py-1 text-sm">
+              <option>오탈자</option><option>인허가</option><option>디자인</option><option>기타</option>
+            </select>
+            <%= text_area_tag :body, nil, rows: 3, placeholder: "수정 요청 내용", class: "w-full rounded border border-line-soft px-2 py-1 text-sm" %>
+            <%= submit_tag "피드백 추가", class: "w-full cursor-pointer rounded-lg bg-cooa py-2 text-[13px] font-bold text-white" %>
+          <% end %>
+        </div>
+      <% end %>
+
+      <%# 버전 리뷰(검토 단위 ①: 버전 레벨) — 리뷰어가 이 버전을 검토 확인 / 변경 요청 %>
+      <%= render "component_versions/review_panel" %>
     </aside>
   </div>
 

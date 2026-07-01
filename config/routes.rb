@@ -52,16 +52,13 @@ Rails.application.routes.draw do
   # ③ 버전 비교 (가치 라벨 없는 버전쌍 선택)
   get "versions/:from_id/compare/:to_id", to: "comparisons#show", as: :comparison
 
-  # ④ 승인 워크플로 (Phase 3b) — submit(create) / approve / reject. 데모 UI 플립은 3c.
+  # ④ 버전 리뷰(리프레임) — submit(create=리뷰 요청) / confirm(검토 확인) / request_changes(변경 요청).
   resources :approval_requests, only: [:create] do
     member do
-      post :approve
-      post :reject
+      post :confirm
+      post :request_changes
     end
   end
-
-  # 서명용 2단계 인증(TOTP) 등록 페이지 — 결재자가 authenticator에 추가 (P6 #1 step-up)
-  get "step-up", to: "step_up#show", as: :step_up
 
   # 상단 히스토리 탭 닫기(세션)
   delete "/tabs/:id", to: "tabs#destroy", as: :tab

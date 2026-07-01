@@ -24,12 +24,12 @@ class DemoFlowsTest < ActionDispatch::IntegrationTest
     assert_match "변경사유", response.body
   end
 
-  # 신원기반 SoD(ADR-002 §8.2): 제출자와 승인자가 달라야 함. owner도 예외 없음. (Phase 3c: approval_request 흐름)
-  test "④ 스크리닝 실행 + 결재 상신 + 승인 (maker-checker SoD)" do
+  # 신원기반 SoD(ADR-002 §8.2): 요청자와 리뷰어가 달라야 함. owner도 예외 없음. (리프레임: 버전 리뷰 흐름)
+  test "④ 스크리닝 실행 + 리뷰 요청 + 검토 확인 (maker-checker SoD)" do
     v = hero_v(5)
-    lee = Account.find_by!(email: "lee@cooa.dev") # RA → approver
+    lee = Account.find_by!(email: "lee@cooa.dev") # RA → 리뷰어(approver)
 
-    # 실행(run) + 상신 = 기본 로그인 김쿠아(owner)
+    # 실행(run) + 리뷰 요청 = 기본 로그인 김쿠아(owner)
     assert_difference -> { v.screening_runs.count }, 1 do
       post run_screening_component_version_path(v)
     end
@@ -38,15 +38,15 @@ class DemoFlowsTest < ActionDispatch::IntegrationTest
     req = ApprovalRequest.find_by!(screening_run_id: run.id)
     assert_equal "pending", req.status
 
-    # 음성: 제출자 김쿠아 자가 승인 → SoD 거부(403), 승인 안 됨 (owner도 예외 없음)
-    post approve_approval_request_path(req)
+    # 음성: 요청자 김쿠아 자가 확인 → SoD 거부(403) (owner도 예외 없음)
+    post confirm_approval_request_path(req)
     assert_response :forbidden
     assert_equal "pending", req.reload.status
 
-    # 양성: 다른 신원 이쿠아(approver)로 전환해 승인 → 통과 (P6 #1: 서명 step-up TOTP 필요)
+    # 양성: 다른 신원 이쿠아(리뷰어)로 전환해 검토 확인 (전자서명 없음)
     sign_in_as(lee)
-    post approve_approval_request_path(req), params: { totp_code: ROTP::TOTP.new(lee.totp_secret).now }
-    assert_equal "approved", req.reload.status
+    post confirm_approval_request_path(req)
+    assert_equal "reviewed", req.reload.status
   end
 
   test "③ 비교 렌더 + 어노테이션 코멘트/해소/생성" do

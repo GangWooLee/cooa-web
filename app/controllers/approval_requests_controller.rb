@@ -1,56 +1,50 @@
-# Approval workflow (Phase 3b/3c, ADR-002 §5.3). The demo screening screen submits/approves here (the
-# legacy screening-level approve was retired in 3c). submit (create) captures the C1 reviewed-tuple + runs M1; approve re-validates C1
-# (stale → deny) + enforces M2 SoD (policy); every transition is an audit_log row (atomic with the request tx).
+# 버전 리뷰 워크플로(리프레임). 버전 뷰에서 리뷰 요청/확인/변경요청이 여기로 온다. create는 리뷰 요청 +
+# 콘텐츠 스냅샷 캡처; confirm은 stale 재검(변경됨→deny) + M2 SoD(정책); 모든 전이는 audit_log 1행(요청 tx와 원자).
+# 규제 전자서명(step-up)·M-4 시장관할은 리프레임에서 폐지 — COOA는 규제 사인오프를 발행하지 않는다.
 class ApprovalRequestsController < ApplicationController
-  # create = submit_for_approval from a screening_run; the run's owning product gates the verb.
+  # create = 리뷰 요청(screening_run 기준). run의 소유 제품이 verb를 게이트.
   def create
     run = ScreeningRun.find(params[:screening_run_id])
     authorize run, :submit_for_approval?
     req = ApprovalRequest.submit_for!(run, submitter_id: current_account.user_id)
     audit!(req, action: "submit_for_approval", before: nil)
     redirect_back fallback_location: root_path, status: :see_other, notice: submit_notice(req)
-  rescue ActiveRecord::RecordNotUnique # m-2 (P2): concurrent submit → idempotent, not a 500
-    redirect_back fallback_location: root_path, status: :see_other, notice: "이미 상신된 결재입니다."
+  rescue ActiveRecord::RecordNotUnique # 동시 요청 → 멱등, 500 아님
+    redirect_back fallback_location: root_path, status: :see_other, notice: "이미 리뷰 요청된 버전입니다."
   end
 
-  def approve
+  def confirm
     req = ApprovalRequest.find(params[:id])
-    authorize req, :approve? # M2 SoD (owner included) + pending + actor present
-    return market_ineligible!(req) unless market_eligible?(req)                      # M-4: jurisdiction re-check
-    if step_up_enforced?                                                            # P6 #1: signature re-auth (prod 항상·데모만 단락)
-      return step_up_required!(req) unless current_account.totp_enrolled?
-      return step_up_failed!(req) unless current_account.verify_totp(params[:totp_code])
-    end
+    authorize req, :confirm_review? # M2 SoD(owner 포함) + pending + actor present
     before = req.status
     begin
-      req.approve!(approver_id: current_account.user_id, re_auth_factor: step_up_enforced? ? "totp" : "demo_bypass") # C1 재검은 원자 tx 내부(P2 M-2)
+      req.confirm_review!(reviewer_id: current_account.user_id) # stale 재검은 원자 tx 내부
     rescue ApprovalRequest::StaleReviewedTuple
       audit_stale(req)
       return redirect_back fallback_location: root_path, status: :see_other,
-                           alert: "검토 내용이 변경되어 승인할 수 없습니다. 재스크리닝 후 재제출하세요."
-    rescue ActiveRecord::RecordNotUnique # m-2 (P2): concurrent approve → already decided, not a 500
-      return redirect_back fallback_location: root_path, status: :see_other, notice: "이미 처리된 결재입니다."
+                           alert: "검토 내용이 변경되어 확인할 수 없습니다. 변경 내용을 다시 검토하세요."
+    rescue ActiveRecord::RecordNotUnique # 동시 처리 → 이미 결정됨, 500 아님
+      return redirect_back fallback_location: root_path, status: :see_other, notice: "이미 처리된 리뷰입니다."
     end
-    audit!(req, action: "approve", before: before)
-    redirect_back fallback_location: root_path, status: :see_other, notice: "승인되었습니다."
+    audit!(req, action: "confirm_review", before: before)
+    redirect_back fallback_location: root_path, status: :see_other, notice: "검토 확인되었습니다."
   end
 
-  def reject
+  def request_changes
     req = ApprovalRequest.find(params[:id])
-    authorize req, :reject?
-    return market_ineligible!(req) unless market_eligible?(req) # M-4: same jurisdiction gate as approve
+    authorize req, :request_changes?
     before = req.status
-    req.reject!(approver_id: current_account.user_id, reason: params[:reason])
-    audit!(req, action: "reject", before: before)
-    redirect_back fallback_location: root_path, status: :see_other, notice: "반려되었습니다."
-  rescue ActiveRecord::RecordNotUnique # m-2 (P2): concurrent reject → already decided, not a 500
-    redirect_back fallback_location: root_path, status: :see_other, notice: "이미 처리된 결재입니다."
+    req.request_changes!(reviewer_id: current_account.user_id, reason: params[:reason])
+    audit!(req, action: "request_changes", before: before)
+    redirect_back fallback_location: root_path, status: :see_other, notice: "변경이 요청되었습니다."
+  rescue ActiveRecord::RecordNotUnique # 동시 처리 → 이미 결정됨, 500 아님
+    redirect_back fallback_location: root_path, status: :see_other, notice: "이미 처리된 리뷰입니다."
   end
 
   private
 
-  # Transition → audit (allow). Atomic with the request tenant tx: if this fails, the transition rolls
-  # back too (no approval without its audit record). ADR-002 §5.3: transitions ARE audit_log rows.
+  # 전이 → 감사(allow). 요청 tenant tx와 원자: 실패 시 전이도 롤백(감사 없는 리뷰 없음). action 키
+  # (submit_for_approval/confirm_review/request_changes)는 정책 query명과 일치 — deny 감사도 같은 키.
   def audit!(req, action:, before:)
     AuditLog.record!(action: action, resource_type: "ApprovalRequest", resource_id: req.id, outcome: "allow",
                      before: (before ? { "status" => before } : nil), after: { "status" => req.status },
@@ -58,56 +52,17 @@ class ApprovalRequestsController < ApplicationController
   end
 
   def audit_stale(req)
-    AuditLog.record!(action: "approve", resource_type: "ApprovalRequest", resource_id: req.id,
+    AuditLog.record!(action: "confirm_review", resource_type: "ApprovalRequest", resource_id: req.id,
                      outcome: "deny", denial_reason: "stale_reviewed_tuple",
                      request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
   end
 
-  # M-4 (P2): the acting approver/rejecter must be eligible for THIS request's market (role_assignment.market
-  # NULL or == req.market) — the same DB-backed eligibility M1 checked at submit. Gates BOTH approve and
-  # reject (symmetric, P2 review). Kept out of the pure policy so ApprovalRequestPolicy stays unit-testable.
-  # Dormant until market-scoped grants are issued (all current grants = NULL).
-  def market_eligible?(req)
-    EligibleApproverService.eligible_user_ids(market: req.market, exclude_user_id: req.submitter_id)
-                           .include?(current_account.user_id)
-  end
-
-  def market_ineligible!(req)
-    AuditLog.record!(action: "approve", resource_type: "ApprovalRequest", resource_id: req.id,
-                     outcome: "deny", denial_reason: "market_ineligible",
-                     request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
-    head :forbidden
-  end
-
-  # P6 #1: 서명 재인증은 prod에서 무조건 강제(`|| production?`) + dev/test 기본 ON(`config.x.step_up_required`).
-  # 데모만 opt-out(COOA_DEMO_STEP_UP_OFF=development.rb) — prod는 끌 수 없음. 단락 시 re_auth_factor='demo_bypass'.
-  def step_up_enforced?
-    Rails.configuration.x.step_up_required || Rails.env.production?
-  end
-
-  # P6 #1 step-up (TOTP): an approver must re-authenticate at the signing moment. Not enrolled → send to
-  # enrollment; bad/absent code → deny + retry. Both are audited as a deny (abandoned/failed step-up trail).
-  def step_up_required!(req)
-    audit_step_up_deny(req, "step_up_not_enrolled")
-    redirect_to step_up_path, alert: "서명하려면 2단계 인증(TOTP) 등록이 필요합니다."
-  end
-
-  def step_up_failed!(req)
-    audit_step_up_deny(req, "step_up_failed")
-    redirect_back fallback_location: root_path, status: :see_other, alert: "인증 코드가 올바르지 않습니다. 다시 시도하세요."
-  end
-
-  def audit_step_up_deny(req, reason)
-    AuditLog.record!(action: "approve", resource_type: "ApprovalRequest", resource_id: req.id,
-                     outcome: "deny", denial_reason: reason,
-                     request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
-  end
-
+  # M1 소프트화: 적격 리뷰어(요청자와 구별된 owner/approver) 부재는 차단이 아니라 안내. 리뷰는 요청됨.
   def submit_notice(req)
-    if req.status == "blocked_no_approver"
-      "승인 가능한 결재자가 없습니다 — 제출자와 구별된 approver/owner가 필요합니다."
+    if EligibleApproverService.any?(market: req.market, exclude_user_id: req.submitter_id)
+      "리뷰 요청이 제출되었습니다."
     else
-      "승인 요청이 제출되었습니다."
+      "리뷰 요청됨 — 아직 검토 가능한 구성원(요청자와 다른 리뷰어)이 없습니다."
     end
   end
 end

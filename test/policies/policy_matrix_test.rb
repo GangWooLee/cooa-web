@@ -56,7 +56,8 @@ class PolicyMatrixTest < ActiveSupport::TestCase
   end
 end
 
-# SoD lives in ApprovalRequestPolicy (Phase 3b/3c), not the matrix — verified with a stub request.
+# SoD lives in ApprovalRequestPolicy (버전 리뷰), not the matrix — verified with a stub request.
+# confirm_review? = can?(:approve) && pending? && actor_present? && submitter_distinct?
 class ApprovalRequestSoDTest < ActiveSupport::TestCase
   StubContext = Struct.new(:roles, :actor_id) do
     def roles_on(_record) = roles
@@ -69,27 +70,27 @@ class ApprovalRequestSoDTest < ActiveSupport::TestCase
     ApprovalRequestPolicy.new(StubContext.new(roles, actor_id), Req.new(submitter_id, status))
   end
 
-  test "approver who is not the submitter may approve" do
-    assert policy(%w[approver], 2, 1).approve?
+  test "reviewer who is not the requester may confirm" do
+    assert policy(%w[approver], 2, 1).confirm_review?
   end
 
-  test "submitter is denied (SoD)" do
-    refute policy(%w[approver], 1, 1).approve?
+  test "requester is denied (SoD)" do
+    refute policy(%w[approver], 1, 1).confirm_review?
   end
 
   test "owner is not exempt from SoD" do
-    refute policy(%w[owner], 1, 1).approve?
+    refute policy(%w[owner], 1, 1).confirm_review?
   end
 
-  test "non-approver role cannot approve even if distinct" do
-    refute policy(%w[contributor], 2, 1).approve?
+  test "non-reviewer role cannot confirm even if distinct" do
+    refute policy(%w[contributor], 2, 1).confirm_review?
   end
 
   test "nil actor (unlinked Account) fails closed" do
-    refute policy(%w[approver], nil, 1).approve?
+    refute policy(%w[approver], nil, 1).confirm_review?
   end
 
-  test "a non-pending request cannot be approved" do
-    refute policy(%w[approver], 2, 1, status: "approved").approve?
+  test "a non-pending request cannot be confirmed" do
+    refute policy(%w[approver], 2, 1, status: "reviewed").confirm_review?
   end
 end

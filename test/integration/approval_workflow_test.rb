@@ -1,7 +1,7 @@
 require "test_helper"
 
-# Phase 3b approval workflow (ADR-002 §5.3): C1 reviewed-tuple, M1 eligible-approver, M2 SoD, audit.
-# IntegrationTest setup seeds + signs in 김쿠아(owner). A fresh screening run makes 김쿠아 the submitter.
+# 버전 리뷰 워크플로(리프레임 — ADR-002 §5.3 후신): 콘텐츠 스냅샷, M2 신원 SoD, stale 경량 가드, 감사.
+# 규제 전자서명(step-up)·M-4·하드 M1 차단은 폐지. setup이 시드 + 김쿠아(owner) 로그인 → 새 run의 요청자.
 class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
   setup do
     @v = Product.find_by!(code: "CO0001").components.find_by!(component_type: "outer_box")
@@ -12,142 +12,77 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
 
   def submit! = post approval_requests_path, params: { screening_run_id: @run.id }
   def request_for = ApprovalRequest.find_by!(screening_run_id: @run.id)
-  def totp_for(account) = ROTP::TOTP.new(account.totp_secret).now # P6 #1: a valid step-up code for the approver
 
-  test "M1: submit with an eligible distinct approver → pending (+ C1 captured)" do
+  test "리뷰 요청 → pending (+ 콘텐츠 스냅샷 캡처)" do
     submit!
     req = request_for
     assert_equal "pending", req.status
     assert req.reviewed_content_snapshot_hash.present?
-    assert req.verdict_snapshot.any?
+    assert req.reviewed_artifact_digest.present?
   end
 
-  test "M1: no approver distinct from submitter → blocked_no_approver" do
-    RoleAssignment.where(account: User.find_by!(name: "이쿠아").account).delete_all # remove the only approver
+  # M1 소프트화: 적격 리뷰어가 없어도 하드 차단(blocked_no_approver)이 아니라 pending — 안내만.
+  test "M1 소프트: 적격 리뷰어 부재여도 pending(차단 아님)" do
+    RoleAssignment.where(account: User.find_by!(name: "이쿠아").account).delete_all # 유일 리뷰어 제거
     submit!
-    assert_equal "blocked_no_approver", request_for.status
+    assert_equal "pending", request_for.status
   end
 
-  test "M2: submitter (김쿠아, owner) cannot self-approve (SoD); 이쿠아(approver) can" do
+  test "M2 SoD: 요청자(김쿠아 owner)는 본인 확인 불가; 이쿠아(리뷰어)는 가능" do
     submit!
     req = request_for
-    post approve_approval_request_path(req) # still 김쿠아
+    post confirm_approval_request_path(req) # still 김쿠아
     assert_response :forbidden
     assert_equal "pending", req.reload.status
 
     lee = Account.find_by!(email: "lee@cooa.dev")
     sign_in_as(lee)
-    post approve_approval_request_path(req), params: { totp_code: totp_for(lee) }
-    assert_equal "approved", req.reload.status
+    post confirm_approval_request_path(req)
+    assert_equal "reviewed", req.reload.status
     assert_equal 1, req.approval_steps.count
     assert_equal User.find_by!(name: "이쿠아").id, req.approval_steps.first.approver_id
+    assert_equal "confirmed", req.approval_steps.first.decision
   end
 
-  test "C1: editing reviewed content after submit blocks approval (stale)" do
+  test "stale: 리뷰 요청 후 콘텐츠 변경 시 확인 차단(pending 유지 + deny 감사)" do
     submit!
     req = request_for
-    @run.component_version.label_texts.first.update!(content: "TAMPERED AFTER SUBMIT")
-    lee = Account.find_by!(email: "lee@cooa.dev")
-    sign_in_as(lee)
-    post approve_approval_request_path(req), params: { totp_code: totp_for(lee) }
-    assert_equal "pending", req.reload.status, "stale tuple must not approve"
+    @run.component_version.label_texts.first.update!(content: "CHANGED AFTER REQUEST")
+    sign_in_as(Account.find_by!(email: "lee@cooa.dev"))
+    post confirm_approval_request_path(req)
+    assert_equal "pending", req.reload.status, "stale면 확인되면 안 됨"
     assert AuditLog.where(outcome: "deny", denial_reason: "stale_reviewed_tuple").exists?
   end
 
-  test "transitions are recorded in the audit log (allow)" do
+  test "전이는 감사 로그에 기록(allow)" do
     assert_difference -> { AuditLog.where(action: "submit_for_approval", outcome: "allow").count }, 1 do
       submit!
     end
     req = request_for
-    lee = Account.find_by!(email: "lee@cooa.dev")
-    sign_in_as(lee)
-    assert_difference -> { AuditLog.where(action: "approve", outcome: "allow", resource_type: "ApprovalRequest").count }, 1 do
-      post approve_approval_request_path(req), params: { totp_code: totp_for(lee) }
+    sign_in_as(Account.find_by!(email: "lee@cooa.dev"))
+    assert_difference -> { AuditLog.where(action: "confirm_review", outcome: "allow", resource_type: "ApprovalRequest").count }, 1 do
+      post confirm_approval_request_path(req)
     end
   end
 
-  test "reject records a rejected step + audit" do
+  test "변경 요청 → changes_requested 스텝 + 감사" do
     submit!
     req = request_for
     sign_in_as(Account.find_by!(email: "lee@cooa.dev"))
-    post reject_approval_request_path(req), params: { reason: "라벨 재작업 필요" }
-    assert_equal "rejected", req.reload.status
-    assert_equal "rejected", req.approval_steps.first.decision
+    post request_changes_approval_request_path(req), params: { reason: "라벨 재작업 필요" }
+    assert_equal "changes_requested", req.reload.status
+    assert_equal "changes_requested", req.approval_steps.first.decision
   end
 
-  # P2 M-4: an approver scoped to another market cannot sign off (jurisdiction). Dormant until
-  # market-scoped grants exist (seeds use market=NULL) — this proves the guard once they do.
-  test "M-4: an approver scoped to another market cannot approve" do
-    submit! # JP request
-    req = request_for
-    lee = Account.find_by!(email: "lee@cooa.dev")
-    lee.role_assignments.update_all(market: "CN") # 이쿠아 now CN-only → not eligible for JP
-    sign_in_as(lee)
-    post approve_approval_request_path(req)
-    assert_response :forbidden
-    assert_equal "pending", req.reload.status
-  end
-
-  # P6 #1 step-up (TOTP): the signature requires a valid re-auth code bound to the C1 digest.
-  test "step-up: approve without a valid TOTP code is refused" do
-    submit!
-    req = request_for
-    sign_in_as(Account.find_by!(email: "lee@cooa.dev"))
-    post approve_approval_request_path(req) # no code
-    assert_equal "pending", req.reload.status, "no signature without re-auth"
-    assert AuditLog.where(outcome: "deny", denial_reason: "step_up_failed").exists?
-  end
-
-  test "step-up: a valid TOTP records re-auth evidence bound to the C1 digest" do
-    submit!
-    req = request_for
-    lee = Account.find_by!(email: "lee@cooa.dev")
-    sign_in_as(lee)
-    post approve_approval_request_path(req), params: { totp_code: totp_for(lee) }
-    assert_equal "approved", req.reload.status
-    step = req.approval_steps.first
-    assert step.re_auth_at.present?, "re-auth timestamp recorded"
-    assert_equal "totp", step.re_auth_factor
-    assert_equal ReviewedTuple.c1_digest(req), step.signed_c1_digest, "signature bound to the exact reviewed tuple"
-  end
-
-  test "step-up: an un-enrolled approver is sent to enrollment" do
-    submit!
-    req = request_for
-    lee = Account.find_by!(email: "lee@cooa.dev")
-    lee.update!(totp_secret: nil, totp_registered_at: nil) # un-enroll
-    sign_in_as(lee)
-    post approve_approval_request_path(req)
-    assert_redirected_to step_up_path
-    assert AuditLog.where(outcome: "deny", denial_reason: "step_up_not_enrolled").exists?
-  end
-
-  # 데모 한정 단락(config.x.step_up_required=false): 코드 없이 승인. prod 불변식은 production.rb가 강제(여기 미적용).
-  test "step-up: demo bypass approves without a code (re_auth_factor=demo_bypass, C1 결속 유지)" do
-    submit!
-    req = request_for
-    lee = Account.find_by!(email: "lee@cooa.dev")
-    sign_in_as(lee)
-    Rails.configuration.x.step_up_required = false
-    post approve_approval_request_path(req) # no code
-    assert_equal "approved", req.reload.status
-    step = req.approval_steps.first
-    assert_equal "demo_bypass", step.re_auth_factor
-    assert_nil step.re_auth_at, "단락이라 재인증 시각 없음"
-    assert_equal ReviewedTuple.c1_digest(req), step.signed_c1_digest, "바이패스도 C1 결속 유지"
-  ensure
-    Rails.configuration.x.step_up_required = true
-  end
-
-  # Phase 3c: the screening screen renders the approval panel (catches ERB/policy/avatar errors).
-  test "the screening screen renders the approval panel across states" do
-    get screening_component_version_path(@v)
+  # 버전 뷰가 리뷰 패널을 상태별로 렌더(ERB/정책/아바타 오류 포착)
+  test "버전 뷰가 리뷰 패널을 상태별로 렌더" do
+    get component_version_path(@v)
     assert_response :success
-    assert_match "결재 상신", response.body # no request yet → submit button (김쿠아 owner)
+    assert_match "리뷰 요청", response.body # 요청 전 → 요청 버튼 (김쿠아 owner)
     submit!
-    get screening_component_version_path(@v)
+    get component_version_path(@v)
     assert_response :success
-    assert_match "결재 대기", response.body # pending; 김쿠아=submitter → SoD note, no approve button
+    assert_match "리뷰 대기", response.body # pending; 김쿠아=요청자 → SoD note
     assert_match "SoD", response.body
   end
 end

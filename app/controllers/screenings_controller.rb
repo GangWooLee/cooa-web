@@ -5,7 +5,6 @@ class ScreeningsController < ApplicationController
   def screening
     authorize @version, :view_screening_findings?
     @run = latest_run
-    @approval_request = ApprovalRequest.find_by(screening_run_id: @run.id) if @run # Phase 3c 결재 패널
     TabHistory.track(session, "s", @version.id) # 헤더 히스토리 — 스크리닝
   end
 

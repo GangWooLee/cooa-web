@@ -81,8 +81,4 @@ Rails.application.configure do
   config.hosts << /\A[a-z0-9-]+\.trycloudflare\.com\z/
   # SHARE=1 일 때 추가 하드닝: 에러페이지 web-console(원격 코드실행) 노출 차단
   config.web_console.whitelisted_ips = [] if ENV["SHARE"].present? && config.respond_to?(:web_console)
-
-  # 데모 한정 step-up 단락(frictionless 승인): COOA_DEMO_STEP_UP_OFF=1 bin/dev. 이 opt-out은 development.rb에만
-  # 존재 → prod에선 이 파일이 로드되지 않아 env var로 step-up을 끌 수 없음(구조적 prod-safe).
-  config.x.step_up_required = false if ENV["COOA_DEMO_STEP_UP_OFF"] == "1"
 end

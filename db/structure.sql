@@ -56,8 +56,6 @@ CREATE TABLE public.accounts (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     user_id bigint,
-    totp_secret character varying,
-    totp_registered_at timestamp(6) without time zone,
     CONSTRAINT accounts_status_check CHECK (((status)::text = ANY ((ARRAY['invited'::character varying, 'active'::character varying, 'suspended'::character varying, 'deprovisioned'::character varying])::text[])))
 );
 
@@ -299,10 +297,6 @@ CREATE TABLE public.approval_requests (
     status character varying DEFAULT 'pending'::character varying NOT NULL,
     reviewed_artifact_digest character varying NOT NULL,
     reviewed_content_snapshot_hash character varying NOT NULL,
-    ruleset_version character varying NOT NULL,
-    engine_version character varying NOT NULL,
-    disclaimer_version character varying NOT NULL,
-    verdict_snapshot jsonb DEFAULT '[]'::jsonb NOT NULL,
     reviewed_at timestamp(6) without time zone NOT NULL,
     lock_version integer DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
@@ -341,15 +335,11 @@ CREATE TABLE public.approval_steps (
     approval_request_id bigint NOT NULL,
     approver_id bigint NOT NULL,
     decision character varying NOT NULL,
-    meaning character varying DEFAULT 'approved'::character varying NOT NULL,
     reason text,
     acted_at timestamp(6) without time zone NOT NULL,
     lock_version integer DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    re_auth_at timestamp(6) without time zone,
-    re_auth_factor character varying,
-    signed_c1_digest character varying
+    updated_at timestamp(6) without time zone NOT NULL
 );
 
 ALTER TABLE ONLY public.approval_steps FORCE ROW LEVEL SECURITY;
@@ -2271,6 +2261,7 @@ CREATE POLICY tenant_isolation ON public.screening_runs USING ((tenant_id = (NUL
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260701000001'),
 ('20260630000003'),
 ('20260630000002'),
 ('20260630000001'),

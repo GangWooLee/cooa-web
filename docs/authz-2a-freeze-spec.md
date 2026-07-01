@@ -1,8 +1,12 @@
 # COOA 권한 시스템 — 2a as-built 동결 사양 (P1 산출)
 
+> ## ⚠️ [2026-07-01 v0.4 리프레임 — 이 문서의 "승인/서명" 부분 SUPERSEDED]
+> **제품 경계 재정의**: 승인/결재/전자서명은 기업 *내부* 프로세스 → COOA 침범 안 함(병목만 제거 + "무엇이 리뷰됐나" 증명; 구속력 사인오프는 고객 기존 시스템 Veeva/QMS/ERP). 시장 검증(Filestage·Figma=review에서 멈춤; Ironclad=DocuSign 통합-아웃).
+> **변경(코드 구현·152 green·마이그 `20260701000001`)**: 규제 전자서명 **전체 제거** — B2 step-up TOTP·Part-11 `re_auth`·`signed_c1_digest`·M-4·`step_up_controller`·account TOTP·AR암호화·config step_up 3락 삭제. `approval_request/step`은 **경량 "버전 리뷰"로 재구성**: 상태 `pending→reviewed/changes_requested`, `confirm_review!`/`request_changes!`, 정책 `confirm_review?`/`request_changes?`(SoD·two-eyes·감사·**경량 stale**[content/artifact만] 유지). M1 하드 `blocked_no_approver`→소프트 "리뷰어 미배정". **피드백 어디서나**(단일 버전 뷰에도 annotation+resolve). 리뷰 UI=스크리닝 화면→**버전 뷰**. → 아래 §승인·step-up·C1 서명·M-4·B2·GO 판정은 **이력으로만** 읽을 것. 내부 verb `approve`/`reject`·role `approver`는 권한 상한 유지(=검토확인/변경요청). 데이터보안(per-tenant key·crypto-shred·레지던시·no-training·DPA)=별도 후속 트랙.
+
 > 기준 스냅샷: 2026-06-29, `feat/foundation-tenant-rls`, 마이그 20260628000001~20260629000003. 160 테스트.
 > 이 문서 = 권한 시스템 다이어그램(매트릭스·인가흐름·승인 상태머신·인증흐름)의 **진실원천(as-built)**.
-> "2a" = SI-silo 파트너에 격리·신원·규제서명·감사 실발효로 출하 가능한 지점. "2b" = SaaS/Enterprise(SCIM·WebAuthn·pooled).
+> "2a" = SI-silo 파트너에 격리·신원·검토(리뷰)·감사 실발효로 출하 가능한 지점. "2b" = SaaS/Enterprise(SCIM·pooled).
 
 ## 1. as-built 동결 사양 (서브시스템별 — 실제 wired된 것만)
 

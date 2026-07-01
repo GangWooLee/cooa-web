@@ -31,10 +31,6 @@ Rails.application.configure do
   # Force all access over SSL + Strict-Transport-Security + secure cookies (prod-cutover.md §9 — 기본 활성).
   config.force_ssl = true
 
-  # 승인 서명 step-up은 prod에서 무조건 ON(ENV 무시) — Part-11 §11.200 앵커. application.rb 기본값이
-  # 리팩터돼도 여기서 재단언(env 파일이 application.rb 이후 로드되므로 이김).
-  config.x.step_up_required = true
-
   # Skip http-to-https redirect for the default health check endpoint.
   # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
 

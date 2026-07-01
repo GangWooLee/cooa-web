@@ -10,6 +10,10 @@ class ComponentVersionsController < ApplicationController
     idx        = @siblings.index { |v| v.id == @version.id }
     @prev      = idx&.positive? ? @siblings[idx - 1] : nil
     @next      = idx && idx < @siblings.size - 1 ? @siblings[idx + 1] : nil
+    @annotations = @version.annotations.ordered.includes(:created_by, comments: :author)
+    # 버전 리뷰 패널(리프레임): 이 버전의 최신 스크리닝을 리뷰 대상으로. 미스크리닝이면 리뷰 불가.
+    @latest_run  = @version.screening_runs.order(:created_at, :id).last
+    @approval_request = ApprovalRequest.find_by(screening_run_id: @latest_run.id) if @latest_run
     TabHistory.track(session, "v", @version.id) # 헤더 히스토리 — 버전 파일 보기
   end
 

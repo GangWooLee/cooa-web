@@ -1,5 +1,8 @@
 # COOA 웹앱 — 프로덕션 컷오버 런북 (Phase 0~3)
 
+> ## ⚠️ [2026-07-01 v0.4 리프레임 — step-up/AR_ENCRYPTION 항목 폐기]
+> 규제 전자서명(B2 step-up TOTP·Part-11)이 제거됨(경량 "버전 리뷰"로 재구성). 따라서 이 런북의 **`AR_ENCRYPTION_PRIMARY_KEY`·`AR_ENCRYPTION_DETERMINISTIC_KEY`·`AR_ENCRYPTION_KEY_DERIVATION_SALT` 3개 부팅 시크릿·`/step-up` 등록·AR 라운드트립/step-up e2e 스모크·AR 키 로테이션/롤백 항목은 모두 불필요**(해당 코드·initializer·컬럼 삭제됨, 마이그 `20260701000001`). 시크릿은 `SECRET_KEY_BASE`/`RAILS_MASTER_KEY`·`COOA_APP_PASSWORD`·`KC_*`만 유지. 나머지(RLS·cooa_app·OIDC·force_ssl·seed prod 가드)는 불변.
+
 데모(로컬 account-picker · 단일 Postgres 역할 · 정적 데이터)에서 **프로덕션**으로 넘어갈 때의 단계. Phase 0~3에서 구축한 보안 토대를 실제로 강제하는 설정·시퀀스를 정리한다.
 
 > 코드 진실원천: `config/database.yml`(app_role seam) · `config/initializers/{tenant_config,omniauth}.rb` · `config/application.rb`(`config.x.local_login_enabled`) · `lib/tasks/cooa.rake`(`rls:grant_app`/`rls:audit`) · `lib/tasks/audit.rake`(`audit:verify`).
