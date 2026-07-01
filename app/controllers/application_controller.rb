@@ -10,7 +10,7 @@ class ApplicationController < ActionController::Base
   include Authentication
 
   before_action :set_nav
-  helper_method :header_tabs
+  helper_method :header_tabs, :pending_review_count
 
   # Strict Pundit (ADR-002 §0 BOLA defense): every action must authorize (or explicitly skip_authorization).
   # verify_policy_scoped is enabled per-controller for index-like actions (DashboardController) — referencing
@@ -72,6 +72,18 @@ class ApplicationController < ActionController::Base
   end
 
   def nav_ready? = ActiveRecord::Base.connection.schema_cache.data_source_exists?("products")
+
+  # 사이드바 배지: 내가 지정 리뷰어인 pending 리뷰 수(RLS 테넌트 스코프). 요청당 1회 메모이즈.
+  # reviewer_id로 필터 + 유니크 인덱스(tenant_id, approval_request_id, reviewer_id)라 요청당 조인 1행 →
+  # .distinct 불요(정렬/해시 dedup 제거 = 매 인증 페이지 COUNT 비용 절감).
+  def pending_review_count
+    @pending_review_count ||= if nav_ready? && Current.tenant_id && current_user
+      ApprovalRequest.where(status: "pending").joins(:approval_request_reviewers)
+                     .where(approval_request_reviewers: { reviewer_id: current_user.id }).count
+    else
+      0
+    end
+  end
 
   # 대시보드 셸의 제품 트리 행 (대시보드 index / 상세 풀요청 공용)
   def load_dashboard_rows

@@ -6,6 +6,9 @@ gem "rails", "~> 8.1.2"
 gem "propshaft"
 # PostgreSQL — primary DB (tenant isolation + RLS; ADR-002 §7 / ADR-003 P1)
 gem "pg", "~> 1.5"
+# 마이그레이션 안전 — unsafe 마이그(컬럼 drop·NOT NULL 추가 등)를 dev/CI에서 차단하고 expand-contract 대안 제시.
+# 리프레임 중 겪은 stale-schema/파괴적 변경 부류를 배포 전에 잡는 규율 게이트(R4).
+gem "strong_migrations", "~> 2.0"
 # sqlite3 retained transitionally (legacy demo storage / fallback); removable once fully on PG
 gem "sqlite3", ">= 2.1"
 # Use the Puma web server [https://github.com/puma/puma]
@@ -69,12 +72,20 @@ end
 group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
+
+  # N+1 쿼리 감지 — dev에서 브라우저/로그로 즉시 노출(R5). prosopite(test)와 짝.
+  gem "bullet"
 end
 
 group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
+
+  # N+1 게이트 — critical path 통합 테스트에서 Prosopite.scan으로 N+1이면 fail(R5). bullet보다 엄격.
+  gem "prosopite"
+  gem "pg_query" # prosopite의 SQL 지문(fingerprint) 정확화 — scan에 필수
+
 end
 
 gem "rotp", "~> 6.3"

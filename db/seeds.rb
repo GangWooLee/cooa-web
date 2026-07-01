@@ -13,7 +13,8 @@ if Rails.env.production? && ENV["COOA_ALLOW_DEMO_SEED"] != "1"
 end
 
 puts "Clearing..."
-[ ScreeningFinding, ScreeningRun, AnnotationComment, Annotation, LabelText, Ingredient,
+[ ApprovalStep, ApprovalRequestReviewer, ApprovalRequest, # 리뷰: ScreeningRun보다 먼저(approval_request→run FK)
+ ScreeningFinding, ScreeningRun, AnnotationComment, Annotation, LabelText, Ingredient,
  ComponentVersion, Component, ProductMember, ProductProperty, Product,
  RoleAssignment, Account, Organization, User, # FK 순서: 부여→계정→조직(계정.tenant_id)→User(계정.user_id)
  IngredientLimit, LabelRequirement, AdRiskExpression ].each(&:delete_all)
@@ -262,6 +263,10 @@ seed_ingredients(us5)
 # ── 사전 스크리닝 ───────────────────────────────────────────────────────────
 ScreeningService.new(v5,  "JP").run!(requested_by: lee)   # 일본: 위반
 ScreeningService.new(us5, "US").run!(requested_by: lee)   # 미국: 적합
+
+# ── 데모 리뷰 요청(버전 앵커): kim이 CO0000 v5를 lee에게 리뷰 요청 → lee 수신함·kim SoD·lee 확인 시연.
+# hero CO0001 v5는 "리뷰 요청" 버튼 상태로 남김(E2E version_review_test 전제 유지).
+ApprovalRequest.submit_for!(us5, submitter_id: kim.id, reviewer_ids: [lee.id])
 
 puts "Seed done: users=#{User.count} accounts=#{Account.count} role_assignments=#{RoleAssignment.count} " \
      "products=#{Product.count}(roots=#{Product.roots.count}) " \

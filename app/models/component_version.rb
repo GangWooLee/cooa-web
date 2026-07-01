@@ -10,6 +10,7 @@ class ComponentVersion < ApplicationRecord
   has_many :label_texts, dependent: :destroy
   has_many :annotations, -> { order(:seq, :position) }, dependent: :destroy
   has_many :screening_runs, dependent: :destroy
+  has_many :approval_requests, dependent: :destroy # 리뷰는 버전에 앵커(리프레임 후속)
 
   # 업로드 아트워크(정적 에셋 image_name과 공존 — 렌더는 ui_helper#artwork_src가 분기)
   has_one_attached :artwork

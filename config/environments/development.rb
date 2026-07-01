@@ -81,4 +81,13 @@ Rails.application.configure do
   config.hosts << /\A[a-z0-9-]+\.trycloudflare\.com\z/
   # SHARE=1 일 때 추가 하드닝: 에러페이지 web-console(원격 코드실행) 노출 차단
   config.web_console.whitelisted_ips = [] if ENV["SHARE"].present? && config.respond_to?(:web_console)
+
+  # N+1 감지(R5) — 뷰 렌더 중 미프리로드 연관을 브라우저 푸터/로그로 노출. 리뷰 패널·제품 트리처럼
+  # 연관을 도는 화면에서 프리로드 누락을 바로 알림. 게이트(강제 실패)는 test의 prosopite가 담당.
+  config.after_initialize do
+    Bullet.enable        = true
+    Bullet.bullet_logger = true
+    Bullet.rails_logger  = true
+    Bullet.add_footer    = true
+  end
 end

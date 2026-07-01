@@ -56,7 +56,7 @@ namespace :rls do
     organizations accounts role_assignments
     products components component_versions annotations annotation_comments
     ingredients label_texts screening_runs screening_findings product_members product_properties
-    approval_requests approval_steps
+    approval_requests approval_steps approval_request_reviewers
   ].freeze
   READ_ONLY_TABLES = %w[
     ingredient_limits label_requirements ad_risk_expressions users

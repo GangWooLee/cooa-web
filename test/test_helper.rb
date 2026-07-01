@@ -1,6 +1,12 @@
 ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "rails/test_help"
+require "prosopite"
+
+# N+1 게이트(R5): scan 블록 안에서 N+1이 감지되면 raise → 테스트 실패. 전역 스캔이 아니라
+# assert_no_n_plus_one { ... } 로 critical path에만 옵트인(오탐·픽스처 잡음 회피).
+Prosopite.raise = true
+Prosopite.rails_logger = false
 
 module ActiveSupport
   class TestCase
@@ -37,5 +43,13 @@ class ActionDispatch::IntegrationTest
 
   def sign_out
     delete session_path
+  end
+
+  # critical path의 N+1 게이트. 블록 내 요청이 유사쿼리를 반복하면 Prosopite가 raise → 실패.
+  def assert_no_n_plus_one
+    Prosopite.scan
+    yield
+  ensure
+    Prosopite.finish
   end
 end

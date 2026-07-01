@@ -285,22 +285,56 @@ ALTER SEQUENCE public.annotations_id_seq OWNED BY public.annotations.id;
 
 
 --
+-- Name: approval_request_reviewers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.approval_request_reviewers (
+    id bigint NOT NULL,
+    tenant_id uuid NOT NULL,
+    approval_request_id bigint NOT NULL,
+    reviewer_id bigint NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.approval_request_reviewers FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: approval_request_reviewers_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.approval_request_reviewers_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: approval_request_reviewers_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.approval_request_reviewers_id_seq OWNED BY public.approval_request_reviewers.id;
+
+
+--
 -- Name: approval_requests; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.approval_requests (
     id bigint NOT NULL,
     tenant_id uuid NOT NULL,
-    screening_run_id bigint NOT NULL,
     submitter_id bigint NOT NULL,
-    market character varying NOT NULL,
     status character varying DEFAULT 'pending'::character varying NOT NULL,
     reviewed_artifact_digest character varying NOT NULL,
     reviewed_content_snapshot_hash character varying NOT NULL,
-    reviewed_at timestamp(6) without time zone NOT NULL,
+    requested_at timestamp(6) without time zone NOT NULL,
     lock_version integer DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    component_version_id bigint NOT NULL
 );
 
 ALTER TABLE ONLY public.approval_requests FORCE ROW LEVEL SECURITY;
@@ -885,8 +919,6 @@ ALTER SEQUENCE public.screening_findings_id_seq OWNED BY public.screening_findin
 
 CREATE TABLE public.screening_runs (
     id bigint NOT NULL,
-    approved_at timestamp(6) without time zone,
-    approved_by_id integer,
     component_version_id integer NOT NULL,
     country character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
@@ -994,6 +1026,13 @@ ALTER TABLE ONLY public.annotation_comments ALTER COLUMN id SET DEFAULT nextval(
 --
 
 ALTER TABLE ONLY public.annotations ALTER COLUMN id SET DEFAULT nextval('public.annotations_id_seq'::regclass);
+
+
+--
+-- Name: approval_request_reviewers id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_request_reviewers ALTER COLUMN id SET DEFAULT nextval('public.approval_request_reviewers_id_seq'::regclass);
 
 
 --
@@ -1171,6 +1210,14 @@ ALTER TABLE ONLY public.annotations
 
 ALTER TABLE ONLY public.annotations
     ADD CONSTRAINT annotations_tenant_id_id_key UNIQUE (tenant_id, id);
+
+
+--
+-- Name: approval_request_reviewers approval_request_reviewers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_request_reviewers
+    ADD CONSTRAINT approval_request_reviewers_pkey PRIMARY KEY (id);
 
 
 --
@@ -1366,6 +1413,20 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: arr_tenant_request_reviewer_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX arr_tenant_request_reviewer_key ON public.approval_request_reviewers USING btree (tenant_id, approval_request_id, reviewer_id);
+
+
+--
+-- Name: arr_tenant_reviewer_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX arr_tenant_reviewer_idx ON public.approval_request_reviewers USING btree (tenant_id, reviewer_id);
+
+
+--
 -- Name: idx_on_tenant_id_resource_type_resource_id_ts_0d52db2ecc; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1520,10 +1581,10 @@ CREATE INDEX index_annotations_on_tenant_id ON public.annotations USING btree (t
 
 
 --
--- Name: index_approval_requests_on_tenant_id_and_screening_run_id; Type: INDEX; Schema: public; Owner: -
+-- Name: index_approval_requests_on_tenant_id_and_component_version_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_approval_requests_on_tenant_id_and_screening_run_id ON public.approval_requests USING btree (tenant_id, screening_run_id);
+CREATE UNIQUE INDEX index_approval_requests_on_tenant_id_and_component_version_id ON public.approval_requests USING btree (tenant_id, component_version_id);
 
 
 --
@@ -1744,13 +1805,6 @@ CREATE INDEX index_screening_findings_on_tenant_id ON public.screening_findings 
 
 
 --
--- Name: index_screening_runs_on_approved_by_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_screening_runs_on_approved_by_id ON public.screening_runs USING btree (approved_by_id);
-
-
---
 -- Name: index_screening_runs_on_component_version_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1818,11 +1872,11 @@ ALTER TABLE ONLY public.annotations
 
 
 --
--- Name: approval_requests approval_requests_run_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: approval_requests approval_requests_cv_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.approval_requests
-    ADD CONSTRAINT approval_requests_run_tenant_fkey FOREIGN KEY (tenant_id, screening_run_id) REFERENCES public.screening_runs(tenant_id, id);
+    ADD CONSTRAINT approval_requests_cv_tenant_fkey FOREIGN KEY (tenant_id, component_version_id) REFERENCES public.component_versions(tenant_id, id);
 
 
 --
@@ -1831,6 +1885,14 @@ ALTER TABLE ONLY public.approval_requests
 
 ALTER TABLE ONLY public.approval_steps
     ADD CONSTRAINT approval_steps_request_tenant_fkey FOREIGN KEY (tenant_id, approval_request_id) REFERENCES public.approval_requests(tenant_id, id);
+
+
+--
+-- Name: approval_request_reviewers arr_request_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_request_reviewers
+    ADD CONSTRAINT arr_request_tenant_fkey FOREIGN KEY (tenant_id, approval_request_id) REFERENCES public.approval_requests(tenant_id, id);
 
 
 --
@@ -1863,6 +1925,14 @@ ALTER TABLE ONLY public.annotation_comments
 
 ALTER TABLE ONLY public.product_members
     ADD CONSTRAINT fk_rails_274f9b79fe FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: approval_request_reviewers fk_rails_3031802847; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.approval_request_reviewers
+    ADD CONSTRAINT fk_rails_3031802847 FOREIGN KEY (reviewer_id) REFERENCES public.users(id);
 
 
 --
@@ -1970,14 +2040,6 @@ ALTER TABLE ONLY public.accounts
 
 
 --
--- Name: screening_runs fk_rails_fe66c052dc; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.screening_runs
-    ADD CONSTRAINT fk_rails_fe66c052dc FOREIGN KEY (approved_by_id) REFERENCES public.users(id);
-
-
---
 -- Name: ingredients ingredients_cv_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2050,6 +2112,12 @@ ALTER TABLE public.annotation_comments ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.annotations ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: approval_request_reviewers; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.approval_request_reviewers ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: approval_requests; Type: ROW SECURITY; Schema: public; Owner: -
@@ -2157,6 +2225,13 @@ CREATE POLICY tenant_isolation ON public.annotations USING ((tenant_id = (NULLIF
 
 
 --
+-- Name: approval_request_reviewers tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.approval_request_reviewers USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+
+--
 -- Name: approval_requests tenant_isolation; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -2261,6 +2336,9 @@ CREATE POLICY tenant_isolation ON public.screening_runs USING ((tenant_id = (NUL
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260701000004'),
+('20260701000003'),
+('20260701000002'),
 ('20260701000001'),
 ('20260630000003'),
 ('20260630000002'),

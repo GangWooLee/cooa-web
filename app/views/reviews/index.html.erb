@@ -1,0 +1,34 @@
+<% content_for :title, "내게 요청된 리뷰" %>
+<div class="flex h-full flex-col">
+  <div class="flex items-center justify-between border-b border-line-soft px-5 py-3">
+    <h1 class="text-base font-bold text-ink">내게 요청된 리뷰 <span class="text-line">(<%= @requests.size %>)</span></h1>
+  </div>
+
+  <div class="min-h-0 flex-1 overflow-auto p-4">
+    <% if @requests.any? %>
+      <ul class="space-y-2">
+        <% @requests.each do |req| %>
+          <% cv = req.component_version %>
+          <li>
+            <%= link_to component_version_path(cv),
+                  class: "flex items-center justify-between gap-3 rounded-lg border border-line-soft p-3 transition hover:border-cooa" do %>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 text-[13px]">
+                  <span class="shrink-0 rounded bg-tint px-1.5 py-0.5 text-[11px] font-bold text-ink/70"><%= cv.product.code %></span>
+                  <span class="truncate font-bold text-ink"><%= cv.component.display_name %> <%= cv.vlabel.upcase %></span>
+                </div>
+                <div class="mt-1 truncate text-[12px] text-line"><%= cv.product.name %></div>
+              </div>
+              <div class="flex shrink-0 items-center gap-1.5 text-[12px] text-line">
+                요청자 <%= avatar(req.submitter, size: 18) %> <span class="text-ink"><%= req.submitter.name %></span>
+                <span class="ml-1"><%= req.requested_at&.strftime("%m.%d") %></span>
+              </div>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <div class="py-16 text-center text-[13px] text-line">요청된 리뷰가 없습니다.</div>
+    <% end %>
+  </div>
+</div>

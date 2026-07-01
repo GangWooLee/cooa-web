@@ -4,17 +4,16 @@
 module ReviewedTuple
   module_function
 
-  def capture(screening_run)
-    cv = screening_run.component_version
+  def capture(component_version)
     {
-      reviewed_artifact_digest: artifact_digest(cv),
-      reviewed_content_snapshot_hash: content_snapshot_hash(cv)
+      reviewed_artifact_digest: artifact_digest(component_version),
+      reviewed_content_snapshot_hash: content_snapshot_hash(component_version)
     }
   end
 
   # 리뷰 요청 이후 버전 콘텐츠/아트워크가 바뀌었으면 확인 차단(요청은 pending 유지; 재검토 후 재요청).
   def stale?(approval_request)
-    cv = approval_request.screening_run.component_version
+    cv = approval_request.component_version
     content_snapshot_hash(cv) != approval_request.reviewed_content_snapshot_hash ||
       artifact_digest(cv) != approval_request.reviewed_artifact_digest
   end

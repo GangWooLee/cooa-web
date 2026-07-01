@@ -1,19 +1,18 @@
 require "test_helper"
 
-# 버전 리뷰 워크플로(리프레임 — ADR-002 §5.3 후신): 콘텐츠 스냅샷, M2 신원 SoD, stale 경량 가드, 감사.
-# 규제 전자서명(step-up)·M-4·하드 M1 차단은 폐지. setup이 시드 + 김쿠아(owner) 로그인 → 새 run의 요청자.
+# 버전 리뷰 워크플로(버전 앵커): 리뷰는 버전에 붙는다 — 디자이너는 스크리닝 없이 요청(RA가 검토 중 스크리닝).
+# 콘텐츠 스냅샷, 신원 SoD, stale 경량 가드, 감사, 요청받음=검토권한(소프트). setup=시드 + 김쿠아(owner) 로그인.
 class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
   setup do
     @v = Product.find_by!(code: "CO0001").components.find_by!(component_type: "outer_box")
                 .component_versions.find_by!(version_number: 5)
-    post run_screening_component_version_path(@v) # 김쿠아 runs → ScreeningRun(JP)
-    @run = @v.screening_runs.order(:created_at).last
   end
 
-  def submit! = post approval_requests_path, params: { screening_run_id: @run.id }
-  def request_for = ApprovalRequest.find_by!(screening_run_id: @run.id)
+  # 스크리닝 없이 버전에 직접 리뷰 요청(재앵커 핵심).
+  def submit! = post approval_requests_path, params: { component_version_id: @v.id }
+  def request_for = ApprovalRequest.find_by!(component_version_id: @v.id)
 
-  test "리뷰 요청 → pending (+ 콘텐츠 스냅샷 캡처)" do
+  test "스크리닝 없이 리뷰 요청 → pending (+ 콘텐츠 스냅샷 캡처)" do
     submit!
     req = request_for
     assert_equal "pending", req.status
@@ -21,11 +20,42 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
     assert req.reviewed_artifact_digest.present?
   end
 
-  # M1 소프트화: 적격 리뷰어가 없어도 하드 차단(blocked_no_approver)이 아니라 pending — 안내만.
-  test "M1 소프트: 적격 리뷰어 부재여도 pending(차단 아님)" do
-    RoleAssignment.where(account: User.find_by!(name: "이쿠아").account).delete_all # 유일 리뷰어 제거
-    submit!
-    assert_equal "pending", request_for.status
+  test "리뷰어 지정 → requested_reviewer로 저장" do
+    lee = User.find_by!(email: "lee@cooa.dev")
+    post approval_requests_path, params: { component_version_id: @v.id, reviewer_ids: [lee.id] }
+    assert_includes request_for.requested_reviewer_ids, lee.id
+  end
+
+  # 권한 시프트의 핵심: 요청받은 제품 담당자는 approve verb가 없어도(park=contributor) 확인 가능.
+  test "요청받은 담당자(contributor)가 검토 확인 가능" do
+    park = User.find_by!(name: "박쿠아")
+    post approval_requests_path, params: { component_version_id: @v.id, reviewer_ids: [park.id] }
+    req = request_for
+    sign_in_as(Account.find_by!(email: "park@cooa.dev"))
+    post confirm_approval_request_path(req)
+    assert_equal "reviewed", req.reload.status
+    assert_equal park.id, req.approval_steps.first.approver_id
+  end
+
+  # SoD: 요청자 자신을 리뷰어로 지정해도 strip + 본인 확인 불가.
+  test "자기 자신 리뷰어 지정은 strip되고 SoD로 확인 불가" do
+    kim = User.find_by!(name: "김쿠아")
+    post approval_requests_path, params: { component_version_id: @v.id, reviewer_ids: [kim.id] }
+    req = request_for
+    refute_includes req.requested_reviewer_ids, kim.id
+    post confirm_approval_request_path(req) # 여전히 kim(요청자)
+    assert_response :forbidden
+  end
+
+  # 비요청·비approver(song=brand_admin, approve 없음)는 확인 불가.
+  test "요청받지 않은 비approver는 확인 불가" do
+    lee = User.find_by!(email: "lee@cooa.dev")
+    post approval_requests_path, params: { component_version_id: @v.id, reviewer_ids: [lee.id] }
+    req = request_for
+    sign_in_as(Account.find_by!(email: "song@cooa.dev"))
+    post confirm_approval_request_path(req)
+    assert_response :forbidden
+    assert_equal "pending", req.reload.status
   end
 
   test "M2 SoD: 요청자(김쿠아 owner)는 본인 확인 불가; 이쿠아(리뷰어)는 가능" do
@@ -35,8 +65,7 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
     assert_equal "pending", req.reload.status
 
-    lee = Account.find_by!(email: "lee@cooa.dev")
-    sign_in_as(lee)
+    sign_in_as(Account.find_by!(email: "lee@cooa.dev"))
     post confirm_approval_request_path(req)
     assert_equal "reviewed", req.reload.status
     assert_equal 1, req.approval_steps.count
@@ -47,7 +76,7 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
   test "stale: 리뷰 요청 후 콘텐츠 변경 시 확인 차단(pending 유지 + deny 감사)" do
     submit!
     req = request_for
-    @run.component_version.label_texts.first.update!(content: "CHANGED AFTER REQUEST")
+    @v.label_texts.first.update!(content: "CHANGED AFTER REQUEST")
     sign_in_as(Account.find_by!(email: "lee@cooa.dev"))
     post confirm_approval_request_path(req)
     assert_equal "pending", req.reload.status, "stale면 확인되면 안 됨"
@@ -65,20 +94,20 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "변경 요청 → changes_requested 스텝 + 감사" do
+  # N+1 게이트(R5 · docs/dev-discipline.md): 버전 리뷰 패널 렌더가 연관(담당자·피드백·리뷰어)을
+  # 프리로드하는지 강제. 컨트롤러 includes가 빠지면 prosopite가 raise → 실패. pending 상태로 요청해
+  # 리뷰어/담당자 루프가 실제로 돌게 한다.
+  test "버전 리뷰 패널 렌더는 N+1 없음 (critical path 게이트)" do
     submit!
-    req = request_for
-    sign_in_as(Account.find_by!(email: "lee@cooa.dev"))
-    post request_changes_approval_request_path(req), params: { reason: "라벨 재작업 필요" }
-    assert_equal "changes_requested", req.reload.status
-    assert_equal "changes_requested", req.approval_steps.first.decision
+    assert_no_n_plus_one { get component_version_path(@v) }
+    assert_response :success
   end
 
-  # 버전 뷰가 리뷰 패널을 상태별로 렌더(ERB/정책/아바타 오류 포착)
+  # 버전 뷰가 리뷰 패널을 상태별로 렌더(ERB/정책/아바타 오류 포착) — 스크리닝 없이도 요청 버튼 노출.
   test "버전 뷰가 리뷰 패널을 상태별로 렌더" do
     get component_version_path(@v)
     assert_response :success
-    assert_match "리뷰 요청", response.body # 요청 전 → 요청 버튼 (김쿠아 owner)
+    assert_match "리뷰 요청", response.body # 스크리닝 없이도 요청 버튼(김쿠아 owner)
     submit!
     get component_version_path(@v)
     assert_response :success

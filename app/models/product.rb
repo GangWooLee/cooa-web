@@ -1,10 +1,12 @@
 class Product < ApplicationRecord
   include TenantScoped
   # 자기참조 트리(노션형) — 루트=상위 개념, 자식=변형(국가·용량 등)
-  belongs_to :parent, class_name: "Product", optional: true
+  # inverse_of: 트리를 루트→children로 렌더하면 각 child의 parent가 메모리에서 역참조된다 →
+  # path_label/self_and_ancestors의 조상 walk가 쿼리 0건(사이드바가 매 페이지 렌더하는 N+1 제거).
+  belongs_to :parent, class_name: "Product", optional: true, inverse_of: :children
   belongs_to :owner, class_name: "User", optional: true
   has_many :children, -> { order(:position, :id) }, class_name: "Product",
-           foreign_key: :parent_id, dependent: :destroy
+           foreign_key: :parent_id, inverse_of: :parent, dependent: :destroy
   has_many :components, -> { order(:position, :id) }, dependent: :destroy
   has_many :product_members, dependent: :destroy
   has_many :members, through: :product_members, source: :user

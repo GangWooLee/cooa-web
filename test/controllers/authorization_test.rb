@@ -10,10 +10,8 @@ class AuthorizationTest < ActionDispatch::IntegrationTest
   end
 
   def submit_request_for(v)
-    post run_screening_component_version_path(v) # 김쿠아(기본 로그인) 실행
-    run = v.screening_runs.order(:created_at).last
-    post approval_requests_path(screening_run_id: run.id) # 김쿠아 상신 → pending
-    ApprovalRequest.find_by!(screening_run_id: run.id)
+    post approval_requests_path(component_version_id: v.id) # 김쿠아 리뷰 요청 → pending (버전 앵커, 스크리닝 불요)
+    ApprovalRequest.find_by!(component_version_id: v.id)
   end
 
   # 박쿠아(scm → contributor)는 리뷰어(approver) 역할이 없어 검토 확인 거부 — SoD 이전에 역할에서 차단.

@@ -11,6 +11,16 @@
     </span>
   </div>
 
+  <%# 내게 요청된 리뷰 수신함(내가 지정 리뷰어인 pending 요청) %>
+  <%= link_to reviews_path, data: { turbo: false },
+        class: "mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium text-ink transition hover:bg-tint #{'bg-tint' if current_page?(reviews_path)}" do %>
+    <%= ui_icon "bell", size: 16, klass: "text-line" %>
+    <span>내게 요청된 리뷰</span>
+    <% if pending_review_count.positive? %>
+      <span class="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-cooa px-1.5 text-[11px] font-bold text-white"><%= pending_review_count %></span>
+    <% end %>
+  <% end %>
+
   <%# 제품 디렉터리 트리 + 아트워크 찾기(클라이언트 필터) %>
   <nav class="mt-1 flex min-w-0 flex-1 flex-col overflow-hidden px-2 pb-6" data-controller="tree-filter tree-ctx">
     <%# 검색(트리 필터) %>

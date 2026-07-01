@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# 실앱 스모크(R2/R3 · docs/dev-discipline.md) — "테스트 그린 ≠ 앱 작동"의 사각지대를 메운다.
+# 유닛/통합 테스트는 갓 리시드된 test DB·test 환경만 검증한다. 이 스크립트는 사용자가 실제로
+# 구동하는 development 환경 + development DB(영속 schema_cache·RLS=cooa_app 경로)로 앱을 부팅하고,
+# 로그인 후 critical path를 실제 요청으로 걷어 2xx/3xx + 예외 0을 단언한다.
+# 인프로세스(ActionDispatch::Integration::Session)라 실행 중인 dev 서버와 포트 충돌이 없고,
+# 조회(GET)만 수행해 dev 데이터를 변형하지 않는다(로그인 POST는 세션만 설정).
+#
+# 사용:  bin/smoke            # development(기본)
+#        SMOKE_ENV=test bin/smoke
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export RAILS_ENV="${SMOKE_ENV:-development}"
+
+bin/rails runner - <<'RUBY'
+require "action_dispatch/testing/integration"
+
+# 던져버릴 스모크 프로세스 — CSRF 토큰 스크레이프 없이 로그인 POST를 넣기 위해 위조방지 해제.
+ActionController::Base.allow_forgery_protection = false
+ApplicationController.allow_forgery_protection = false
+
+uuid  = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/
+fails = []
+
+def check(sess, fails, label, path)
+  sess.get(path)
+  hops = 0
+  sess.follow_redirect! while sess.response.redirect? && (hops += 1) <= 3  # 로그인 바운스 등 최종 목적지까지
+  code = sess.response.response_code
+  ok   = code >= 200 && code < 300 # 최종은 2xx여야(3xx 잔류=리다이렉트 루프)
+  puts format("  %s %-14s %3d  %s", ok ? "✓" : "✗", label, code, path)
+  fails << "#{label} (#{path}) → HTTP #{code}" unless ok
+  sess.response.body
+rescue => e
+  puts format("  ✗ %-14s EXC  %s", label, "#{e.class}: #{e.message.lines.first&.strip}")
+  fails << "#{label} (#{path}) → #{e.class}: #{e.message.lines.first&.strip}"
+  ""
+end
+
+puts "SMOKE (#{Rails.env} · DB=#{ActiveRecord::Base.connection_db_config.database}) — 실앱 부팅 + critical path"
+
+sess = ActionDispatch::Integration::Session.new(Rails.application)
+sess.host = "localhost"
+
+# 0) 로그인 페이지 렌더 + account_id 확보(button_to 히든 필드에서 스크레이프)
+body       = check(sess, fails, "로그인 페이지", "/session/new")
+account_id = body[/name="account_id"[^>]*value="(#{uuid})"/, 1] || body[uuid]
+
+if account_id.nil?
+  fails << "로그인: /session/new에서 account_id 미발견 (dev DB 시드 필요?)"
+else
+  sess.post "/session", params: { account_id: account_id }
+  sess.follow_redirect! if sess.response.redirect?
+  home = sess.response.response_code
+  ok   = home >= 200 && home < 400
+  puts format("  %s %-14s %3d  POST /session → /", ok ? "✓" : "✗", "로그인", home)
+  fails << "로그인 → HTTP #{home}" unless ok
+end
+
+# 1) 대시보드 (+ 제품 링크 스크레이프 — PK는 bigint)
+dash         = check(sess, fails, "대시보드", "/")
+product_path = dash[%r{/products/\d+}]
+
+# 2) 제품 트리 (+ 버전 링크 스크레이프). 버전 링크가 트리에 없으면(지연 렌더) 대시보드에서 폴백.
+if product_path
+  tree         = check(sess, fails, "제품 트리", product_path)
+  version_path = tree[%r{/versions/\d+}] || dash[%r{/versions/\d+}]
+else
+  puts "  · 제품 링크 없음 — 제품/버전 경로 건너뜀 (dev DB에 제품 없음)"
+  version_path = nil
+end
+
+# 3) 버전 리뷰 패널(핵심 회귀면: 리프레임된 리뷰 렌더) + 스크리닝
+if version_path
+  check(sess, fails, "버전 리뷰", version_path)
+  check(sess, fails, "스크리닝", "#{version_path}/screening")
+else
+  puts "  · 버전 링크 없음 — 버전 리뷰/스크리닝 건너뜀"
+end
+
+# 4) 리뷰 인박스(리뷰↔피드백 연결 트랙)
+check(sess, fails, "리뷰 인박스", "/reviews")
+
+puts
+if fails.empty?
+  puts "SMOKE PASS — critical path 2xx/3xx · 예외 0"
+else
+  puts "SMOKE FAIL (#{fails.size}):"
+  fails.each { |f| puts "  - #{f}" }
+  exit 1
+end
+RUBY

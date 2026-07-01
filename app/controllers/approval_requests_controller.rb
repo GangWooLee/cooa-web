@@ -1,12 +1,16 @@
-# 버전 리뷰 워크플로(리프레임). 버전 뷰에서 리뷰 요청/확인/변경요청이 여기로 온다. create는 리뷰 요청 +
-# 콘텐츠 스냅샷 캡처; confirm은 stale 재검(변경됨→deny) + M2 SoD(정책); 모든 전이는 audit_log 1행(요청 tx와 원자).
-# 규제 전자서명(step-up)·M-4 시장관할은 리프레임에서 폐지 — COOA는 규제 사인오프를 발행하지 않는다.
+# 버전 리뷰 워크플로(리프레임). 버전 뷰에서 리뷰 요청/검토 확인이 여기로 온다. 리뷰는 버전에 앵커 —
+# 디자이너는 스크리닝 없이 요청, RA가 검토 중 스크리닝 수행. create=리뷰 요청+콘텐츠 스냅샷; confirm=stale
+# 재검(변경됨→deny)+SoD(정책). 전이는 audit_log 1행. "고쳐야 함"은 피드백(annotation) 채널 — 변경 요청 폐지.
 class ApprovalRequestsController < ApplicationController
-  # create = 리뷰 요청(screening_run 기준). run의 소유 제품이 verb를 게이트.
+  # create = 리뷰 요청(component_version 기준). 버전의 소유 제품이 verb를 게이트. reviewer_ids로 담당자 지정.
   def create
-    run = ScreeningRun.find(params[:screening_run_id])
-    authorize run, :submit_for_approval?
-    req = ApprovalRequest.submit_for!(run, submitter_id: current_account.user_id)
+    cv = ComponentVersion.find(params[:component_version_id])
+    authorize cv, :submit_for_approval?
+    return head :forbidden if current_account.user_id.blank? # M1: 미브리지 계정 → submitter_id nil NOT NULL 500 방지(fail-closed)
+    req = ApprovalRequest.submit_for!(cv, submitter_id: current_account.user_id,
+                                          reviewer_ids: sanitized_reviewer_ids(cv))
+    # L1: 이미 검토 확인된(terminal) 버전에 직접 POST → no-op. 오해소지 audit/notice 방지.
+    return redirect_back(fallback_location: root_path, status: :see_other, notice: "이미 검토 확인된 버전입니다.") if req.reviewed?
     audit!(req, action: "submit_for_approval", before: nil)
     redirect_back fallback_location: root_path, status: :see_other, notice: submit_notice(req)
   rescue ActiveRecord::RecordNotUnique # 동시 요청 → 멱등, 500 아님
@@ -30,21 +34,10 @@ class ApprovalRequestsController < ApplicationController
     redirect_back fallback_location: root_path, status: :see_other, notice: "검토 확인되었습니다."
   end
 
-  def request_changes
-    req = ApprovalRequest.find(params[:id])
-    authorize req, :request_changes?
-    before = req.status
-    req.request_changes!(reviewer_id: current_account.user_id, reason: params[:reason])
-    audit!(req, action: "request_changes", before: before)
-    redirect_back fallback_location: root_path, status: :see_other, notice: "변경이 요청되었습니다."
-  rescue ActiveRecord::RecordNotUnique # 동시 처리 → 이미 결정됨, 500 아님
-    redirect_back fallback_location: root_path, status: :see_other, notice: "이미 처리된 리뷰입니다."
-  end
-
   private
 
   # 전이 → 감사(allow). 요청 tenant tx와 원자: 실패 시 전이도 롤백(감사 없는 리뷰 없음). action 키
-  # (submit_for_approval/confirm_review/request_changes)는 정책 query명과 일치 — deny 감사도 같은 키.
+  # (submit_for_approval/confirm_review)는 정책 query명과 일치 — deny 감사도 같은 키.
   def audit!(req, action:, before:)
     AuditLog.record!(action: action, resource_type: "ApprovalRequest", resource_id: req.id, outcome: "allow",
                      before: (before ? { "status" => before } : nil), after: { "status" => req.status },
@@ -57,10 +50,19 @@ class ApprovalRequestsController < ApplicationController
                      request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
   end
 
-  # M1 소프트화: 적격 리뷰어(요청자와 구별된 owner/approver) 부재는 차단이 아니라 안내. 리뷰는 요청됨.
+  # 지정 리뷰어는 서버측에서 이 버전 제품의 담당자(member)로 제한(임의 id 방어; 요청자 제외는 모델).
+  # 상한 캡(S3): 과도한 지정 방어.
+  def sanitized_reviewer_ids(component_version)
+    member_ids = component_version.product.members.distinct.pluck(:id)
+    (Array(params[:reviewer_ids]).map(&:to_i).uniq & member_ids).first(20)
+  end
+
+  # 지정 리뷰어가 있으면 그들에게 요청됨을 안내. 없으면 M1 소프트(적격 리뷰어 부재는 차단 아닌 안내).
   def submit_notice(req)
-    if EligibleApproverService.any?(market: req.market, exclude_user_id: req.submitter_id)
-      "리뷰 요청이 제출되었습니다."
+    if req.requested_reviewers.any?
+      "#{req.requested_reviewers.map(&:name).join(', ')}님에게 리뷰를 요청했습니다."
+    elsif EligibleApproverService.any?(exclude_user_id: req.submitter_id)
+      "리뷰 요청이 제출되었습니다 — 리뷰어를 지정하지 않아 자격 리뷰어 누구나 확인할 수 있습니다."
     else
       "리뷰 요청됨 — 아직 검토 가능한 구성원(요청자와 다른 리뷰어)이 없습니다."
     end

@@ -29,13 +29,12 @@ class DemoFlowsTest < ActionDispatch::IntegrationTest
     v = hero_v(5)
     lee = Account.find_by!(email: "lee@cooa.dev") # RA → 리뷰어(approver)
 
-    # 실행(run) + 리뷰 요청 = 기본 로그인 김쿠아(owner)
+    # 스크리닝 실행(RA 도구) + 리뷰 요청(버전 앵커) = 기본 로그인 김쿠아(owner)
     assert_difference -> { v.screening_runs.count }, 1 do
       post run_screening_component_version_path(v)
     end
-    run = v.screening_runs.order(:created_at).last
-    post approval_requests_path(screening_run_id: run.id)
-    req = ApprovalRequest.find_by!(screening_run_id: run.id)
+    post approval_requests_path(component_version_id: v.id)
+    req = ApprovalRequest.find_by!(component_version_id: v.id)
     assert_equal "pending", req.status
 
     # 음성: 요청자 김쿠아 자가 확인 → SoD 거부(403) (owner도 예외 없음)

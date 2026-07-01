@@ -52,13 +52,15 @@ Rails.application.routes.draw do
   # ③ 버전 비교 (가치 라벨 없는 버전쌍 선택)
   get "versions/:from_id/compare/:to_id", to: "comparisons#show", as: :comparison
 
-  # ④ 버전 리뷰(리프레임) — submit(create=리뷰 요청) / confirm(검토 확인) / request_changes(변경 요청).
+  # ④ 버전 리뷰(리프레임) — submit(create=리뷰 요청) / confirm(검토 확인). "고쳐야 함"은 피드백 채널.
   resources :approval_requests, only: [:create] do
     member do
       post :confirm
-      post :request_changes
     end
   end
+
+  # "내게 요청된 리뷰" 수신함(내가 지정 리뷰어인 pending 요청)
+  resources :reviews, only: [:index]
 
   # 상단 히스토리 탭 닫기(세션)
   delete "/tabs/:id", to: "tabs#destroy", as: :tab

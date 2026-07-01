@@ -3,7 +3,7 @@
 class ApprovalStep < ApplicationRecord
   include TenantScoped
 
-  DECISIONS = %w[confirmed changes_requested].freeze
+  DECISIONS = %w[confirmed].freeze
 
   belongs_to :approval_request
   belongs_to :approver, class_name: "User"

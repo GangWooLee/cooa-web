@@ -2,7 +2,7 @@ class ComponentVersionsController < ApplicationController
   # 특정 버전의 실제 파일 보기 (전체 페이지 — 드로어 아님)
   def show
     @version = ComponentVersion.includes(:created_by, :ingredients, :annotations,
-                                         component: { product: {} }).find(params[:id])
+                                         component: { product: { product_members: :user } }).find(params[:id])
     authorize @version, :view_component_version?
     @component = @version.component
     @product   = @version.product
@@ -11,9 +11,11 @@ class ComponentVersionsController < ApplicationController
     @prev      = idx&.positive? ? @siblings[idx - 1] : nil
     @next      = idx && idx < @siblings.size - 1 ? @siblings[idx + 1] : nil
     @annotations = @version.annotations.ordered.includes(:created_by, comments: :author)
-    # 버전 리뷰 패널(리프레임): 이 버전의 최신 스크리닝을 리뷰 대상으로. 미스크리닝이면 리뷰 불가.
-    @latest_run  = @version.screening_runs.order(:created_at, :id).last
-    @approval_request = ApprovalRequest.find_by(screening_run_id: @latest_run.id) if @latest_run
+    # 버전 리뷰 패널: 리뷰는 버전에 앵커(스크리닝 비의존) — RA가 검토 중 스크리닝 수행. 스크리닝 링크는
+    # 무조건 렌더되므로 latest_run 프리로드 불요(죽은 쿼리 제거).
+    @approval_request = ApprovalRequest.includes(:requested_reviewers).find_by(component_version_id: @version.id)
+    @review = ReviewPanelPresenter.new(version: @version, request: @approval_request,
+                                       open_feedback_count: @annotations.count(&:open?))
     TabHistory.track(session, "v", @version.id) # 헤더 히스토리 — 버전 파일 보기
   end
 
