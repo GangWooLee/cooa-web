@@ -62,6 +62,11 @@ Rails.application.routes.draw do
   # "내게 요청된 리뷰" 수신함(내가 지정 리뷰어인 pending 요청)
   resources :reviews, only: [:index]
 
+  # 조직 멤버십(Phase 3) — 로스터 / 초대 생성·회수 / 초대 랜딩(티켓 → 소셜 로그인 유도)
+  resources :members, only: [:index]
+  resources :invitations, only: [:create, :destroy]
+  get "/invite/:token", to: "invitation_acceptances#show", as: :invite
+
   # 상단 히스토리 탭 닫기(세션)
   delete "/tabs/:id", to: "tabs#destroy", as: :tab
 end

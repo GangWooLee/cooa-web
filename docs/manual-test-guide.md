@@ -350,3 +350,31 @@ COOA_DEMO_STEP_UP_OFF=1 bin/dev  # ★ frictionless: 승인 무마찰 (re_auth_f
 2. `bin/dev` 재기동 → ④ step-up 6자리 vs 단락 비교.
 3. `COOA_DB_USER=$USER bin/rails console` → ⑤ owner 가드 3종 → ⑥ 격리 3-라이너 → ⑦ audit UPDATE/DELETE 거부.
 4. `COOA_DB_USER=$USER bin/rails rls:audit` & `audit:verify` & `audit:detect_bola`.
+
+---
+
+## 4. Google 소셜 로그인 · 조직 초대 수동 검증 (2026-07-02 · Phase 2/3)
+
+> 자동화 불가 영역: 실 Google 계정 왕복은 mock으로 검증 불가(통합 매트릭스 23종은 test_mode로 커버됨).
+> 아래는 **사용자 1회 셋업 + 5개 검증 항목**.
+
+### ☐ 4.0 셋업 (1회)
+1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → OAuth 동의 화면(External, scope: email/profile/openid) 구성.
+2. 사용자 인증 정보 → **OAuth 클라이언트 ID 생성**(유형: 웹 애플리케이션) → 승인된 리디렉션 URI에 `http://localhost:3000/auth/google_oauth2/callback` 추가.
+3. bin/dev를 띄우는 셸에서: `export GOOGLE_CLIENT_ID=<client-id>` · `export GOOGLE_CLIENT_SECRET=<secret>` → `bin/dev` 재기동.
+4. 로그인 페이지에 "Google로 로그인" 버튼이 보이면 셋업 완료(버튼은 env 게이트).
+
+### ☐ 4.1 시드 계정 email-link 바인딩 `[브라우저]`
+본인 Google 계정 이메일로 시드 계정을 하나 맞춰두고(콘솔에서 `Account.find_by(email: "kim@cooa.dev").update!(email: "<본인@gmail>")` 등) → Google 로그인 → 대시보드 진입 + 이후 재로그인도 성공(재방문 매칭).
+
+### ☐ 4.2 초대 → 수락 (핵심 저니) `[브라우저 2개]`
+김쿠아(owner)로 멤버 페이지 → 다른 본인 이메일로 초대 생성 → **링크 복사** → 시크릿 창에서 링크 열기 → "OO 조직에 초대되었습니다" → Google로 계속 → 해당 Google 계정으로 로그인 → 대시보드 진입 · 멤버 페이지에 새 멤버 등재(역할 칩 확인).
+
+### ☐ 4.3 티켓 재사용 거부 `[시크릿 창]`
+같은 초대 링크를 다시 열면 "유효하지 않은 초대" · 다른 Google 계정으로 수락 시도해도 거부.
+
+### ☐ 4.4 미초대 Google 계정 거부 `[시크릿 창]`
+초대 없는 임의 Google 계정으로 "Google로 로그인" → "허가되지 않은 계정입니다"(계정 미생성).
+
+### ☐ 4.5 초대 취소 `[브라우저]`
+초대 생성 → 취소 → 링크 열면 무효 · audit_logs에 invitation.create/revoke 기록(`AuditLog.where("action LIKE 'invitation%'")`).

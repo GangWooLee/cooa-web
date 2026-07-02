@@ -81,9 +81,64 @@ end
 # 4) 리뷰 인박스(리뷰↔피드백 연결 트랙)
 check(sess, fails, "리뷰 인박스", "/reviews")
 
+# 5) 쓰기 경로 왕복(R8) — GET-only의 사각지대 해소. 실사용에서만 드러난 권한 결함
+#    (active_storage INSERT 부재 → 업로드 500)의 부류를 매 스모크가 걷는다. 던져버릴 component를
+#    만들어 업로드→preview→연쇄삭제까지 전부 HTTP로 수행(자가정리·잔여 0 단언).
+ActiveJob::Base.queue_adapter = :inline # purge까지 이 프로세스에서 동기 실행(DELETE 검증)
+# 요청 밖 맨 AR 쿼리는 executor로 감싼다 — dev query_log_tags가 요청 종료 후 빈 ExecutionContext에서
+# tag_content nil 크래시(integration 세션 요청 이후에만 발생하는 함정).
+db = ->(&blk) { Rails.application.executor.wrap(&blk) }
+blob_baseline = db.call { ActiveStorage::Blob.count }
+if product_path
+  # 5a) 구성요소 생성 (components INSERT + RLS WITH CHECK)
+  sess.post "#{product_path}/components"
+  cid = sess.response.location.to_s[/rename_component=(\d+)/, 1]
+  if cid
+    puts "  ✓ 쓰기:구성요소     302  POST #{product_path}/components (##{cid})"
+    # 5b) PDF 버전 업로드 (component_versions + blobs/attachments INSERT — 사용자 실패 경로)
+    pdf = Rails.root.join("test/fixtures/files/sample_artwork.pdf")
+    if pdf.exist?
+      sess.post "/components/#{cid}/versions",
+                params: { component_version: { artwork: Rack::Test::UploadedFile.new(pdf.to_s, "application/pdf"),
+                                               change_reason: "smoke 쓰기 경로" } }
+      vloc = sess.response.location.to_s[%r{/versions/\d+}]
+      ok_up = sess.response.response_code == 302 && vloc
+      puts format("  %s %-14s %3d  POST /components/#{cid}/versions", ok_up ? "✓" : "✗", "쓰기:업로드", sess.response.response_code)
+      fails << "쓰기:업로드 → HTTP #{sess.response.response_code}" unless ok_up
+      if vloc
+        body = check(sess, fails, "쓰기:버전 뷰", vloc)
+        # 5c) preview/variant 생성 (poppler + variant_records INSERT)
+        rep = body[%r{/rails/active_storage/representations/[^"']+}]
+        if rep
+          check(sess, fails, "쓰기:preview", CGI.unescapeHTML(rep))
+        else
+          fails << "쓰기:preview — 버전 뷰에 representation URL 없음(thumb_src 회귀?)"
+        end
+      end
+    else
+      fails << "쓰기:업로드 — fixture #{pdf} 없음"
+    end
+    # 5d) 연쇄 삭제 (components/versions DELETE + inline purge → AS DELETE)
+    sess.delete "/components/#{cid}"
+    ok_del = sess.response.response_code == 302
+    puts format("  %s %-14s %3d  DELETE /components/#{cid}", ok_del ? "✓" : "✗", "쓰기:삭제", sess.response.response_code)
+    fails << "쓰기:삭제 → HTTP #{sess.response.response_code}" unless ok_del
+    delta = db.call { ActiveStorage::Blob.count } - blob_baseline
+    if delta.zero?
+      puts "  ✓ 쓰기:정리          잔여 blob 0 (purge DELETE OK)"
+    else
+      fails << "쓰기:정리 — blob 잔여 #{delta} (purge 미작동 또는 DELETE 권한 결핍)"
+    end
+  else
+    fails << "쓰기:구성요소 생성 실패 → HTTP #{sess.response.response_code}"
+  end
+else
+  puts "  · 제품 없음 — 쓰기 경로 건너뜀"
+end
+
 puts
 if fails.empty?
-  puts "SMOKE PASS — critical path 2xx/3xx · 예외 0"
+  puts "SMOKE PASS — critical path 2xx/3xx · 예외 0 · 쓰기 왕복(업로드→preview→삭제) 잔여 0"
 else
   puts "SMOKE FAIL (#{fails.size}):"
   fails.each { |f| puts "  - #{f}" }

@@ -56,6 +56,7 @@ CREATE TABLE public.accounts (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     user_id bigint,
+    idp_provider character varying,
     CONSTRAINT accounts_status_check CHECK (((status)::text = ANY ((ARRAY['invited'::character varying, 'active'::character varying, 'suspended'::character varying, 'deprovisioned'::character varying])::text[])))
 );
 
@@ -617,6 +618,28 @@ CREATE SEQUENCE public.ingredients_id_seq
 --
 
 ALTER SEQUENCE public.ingredients_id_seq OWNED BY public.ingredients.id;
+
+
+--
+-- Name: invitations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.invitations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    email character varying NOT NULL,
+    role_key character varying NOT NULL,
+    token_digest character varying NOT NULL,
+    invited_by_account_id uuid NOT NULL,
+    accepted_account_id uuid,
+    expires_at timestamp(6) without time zone NOT NULL,
+    accepted_at timestamp(6) without time zone,
+    revoked_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.invitations FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1309,6 +1332,14 @@ ALTER TABLE ONLY public.ingredients
 
 
 --
+-- Name: invitations invitations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invitations
+    ADD CONSTRAINT invitations_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: label_requirements label_requirements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1413,6 +1444,13 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: accounts_tenant_provider_subject_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX accounts_tenant_provider_subject_key ON public.accounts USING btree (tenant_id, idp_provider, idp_subject) WHERE (idp_subject IS NOT NULL);
+
+
+--
 -- Name: arr_tenant_request_reviewer_key; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1459,13 +1497,6 @@ CREATE INDEX index_accounts_on_tenant_id ON public.accounts USING btree (tenant_
 --
 
 CREATE UNIQUE INDEX index_accounts_on_tenant_id_and_email ON public.accounts USING btree (tenant_id, email);
-
-
---
--- Name: index_accounts_on_tenant_id_and_idp_subject; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_accounts_on_tenant_id_and_idp_subject ON public.accounts USING btree (tenant_id, idp_subject) WHERE (idp_subject IS NOT NULL);
 
 
 --
@@ -1700,6 +1731,13 @@ CREATE INDEX index_ingredients_on_tenant_id ON public.ingredients USING btree (t
 
 
 --
+-- Name: index_invitations_on_token_digest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_invitations_on_token_digest ON public.invitations USING btree (token_digest);
+
+
+--
 -- Name: index_label_requirements_on_country; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1823,6 +1861,20 @@ CREATE INDEX index_screening_runs_on_requested_by_id ON public.screening_runs US
 --
 
 CREATE INDEX index_screening_runs_on_tenant_id ON public.screening_runs USING btree (tenant_id);
+
+
+--
+-- Name: invitations_tenant_list_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX invitations_tenant_list_idx ON public.invitations USING btree (tenant_id, created_at);
+
+
+--
+-- Name: invitations_tenant_open_email_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX invitations_tenant_open_email_key ON public.invitations USING btree (tenant_id, email) WHERE ((accepted_at IS NULL) AND (revoked_at IS NULL));
 
 
 --
@@ -2040,6 +2092,14 @@ ALTER TABLE ONLY public.accounts
 
 
 --
+-- Name: invitations fk_rails_f2ab2431e2; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invitations
+    ADD CONSTRAINT fk_rails_f2ab2431e2 FOREIGN KEY (tenant_id) REFERENCES public.organizations(id);
+
+
+--
 -- Name: ingredients ingredients_cv_tenant_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2154,6 +2214,12 @@ ALTER TABLE public.components ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.ingredients ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: invitations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.invitations ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: label_texts; Type: ROW SECURITY; Schema: public; Owner: -
@@ -2274,6 +2340,13 @@ CREATE POLICY tenant_isolation ON public.ingredients USING ((tenant_id = (NULLIF
 
 
 --
+-- Name: invitations tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.invitations USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+
+--
 -- Name: label_texts tenant_isolation; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -2336,6 +2409,8 @@ CREATE POLICY tenant_isolation ON public.screening_runs USING ((tenant_id = (NUL
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260702000002'),
+('20260702000001'),
 ('20260701000004'),
 ('20260701000003'),
 ('20260701000002'),

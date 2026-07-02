@@ -14,6 +14,9 @@ class Account < ApplicationRecord
 
   validates :email, presence: true
   validates :status, inclusion: { in: STATUSES }
+  # 바인딩 불변식: subject는 provider 네임스페이스 안에서만 의미(Google sub ≠ KC sub). 쌍으로만 세팅.
+  validates :idp_provider, presence: true, if: -> { idp_subject.present? }
+  validates :idp_subject,  presence: true, if: -> { idp_provider.present? }
 
   scope :active, -> { where(status: "active") }
 

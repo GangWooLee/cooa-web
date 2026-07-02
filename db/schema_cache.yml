@@ -25,7 +25,7 @@ columns:
     default_function:
     collation:
     comment:
-  - &35 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &37 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -62,7 +62,7 @@ columns:
     default_function:
     collation:
     comment:
-  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &35 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -95,6 +95,18 @@ columns:
     'null': false
     default:
     default_function: gen_random_uuid()
+    collation:
+    comment:
+  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: idp_provider
+    cast_type: *3
+    sql_type_metadata: *4
+    'null': true
+    default:
+    default_function:
     collation:
     comment:
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
@@ -256,7 +268,7 @@ columns:
     default_function: nextval('active_storage_attachments_id_seq'::regclass)
     collation:
     comment:
-  - &37 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &38 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -590,7 +602,7 @@ columns:
     default_function: nextval('annotation_comments_id_seq'::regclass)
     collation:
     comment:
-  - &41 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &42 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -629,7 +641,7 @@ columns:
     default_function:
     collation:
     comment:
-  - &42 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &44 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -652,7 +664,7 @@ columns:
     default_function:
     collation:
     comment:
-  - &43 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &45 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -664,7 +676,7 @@ columns:
     default_function:
     collation:
     comment:
-  - &44 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &46 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -676,7 +688,7 @@ columns:
     default_function:
     collation:
     comment:
-  - &45 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &47 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -1021,7 +1033,7 @@ columns:
   - *9
   - *21
   - *13
-  - &39 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &40 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -1438,7 +1450,7 @@ columns:
     collation:
     comment:
   - *28
-  - &38 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &39 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -1632,6 +1644,96 @@ columns:
   - *28
   - *16
   - *13
+  invitations:
+  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: accepted_account_id
+    cast_type: *5
+    sql_type_metadata: *6
+    'null': true
+    default:
+    default_function:
+    collation:
+    comment:
+  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: accepted_at
+    cast_type: *1
+    sql_type_metadata: *2
+    'null': true
+    default:
+    default_function:
+    collation:
+    comment:
+  - *9
+  - *35
+  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: expires_at
+    cast_type: *1
+    sql_type_metadata: *2
+    'null': false
+    default:
+    default_function:
+    collation:
+    comment:
+  - *36
+  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: invited_by_account_id
+    cast_type: *5
+    sql_type_metadata: *6
+    'null': false
+    default:
+    default_function:
+    collation:
+    comment:
+  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: revoked_at
+    cast_type: *1
+    sql_type_metadata: *2
+    'null': true
+    default:
+    default_function:
+    collation:
+    comment:
+  - &43 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: role_key
+    cast_type: *3
+    sql_type_metadata: *4
+    'null': false
+    default:
+    default_function:
+    collation:
+    comment:
+  - *16
+  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: token_digest
+    cast_type: *3
+    sql_type_metadata: *4
+    'null': false
+    default:
+    default_function:
+    collation:
+    comment:
+  - *13
   label_requirements:
   - *30
   - *31
@@ -1724,7 +1826,7 @@ columns:
     default_function:
     collation:
     comment:
-  - &40 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &41 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -1789,7 +1891,7 @@ columns:
     collation:
     comment:
   - *9
-  - *35
+  - *37
   - *36
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
@@ -1803,7 +1905,7 @@ columns:
     default_function:
     collation:
     comment:
-  - *37
+  - *38
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
@@ -1831,7 +1933,7 @@ columns:
     default_function: nextval('product_members_id_seq'::regclass)
     collation:
     comment:
-  - *38
+  - *39
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
@@ -1872,12 +1974,12 @@ columns:
     default_function: nextval('product_properties_id_seq'::regclass)
     collation:
     comment:
-  - *37
-  - *28
   - *38
+  - *28
+  - *39
   - *16
   - *13
-  - *39
+  - *40
   products:
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
@@ -1903,7 +2005,7 @@ columns:
     default_function:
     collation:
     comment:
-  - *40
+  - *41
   - *9
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
@@ -1953,7 +2055,7 @@ columns:
     default_function:
     collation:
     comment:
-  - *37
+  - *38
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
@@ -1978,7 +2080,7 @@ columns:
     default_function:
     collation:
     comment:
-  - *41
+  - *42
   - *28
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
@@ -2057,18 +2159,7 @@ columns:
     default_function:
     collation:
     comment:
-  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
-    serial:
-    identity:
-    generated: ''
-    name: role_key
-    cast_type: *3
-    sql_type_metadata: *4
-    'null': false
-    default:
-    default_function:
-    collation:
-    comment:
+  - *43
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
@@ -2109,10 +2200,10 @@ columns:
     collation:
     comment:
   screening_findings:
-  - *42
-  - *43
   - *44
   - *45
+  - *46
+  - *47
   - *30
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
@@ -2127,7 +2218,7 @@ columns:
     collation:
     comment:
   - *9
-  - &46 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &48 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -2242,7 +2333,7 @@ columns:
   - *34
   - *31
   - *9
-  - *46
+  - *48
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial: true
     identity:
@@ -2331,7 +2422,7 @@ columns:
     default_function: nextval('users_id_seq'::regclass)
     collation:
     comment:
-  - *37
+  - *38
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
@@ -2362,6 +2453,7 @@ primary_keys:
   components: id
   ingredient_limits: id
   ingredients: id
+  invitations: id
   label_requirements: id
   label_texts: id
   organizations: id
@@ -2390,6 +2482,7 @@ data_sources:
   components: true
   ingredient_limits: true
   ingredients: true
+  invitations: true
   label_requirements: true
   label_texts: true
   organizations: true
@@ -2403,6 +2496,24 @@ data_sources:
   users: true
 indexes:
   accounts:
+  - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
+    table: accounts
+    name: accounts_tenant_provider_subject_key
+    unique: true
+    columns:
+    - tenant_id
+    - idp_provider
+    - idp_subject
+    lengths: {}
+    orders: {}
+    opclasses: {}
+    where: "(idp_subject IS NOT NULL)"
+    type:
+    using: :btree
+    include:
+    nulls_not_distinct: false
+    comment:
+    valid: true
   - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
     table: accounts
     name: index_accounts_on_tenant_id
@@ -2430,23 +2541,6 @@ indexes:
     orders: {}
     opclasses: {}
     where:
-    type:
-    using: :btree
-    include:
-    nulls_not_distinct: false
-    comment:
-    valid: true
-  - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
-    table: accounts
-    name: index_accounts_on_tenant_id_and_idp_subject
-    unique: true
-    columns:
-    - tenant_id
-    - idp_subject
-    lengths: {}
-    orders: {}
-    opclasses: {}
-    where: "(idp_subject IS NOT NULL)"
     type:
     using: :btree
     include:
@@ -3151,6 +3245,57 @@ indexes:
     nulls_not_distinct: false
     comment:
     valid: true
+  invitations:
+  - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
+    table: invitations
+    name: index_invitations_on_token_digest
+    unique: true
+    columns:
+    - token_digest
+    lengths: {}
+    orders: {}
+    opclasses: {}
+    where:
+    type:
+    using: :btree
+    include:
+    nulls_not_distinct: false
+    comment:
+    valid: true
+  - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
+    table: invitations
+    name: invitations_tenant_list_idx
+    unique: false
+    columns:
+    - tenant_id
+    - created_at
+    lengths: {}
+    orders: {}
+    opclasses: {}
+    where:
+    type:
+    using: :btree
+    include:
+    nulls_not_distinct: false
+    comment:
+    valid: true
+  - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
+    table: invitations
+    name: invitations_tenant_open_email_key
+    unique: true
+    columns:
+    - tenant_id
+    - email
+    lengths: {}
+    orders: {}
+    opclasses: {}
+    where: "((accepted_at IS NULL) AND (revoked_at IS NULL))"
+    type:
+    using: :btree
+    include:
+    nulls_not_distinct: false
+    comment:
+    valid: true
   label_requirements:
   - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
     table: label_requirements
@@ -3539,4 +3684,4 @@ indexes:
     comment:
     valid: true
   users: []
-version: 20260701000004
+version: 20260702000002

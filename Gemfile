@@ -31,6 +31,9 @@ gem "pundit", "~> 2.4"
 # request-phase CSRF protection (CVE-2015-9284). Active only when KC_ISSUER is set (or in test).
 gem "omniauth_openid_connect", "~> 0.8"
 gem "omniauth-rails_csrf_protection", "~> 1.0"
+# Google 소셜 로그인 — 직접 연결(ADR-003 개정: 단일 브로커는 기업 SSO 계약 시점으로 유예).
+# accounts.idp_provider가 provider별 subject 네임스페이스를 분리해 향후 브로커 이전 경로 확보.
+gem "omniauth-google-oauth2", "~> 1.2"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"

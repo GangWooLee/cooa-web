@@ -43,9 +43,11 @@ CREATE ROLE cooa_app LOGIN PASSWORD '<COOA_APP_PASSWORD>'
 | `COOA_APP_PASSWORD` | **시크릿**(필수) | — |
 | `COOA_DB_PASSWORD` | — | owner 비번(필요 시) |
 | `COOA_TENANT_ID` | **필수**(SI silo 루트 org uuid; `TenantConfig`가 prod에서 blank면 raise) | 동일 |
-| `KC_ISSUER` | `https://<keycloak>/realms/<realm>`(필수) | — |
+| `GOOGLE_CLIENT_ID` | Google 소셜 로그인(직접 연결 — ADR-003 v0.4 개정 경로) | — |
+| `GOOGLE_CLIENT_SECRET` | **시크릿** · redirect URI = `https://<app>/auth/google_oauth2/callback` | — |
+| `KC_ISSUER` | `https://<keycloak>/realms/<realm>`(**KC 사용 시** — v0.4: 브로커는 기업 SSO 시점으로 유예, GOOGLE_* 만으로 부팅 가드 충족) | — |
 | `KC_CLIENT_ID` | `cooa-rails` | — |
-| `KC_CLIENT_SECRET` | **시크릿**(필수) | — |
+| `KC_CLIENT_SECRET` | **시크릿**(KC 사용 시) | — |
 | `KC_REDIRECT_URI` | `https://<app>/auth/openid_connect/callback` | — |
 | `SECRET_KEY_BASE` | **시크릿**(세션 암호화) | — |
 | `AR_ENCRYPTION_PRIMARY_KEY` | **시크릿**(필수 · **부팅 fail-fast**) | **동일**(seed의 `provision_totp!`도 암호화 컬럼 씀) |
@@ -77,7 +79,8 @@ CREATE ROLE cooa_app LOGIN PASSWORD '<COOA_APP_PASSWORD>'
 ## 7. 배포 시퀀스 (릴리스마다)
 모두 **owner**로 1~4, 앱은 cooa_app:
 1. `COOA_DB_USER=<owner> RAILS_ENV=production bin/rails db:schema:load db:migrate` — 스키마 로드 + 마이그(structure.sql가 RLS policy + audit 불변 트리거 보존; **GRANT는 strip됨**). ⚠️ **`db:prepare` 금지**: fresh DB서 `db:seed`를 자동 실행해 데모 org/계정을 prod에 주입(seed에 prod 가드를 넣었으나 절차도 no-seed 경로 사용). B2/B3 마이그(`20260630000001/2/3`)·P4 인덱스(`idx_ra_eligible_approver`)는 structure.sql에 이미 baked.
-2. `COOA_DB_USER=<owner> RAILS_ENV=production bin/rails rls:grant_app` — cooa_app 권한 재적용(RLS 테이블 DML · read-only SELECT · **audit_logs SELECT/INSERT만** · 시퀀스 USAGE). **스키마 로드 후 매번 필수**.
+2. `COOA_DB_USER=<owner> RAILS_ENV=production bin/rails rls:grant_app` — cooa_app 권한 재적용(RLS 테이블 DML · read-only SELECT · **active_storage 3종 DML**(업로드 INSERT/analyze UPDATE/purge DELETE — 누락 시 업로드 500) · **audit_logs SELECT/INSERT만** · 시퀀스 USAGE). **스키마 로드 후 매번 필수**.
+   ⚠️ **solid_* 별도 DB grant(prod 전용·미자동화)**: `rls:grant_app`은 **primary DB에만** 적용된다. production은 solid_queue/solid_cache/solid_cable이 **별도 DB**(cooa_production_{queue,cache,cable})를 cooa_app으로 접속하므로, 이 DB들에 권한이 없으면 **업로드 잡 enqueue 500(dev에선 재현 불가)**·캐시/케이블 전면 실패. 컷오버 시 택1: (a) 세 DB의 **소유자를 cooa_app으로** 생성(권장 — 이후 solid 마이그 자동), 또는 (b) 각 DB에 접속해 전 테이블 `SELECT,INSERT,UPDATE,DELETE` + 시퀀스 USAGE 수동 grant.
 3. `COOA_DB_USER=<owner> RAILS_ENV=production bin/rails rls:audit` — **배포 게이트**: 테넌트 테이블 RLS 누락 또는 cooa_app의 audit_logs UPDATE/DELETE 권한 있으면 abort.
 4. (최초/온보딩) prod org를 `COOA_TENANT_ID`로 생성 + 계정/role_assignment 프로비저닝. **데모 시드(db/seed) 사용 금지**(데모 데이터; seed에 prod 가드 내장). **step-up 등록**: approve 권한 보유자는 첫 승인 전 `GET /step-up` 1회 → 표시된 키를 인증 앱(Authenticator)에 등록(미등록 시 approve가 `/step-up` 리다이렉트·`step_up_not_enrolled` deny). `provision_totp!`는 시크릿만 만들고 사용자가 앱에 추가해야 코드 생성됨.
 5. 앱 기동(`COOA_DB_USER` 미설정 → cooa_app) → RLS end-to-end 강제.

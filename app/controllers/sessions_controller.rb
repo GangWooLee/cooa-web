@@ -26,17 +26,22 @@ class SessionsController < ApplicationController
     redirect_to new_session_path, notice: "로그아웃되었습니다.", status: :see_other
   end
 
-  # OIDC callback (Phase 2b) — converges onto the SAME session seam as #create. The tenant comes from the
-  # connection (Current.tenant_id, set by the Authentication concern), NEVER the token's org claim. Demo
-  # accounts are matched by email on first login and bound to the IdP subject (roles/User preserved);
-  # production gates first login on an invitation (TODO Phase 3).
+  # OIDC/OAuth 콜백 (provider 무관 단일 seam: google_oauth2·openid_connect) — #create와 동일 세션
+  # seam으로 수렴. tenant는 connection(Current.tenant_id)에서, 토큰의 org claim은 절대 신뢰 안 함.
+  # subject 매칭은 (provider, uid) 쌍 — provider별 subject 네임스페이스 분리(Google sub ≠ KC sub).
+  # 최초 로그인은 검증된 이메일로 미바인딩 계정에 link; production 신규 온보딩은 invitation 게이트(Phase 3).
   def omniauth_callback
     auth = request.env["omniauth.auth"]
     return reject!("인증 정보가 없습니다.") if auth.nil?
 
-    account = Account.find_by(tenant_id: Current.tenant_id, idp_subject: auth.uid) # returning user (bound)
-    account ||= bind_first_login(auth)                                             # first login (guarded)
+    invite_raw = session[:invite_token] # reset_session 전에 확보(초대 랜딩이 심어둠 — 있으면 3번째 폴백)
+    account = Account.find_by(tenant_id: Current.tenant_id,
+                              idp_provider: auth.provider.to_s, idp_subject: auth.uid) # returning (bound)
+    account ||= bind_first_login(auth)                                                 # first login (guarded)
+    account ||= accept_invitation_signup(auth, invite_raw)                             # invitation-gated 신규(Phase 3)
     return reject!("허가되지 않은 계정입니다.") unless account&.active?
+
+    consume_matching_invitation(account) if invite_raw.present? # bind 승리 시 유령 pending 소비(재초대 차단 방지)
 
     reset_session
     session[:account_id] = account.id
@@ -60,13 +65,32 @@ class SessionsController < ApplicationController
     email = auth.info&.email
     return nil if email.blank?
     account = Account.active.find_by(tenant_id: Current.tenant_id, email: email, idp_subject: nil)
-    account&.update!(idp_subject: auth.uid)
+    account&.update!(idp_provider: auth.provider.to_s, idp_subject: auth.uid)
     account
   end
 
   def oidc_email_verified?(auth)
     raw = auth.extra&.raw_info
     raw && (raw["email_verified"] == true || raw["email_verified"].to_s == "true")
+  end
+
+  # 초대-게이트 신규 온보딩(Phase 3): 검증된 이메일 + 유효 티켓 + **초대 email == 검증 email**(토큰만
+  # 훔쳐선 타 Google 계정으로 수락 불가). 생성/클레임 원자성은 InvitationAcceptance가 담당.
+  def accept_invitation_signup(auth, raw)
+    return nil if raw.blank?
+    return nil unless oidc_email_verified?(auth)
+    email = auth.info&.email.to_s.downcase
+    return nil if email.blank?
+    invitation = Invitation.pending.find_by(token_digest: Invitation.digest(raw))
+    return nil unless invitation && invitation.email == email
+    InvitationAcceptance.call(invitation: invitation, auth: auth)
+  end
+
+  # 초대 링크로 왔지만 기존 경로(재방문/bind)로 로그인된 경우: 본인 이메일의 pending 초대를 소비 —
+  # 안 하면 유령 pending이 부분 유니크에 걸려 재초대를 막는다. 수락 경로에선 이미 accepted라 no-op.
+  def consume_matching_invitation(account)
+    invitation = Invitation.pending.find_by(email: account.email.to_s.downcase)
+    invitation.update!(accepted_account_id: account.id) if invitation&.claim!
   end
 
   def reject!(message)

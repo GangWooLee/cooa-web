@@ -21,6 +21,15 @@
     <% end %>
   <% end %>
 
+  <%# 멤버(조직 로스터·초대, Phase 3) — 로스터 열람권자에게만 노출 %>
+  <% if Current.account && policy(Organization.find(Current.tenant_id)).list_tenant_accounts? %>
+    <%= link_to members_path, data: { turbo: false },
+          class: "mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium text-ink transition hover:bg-tint #{'bg-tint' if current_page?(members_path)}" do %>
+      <%= ui_icon "user", size: 16, klass: "text-line" %>
+      <span>멤버</span>
+    <% end %>
+  <% end %>
+
   <%# 제품 디렉터리 트리 + 아트워크 찾기(클라이언트 필터) %>
   <nav class="mt-1 flex min-w-0 flex-1 flex-col overflow-hidden px-2 pb-6" data-controller="tree-filter tree-ctx">
     <%# 검색(트리 필터) %>

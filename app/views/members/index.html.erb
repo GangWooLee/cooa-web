@@ -1,0 +1,76 @@
+<% content_for :title, "멤버" %>
+<div class="mx-auto w-full max-w-3xl p-6">
+  <div class="mb-1 text-[20px] font-bold text-ink">멤버</div>
+  <p class="mb-5 text-[13px] text-line">조직 멤버와 대기 중인 초대를 관리합니다. 초대를 수락한 멤버는 역할에 따라 조직의 모든 제품·버전에 접근합니다.</p>
+
+  <%# 방금 만든 초대 링크(1회 노출 — digest만 저장되므로 이 화면을 벗어나면 재표시 불가) %>
+  <% if flash[:invite_link].present? %>
+    <div data-controller="clipboard" data-clipboard-source-value="<%= flash[:invite_link] %>"
+         class="mb-5 rounded-xl border border-cooa/40 bg-tint p-3">
+      <div class="mb-1 text-[12px] font-bold text-cooa">초대 링크 — 지금 복사해 전달하세요 (다시 표시되지 않습니다 · 7일 유효)</div>
+      <div class="flex items-center gap-2">
+        <code class="min-w-0 flex-1 truncate rounded bg-white px-2 py-1.5 text-[12px] text-ink"><%= flash[:invite_link] %></code>
+        <button type="button" data-clipboard-target="button" data-action="clipboard#copy"
+                class="shrink-0 cursor-pointer rounded-lg bg-cooa px-3 py-1.5 text-[12px] font-bold text-white">링크 복사</button>
+      </div>
+    </div>
+  <% end %>
+
+  <%# 초대 폼 (manage_members 전용) %>
+  <% if @can_manage %>
+    <%= form_with url: invitations_path, method: :post, class: "mb-6 flex flex-wrap items-end gap-2 rounded-xl border border-line p-3" do %>
+      <div class="min-w-0 flex-1">
+        <label class="block text-[11px] font-bold text-line">이메일</label>
+        <input type="email" name="email" required placeholder="teammate@company.com"
+               class="mt-1 w-full rounded-lg border border-line-soft px-3 py-2 text-[13px] focus:border-cooa focus:outline-none">
+      </div>
+      <div>
+        <label class="block text-[11px] font-bold text-line">역할</label>
+        <select name="role_key" class="mt-1 rounded-lg border border-line-soft px-2 py-2 text-[13px]">
+          <% Invitation::INVITABLE_ROLE_KEYS.each do |rk| %>
+            <option value="<%= rk %>" <%= "selected" if rk == "contributor" %>><%= rk %></option>
+          <% end %>
+        </select>
+      </div>
+      <button type="submit" class="cursor-pointer rounded-lg bg-cooa-gradient px-4 py-2 text-[13px] font-bold text-white">초대 만들기</button>
+    <% end %>
+  <% end %>
+
+  <%# 대기 중 초대 %>
+  <% if @invitations.any? %>
+    <div class="mb-2 text-[13px] font-bold text-ink">대기 중인 초대 (<%= @invitations.size %>)</div>
+    <div class="mb-6 divide-y divide-line-soft rounded-xl border border-line">
+      <% @invitations.each do |inv| %>
+        <div class="flex items-center gap-3 px-3 py-2.5 text-[13px]">
+          <span class="min-w-0 flex-1 truncate font-medium text-ink"><%= inv.email %></span>
+          <span class="rounded bg-tint px-1.5 py-0.5 text-[11px] text-line"><%= inv.role_key %></span>
+          <span class="text-[11px] text-line"><%= inv.expires_at.strftime("%m.%d") %>까지</span>
+          <% if @can_manage %>
+            <%= button_to "취소", invitation_path(inv), method: :delete,
+                  form: { data: { turbo_confirm: "#{inv.email} 초대를 취소할까요?" } },
+                  class: "cursor-pointer rounded px-2 py-1 text-[12px] text-line transition hover:bg-tint hover:text-cooa" %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# 멤버 로스터 %>
+  <div class="mb-2 text-[13px] font-bold text-ink">멤버 (<%= @accounts.size %>)</div>
+  <div class="divide-y divide-line-soft rounded-xl border border-line">
+    <% @accounts.each do |acc| %>
+      <div class="flex items-center gap-3 px-3 py-2.5 text-[13px]">
+        <%= avatar(acc.user, size: 26, ring: false) %>
+        <span class="min-w-0 flex-1 truncate">
+          <span class="font-medium text-ink"><%= acc.name || acc.email %></span>
+          <span class="ml-1 text-[12px] text-line"><%= acc.email %></span>
+        </span>
+        <% acc.role_assignments.select { |ra| ra.active? }.map(&:role_key).uniq.each do |rk| %>
+          <span class="rounded bg-tint px-1.5 py-0.5 text-[11px] text-line"><%= rk %></span>
+        <% end %>
+        <span class="rounded-full px-2 py-0.5 text-[11px] font-bold <%= acc.active? ? "text-white" : "text-line bg-tint" %>"
+              <%= 'style=background:#5f8f2e'.html_safe if acc.active? %>><%= acc.status %></span>
+      </div>
+    <% end %>
+  </div>
+</div>
