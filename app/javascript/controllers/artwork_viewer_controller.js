@@ -6,11 +6,12 @@ import { Controller } from "@hotwired/stimulus"
 //  · autofocus: 첫 박스로 시작. fit: 전체 보기(선택·흐림 해제).
 //  · drawable: 마지막 pane(현재)에서 Shift+드래그 → "artwork-viewer:draw"(%좌표) 디스패치.
 export default class extends Controller {
-  static targets = ["canvas", "pane", "stage", "image", "minimap", "viewport", "box", "draftBox", "hint"]
+  static targets = ["canvas", "pane", "stage", "image", "page", "minimap", "viewport", "box", "draftBox", "hint", "notice"]
   static values = {
     drawable: { type: Boolean, default: false },
     autofocus: { type: Boolean, default: false },
-    maxScale: { type: Number, default: 6 }
+    maxScale: { type: Number, default: 6 },
+    workerSrc: { type: String, default: "" } // PDF.js worker(asset_path). 이미지 pane엔 빈 문자열.
   }
 
   connect() {
@@ -21,21 +22,143 @@ export default class extends Controller {
     this.surface = this.hasCanvasTarget ? this.canvasTarget : this.element
     this.surface.addEventListener("pointerdown", this.onDown)
     this.surface.addEventListener("wheel", this.onWheel, { passive: false })
-    const img = this.imageTargets[0]
-    if (img && img.complete && img.naturalWidth) this.ready()
-    else if (img) img.addEventListener("load", () => this.ready(), { once: true })
+    this._pdfEntries = [] // {canvas, page, vp1, task}
+    this.initSurfaces().catch((e) => console.error("뷰어 초기화 실패", e)) // 마지막 안전망(무음 사망 방지)
   }
 
   disconnect() {
     this._endGesture?.() // 진행 중 pan/draw의 window pointermove/up 정리(좀비 리스너·GC 차단 방지)
+    clearTimeout(this._rerenderT)
+    clearTimeout(this._noticeT)
+    this._pdfEntries?.forEach((e) => { try { e.task?.cancel() } catch (err) { /* noop */ } })
     window.removeEventListener("resize", this._resize)
     this.surface.removeEventListener("pointerdown", this.onDown)
     this.surface.removeEventListener("wheel", this.onWheel)
   }
 
+  // 표면 초기화: nat(자연 치수)의 단일 의존점. 이미지 pane은 <img>.naturalWidth, PDF pane은 PDF.js
+  // 페이지 뷰포트에서 취득. nat만 올바르면 fit/줌/박스/미니맵은 표면 무관하게 그대로 동작한다.
+  // PDF 실패는 pane 단위로 격리(sticky notice) — 혼합 비교에서 멀쩡한 이미지 pane까지 죽이지 않는다.
+  async initSurfaces() {
+    if (this.paneTargets.some((p) => p.querySelector("[data-artwork-viewer-target='page']"))) {
+      try {
+        await this.loadPdfPanes() // pane0가 PDF면 this.nat 설정 + 모든 PDF pane 로드
+      } catch (e) {
+        console.error("PDF 로드 단계 실패", e)
+        this.showNotice("PDF 뷰어를 불러오지 못했습니다 — 새로고침 후에도 반복되면 파일을 확인하세요.", { sticky: true })
+      }
+    }
+    const pane0 = this.paneTargets[0]
+    const canvas0 = pane0?.querySelector("[data-artwork-viewer-target='page']")
+    const img0 = pane0?.querySelector("[data-artwork-viewer-target='image']")
+    if (canvas0) {
+      // pane0 PDF 실패여도 다른 pane이 로드됐으면 그 치수로 뷰어를 살린다(형제 pane까지 데드 방지).
+      if (!this.nat.w && this._pdfEntries.length) {
+        const vp1 = this._pdfEntries[0].vp1
+        this.nat = { w: vp1.width, h: vp1.height }
+      }
+      if (this.nat.w) { this.ready(); this.renderPdfPanes() }
+    } else if (img0) {
+      const go = () => { this.nat = { w: img0.naturalWidth, h: img0.naturalHeight }; this.ready(); this.renderPdfPanes() }
+      if (img0.complete && img0.naturalWidth) go()
+      else img0.addEventListener("load", go, { once: true })
+    }
+    // 비교뷰: pane0 외 이미지가 늦게 로드되면 naturalWidth가 뒤늦게 확정 → 정규화 계수 재적용
+    this.imageTargets.slice(1).forEach((im) => {
+      if (!(im.complete && im.naturalWidth)) im.addEventListener("load", () => this.apply(), { once: true })
+    })
+  }
+
+  // PDF pane 로드 — 문서 fetch+파스는 병렬(2-PDF 비교뷰 최초 표시 지연 반감), nat은 pane0에서.
+  // 모듈/문서 실패는 던지지 않고 sticky notice로 사용자에게 알린다(빈 화면 무음 금지).
+  async loadPdfPanes() {
+    let pdfjs
+    try {
+      pdfjs = await import("pdfjs-dist")
+      if (this.workerSrcValue) pdfjs.GlobalWorkerOptions.workerSrc = this.workerSrcValue
+    } catch (e) {
+      console.error("PDF.js 모듈 로드 실패", e)
+      this.showNotice("PDF 뷰어 모듈을 불러오지 못했습니다 — 네트워크 상태를 확인하고 새로고침하세요.", { sticky: true })
+      return
+    }
+    const loads = this.paneTargets.map((pane, i) => {
+      const canvas = pane.querySelector("[data-artwork-viewer-target='page']")
+      if (!canvas) return null
+      return pdfjs.getDocument({ url: canvas.dataset.pdfSrc, isEvalSupported: false }).promise
+        .then(async (doc) => ({ i, canvas, page: await doc.getPage(1), numPages: doc.numPages })) // v1: 첫 페이지만
+        .catch((e) => { console.error("PDF 로드 실패", e); return { i, canvas, error: e } })
+    }).filter(Boolean)
+    let failed = 0
+    for (const s of await Promise.all(loads)) {
+      if (s.error) { failed += 1; continue }
+      const vp1 = s.page.getViewport({ scale: 1 })
+      if (s.i === 0) this.nat = { w: vp1.width, h: vp1.height }
+      // 안전 경고는 상시 유지(sticky) — 검토자가 6초 뒤 합류해도 "1/N만 보고 있다"를 항상 인지(F8/EC-4)
+      if (s.numPages > 1) this.showNotice(`이 PDF는 ${s.numPages}페이지 — 현재 1페이지만 표시 중`, { sticky: true })
+      this._pdfEntries.push({ canvas: s.canvas, page: s.page, vp1, task: null })
+    }
+    if (failed > 0) {
+      this.showNotice("PDF를 표시할 수 없습니다 — 파일이 손상되었거나 암호로 보호되어 있을 수 있습니다.", { sticky: true })
+    }
+  }
+
+  renderPdfPanes() {
+    if (!this._pdfEntries.length) return
+    this._lastRenderScale = this.scale
+    this._pdfEntries.forEach((e) => this.renderPdfEntry(e, this.scale))
+  }
+
+  // 오프스크린에 (표시배율 × dpr)로 래스터화 후 한 번에 blit — 재렌더 중 기존 화면 유지(blank 플래시
+  // 제거, F9/PERF-3). backing store는 면적 상한(32MP)으로 OOM 방지(단일축 8192보다 엄밀, EC-8).
+  async renderPdfEntry(entry, cssScale) {
+    const { canvas, page, vp1 } = entry
+    const dpr = window.devicePixelRatio || 1
+    const areaCap = Math.sqrt(32_000_000 / (vp1.width * vp1.height)) // w×h ≤ 32MP
+    // 실제 표시 배율 = scale × pane 정규화 계수(k) — 이종 치수 비교에서 k>1인 pane도 물리픽셀 선명도 유지
+    const pane = canvas.closest("[data-artwork-viewer-target='pane']")
+    const k = pane ? this.paneScaleFactor(pane) : 1
+    const renderScale = Math.min(Math.max(cssScale * k, 0.1) * dpr, areaCap)
+    const vp = page.getViewport({ scale: renderScale })
+    if (entry.task) { try { entry.task.cancel() } catch (e) { /* noop */ } } // 동일 문서 다중 render 금지
+    const off = document.createElement("canvas")
+    off.width = Math.floor(vp.width)
+    off.height = Math.floor(vp.height)
+    entry.task = page.render({ canvasContext: off.getContext("2d"), viewport: vp })
+    try {
+      await entry.task.promise
+      canvas.width = off.width
+      canvas.height = off.height
+      canvas.style.width = Math.floor(vp1.width) + "px"
+      canvas.style.height = Math.floor(vp1.height) + "px"
+      canvas.getContext("2d").drawImage(off, 0, 0)
+      canvas.dataset.rendered = "1"
+    } catch (e) { /* cancelled — 기존 화면 유지 */ }
+  }
+
+  // 줌 종료 시(디바운스) 현재 배율로 재렌더 — 팬(scale 불변)은 가드로 스킵.
+  scheduleRerender() {
+    if (!this._pdfEntries || !this._pdfEntries.length) return
+    clearTimeout(this._rerenderT)
+    this._rerenderT = setTimeout(() => {
+      const last = this._lastRenderScale || 1
+      if (Math.abs(this.scale - last) / last < 0.02) return
+      this._lastRenderScale = this.scale
+      this._pdfEntries.forEach((e) => this.renderPdfEntry(e, this.scale))
+    }, 180)
+  }
+
+  // sticky: 에러류는 자동 숨김 없이 유지(사용자가 원인 인지 후 조치하도록). 정보류는 6초 후 숨김.
+  showNotice(text, { sticky = false } = {}) {
+    if (!this.hasNoticeTarget) return
+    this.noticeTarget.textContent = text
+    this.noticeTarget.classList.remove("hidden")
+    clearTimeout(this._noticeT)
+    if (!sticky) this._noticeT = setTimeout(() => { if (this.hasNoticeTarget) this.noticeTarget.classList.add("hidden") }, 6000)
+  }
+
   ready() {
-    const img = this.imageTargets[0]
-    this.nat = { w: img.naturalWidth, h: img.naturalHeight }
+    if (!this.nat.w) return
+    this.correctThumbAspects() // 필름스트립 크롭 비율을 실제 아트워크 치수로 교정(IMG_RATIO 하드코드 탈피)
     this.fit()
     if (this.autofocusValue) {
       const first = this.firstSeq()
@@ -79,10 +202,33 @@ export default class extends Controller {
     this.apply()
   }
 
+  // pane 콘텐츠의 자연 폭(px) — PDF는 로드된 페이지 vp1, 이미지는 naturalWidth. 미로드/실패면 0.
+  paneNatW(pane) {
+    const canvas = pane.querySelector("[data-artwork-viewer-target='page']")
+    if (canvas) {
+      const entry = this._pdfEntries.find((e) => e.canvas === canvas)
+      return entry ? entry.vp1.width : 0
+    }
+    const img = pane.querySelector("[data-artwork-viewer-target='image']")
+    return img ? img.naturalWidth : 0
+  }
+
+  // pane별 정규화 계수 k = nat.w / 자기 자연폭. 이종 치수 비교(구버전 이미지 2048px vs 신버전 PDF
+  // 1024pt)에서 모든 pane이 같은 표시 폭(nat.w×scale)으로 정렬되어 (1) 우측 pane 배율 왜곡과
+  // (2) draw %-환산 오염(toImg는 nat 기준 — 표시폭이 nat×scale일 때만 정확)이 함께 해소된다(F2).
+  paneScaleFactor(pane) {
+    const w = this.paneNatW(pane)
+    return w > 0 && this.nat.w > 0 ? this.nat.w / w : 1
+  }
+
   apply() {
-    const t = `translate(${this.tx}px, ${this.ty}px) scale(${this.scale})`
-    this.stageTargets.forEach((s) => (s.style.transform = t))
+    this.stageTargets.forEach((s) => {
+      const pane = s.closest("[data-artwork-viewer-target='pane']")
+      const k = pane ? this.paneScaleFactor(pane) : 1
+      s.style.transform = `translate(${this.tx}px, ${this.ty}px) scale(${this.scale * k})`
+    })
     this.updateMinimap()
+    this.scheduleRerender() // PDF면 줌 변화 시 재렌더(가드로 팬은 스킵)
   }
 
   clampScale(s) { return Math.min(Math.max(s, this.fitScale * 0.85), this.fitScale * this.maxScaleValue) }
@@ -182,6 +328,16 @@ export default class extends Controller {
     }
     this.highlight(seq)
     this.dispatch("focus", { detail: { seq } })
+  }
+
+  // 필름스트립 썸네일의 aspect-ratio를 실제 아트워크 비율(nat)로 교정. 서버는 아트워크 치수를 모르는 채
+  // 레거시 IMG_RATIO(2048:1118)로 근사 렌더하는데, 비율이 다른 PDF/이미지에선 크롭이 왜곡된다(F4).
+  // crop_bg의 background-size 산식은 요소 비율이 (w%×W)/(h%×H)일 때만 무왜곡 — nat 확보 시점에 보정.
+  correctThumbAspects() {
+    this.element.querySelectorAll(".av-thumb[data-w]").forEach((t) => {
+      const w = parseFloat(t.dataset.w), h = parseFloat(t.dataset.h)
+      if (w > 0 && h > 0) t.style.aspectRatio = ((w * this.nat.w) / (h * this.nat.h)).toFixed(3)
+    })
   }
 
   // 선택 박스 강조 + 비선택 박스 흐림(모든 pane)

@@ -109,6 +109,17 @@ module UiHelper
     image_path(version.image_name) if version.image_name.present?
   end
 
+  # 래스터가 필요한 보조 UI(미니맵·필름스트립 크롭) 전용 소스. 메인 뷰어는 artwork_src(원본)를 쓰고
+  # PDF는 PDF.js 캔버스로 렌더하지만, CSS background-crop·<img>는 래스터를 요구하므로 PDF는 poppler
+  # preview PNG(representation)로, 이미지는 원본 그대로 반환. preview 불가(poppler 부재 등)면 nil.
+  def artwork_thumb_src(version)
+    return nil unless version
+    return artwork_src(version) unless version.artwork_pdf?
+    return nil unless version.artwork.representable?
+    # 명명 variant(:thumb) — 모델의 preprocessed 선언과 동일 키를 써야 선생성 캐시가 적중(PERF-2)
+    rails_representation_path(version.artwork.representation(:thumb), only_path: true)
+  end
+
   IMG_RATIO = 2048.0 / 1118.0 # 박스 전개도 가로/세로 비
 
   # 어노테이션 → 아트워크 뷰어 박스 배열
@@ -123,21 +134,9 @@ module UiHelper
     end
   end
 
-  # 박스 영역만 확대해 보여주는 크롭 배경 스타일 (이전|현재 비교용)
-  def crop_style(image_name, x, y, w, h)
-    return "" if image_name.blank?
-    w = w.to_f; h = h.to_f; x = x.to_f; y = y.to_f
-    return "" if w <= 0 || h <= 0
-    posx = w >= 100 ? 0 : (x / (100 - w) * 100).round(2)
-    posy = h >= 100 ? 0 : (y / (100 - h) * 100).round(2)
-    "background-image:url('#{image_path(image_name)}');" \
-      "background-size:#{(10000.0 / w).round(2)}% #{(10000.0 / h).round(2)}%;" \
-      "background-position:#{posx}% #{posy}%;background-repeat:no-repeat;" \
-      "aspect-ratio:#{(w * IMG_RATIO / h).round(3)};min-height:84px"
-  end
-
   # 박스 영역 크롭 배경(경로 직접) — 썸네일 필름스트립용. size/position만 반환.
   def crop_bg(image_src, x, y, w, h)
+    return "" if image_src.blank?
     w = w.to_f; h = h.to_f; x = x.to_f; y = y.to_f
     return "" if w <= 0 || h <= 0
     posx = w >= 100 ? 0 : (x / (100 - w) * 100).round(2)

@@ -4,26 +4,18 @@
 # See the Securing Rails Applications Guide for more information:
 # https://guides.rubyonrails.org/security.html#content-security-policy-header
 
-# Rails.application.configure do
-#   config.content_security_policy do |policy|
-#     policy.default_src :self, :https
-#     policy.font_src    :self, :https, :data
-#     policy.img_src     :self, :https, :data
-#     policy.object_src  :none
-#     policy.script_src  :self, :https
-#     policy.style_src   :self, :https
-#     # Specify URI for violation reports
-#     # policy.report_uri "/csp-violation-report-endpoint"
-#   end
-#
-#   # Generate session nonces for permitted importmap, inline scripts, and inline styles.
-#   config.content_security_policy_nonce_generator = ->(request) { request.session.id.to_s }
-#   config.content_security_policy_nonce_directives = %w(script-src style-src)
-#
-#   # Automatically add `nonce` to `javascript_tag`, `javascript_include_tag`, and `stylesheet_link_tag`
-#   # if the corresponding directives are specified in `content_security_policy_nonce_directives`.
-#   # config.content_security_policy_nonce_auto = true
-#
-#   # Report violations without enforcing the policy.
-#   # config.content_security_policy_report_only = true
-# end
+# 사용자 업로드(PDF 포함)를 다루는 앱의 최소 하드닝. 앱이 실제로 쓰지 않는 표면만 차단해 무회귀:
+#  - object_src :none      → <object>/<embed> 플러그인 기반 PDF/Flash 실행 차단(우리는 PDF.js 캔버스로 렌더)
+#  - base_uri :self        → <base> 태그 주입으로 상대경로 하이재킹 차단
+#  - frame_ancestors :self → 외부 사이트 프레이밍(클릭재킹) 차단
+# script_src/style_src는 인라인 스타일·importmap 인라인 JSON이 많아 nonce 정비가 선행되어야 하므로
+# 이번엔 설정하지 않는다(default_src 미설정 → 해당 지시문은 무제한 = 무회귀). 후속 보안 트랙에서
+# nonce 기반 script/style 제한을 도입. PDF.js CVE-2024-4367은 isEvalSupported:false + 버전 고정(5.4.149
+# ≥ 4.2.67)으로 이미 완화됨(artwork_viewer_controller).
+Rails.application.configure do
+  config.content_security_policy do |policy|
+    policy.object_src      :none
+    policy.base_uri        :self
+    policy.frame_ancestors :self
+  end
+end

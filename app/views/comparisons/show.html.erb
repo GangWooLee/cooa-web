@@ -25,9 +25,10 @@
       <% if artwork?(@from) && artwork?(@to) %>
         <% anns = annotation_boxes(@from.annotations.ordered) %>
         <%= render "shared/artwork_viewer",
+              worker_src: asset_path("pdfjs.worker.min.js"),
               panes: [
-                { image_src: artwork_src(@from), label: @from.vlabel, boxes: anns },
-                { image_src: artwork_src(@to),   label: @to.vlabel,   boxes: anns }
+                { image_src: artwork_src(@from), thumb_src: artwork_thumb_src(@from), is_pdf: @from.artwork_pdf?, label: @from.vlabel, boxes: anns },
+                { image_src: artwork_src(@to),   thumb_src: artwork_thumb_src(@to),   is_pdf: @to.artwork_pdf?,   label: @to.vlabel,   boxes: anns }
               ],
               drawable: true, zoom: false %><%# autofocus 제거: 초기 무선택(전 박스 선명), 클릭 토글로 포커스 %>
       <% else %>

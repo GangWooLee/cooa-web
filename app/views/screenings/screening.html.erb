@@ -14,7 +14,10 @@
     <%# 좌: 아트워크 + finding 박스 (방금 실행 시 스캔 애니메이션) %>
     <div class="relative min-h-0 min-w-0 flex-1 p-3 <%= "screening-scanning" if params[:ran] %>" style="min-height:380px">
       <% if artwork?(@version) %>
-        <%= render "shared/artwork_viewer", image_src: artwork_src(@version), boxes: fboxes, zoom: false %>
+        <%= render "shared/artwork_viewer", image_src: artwork_src(@version),
+              is_pdf: @version.artwork_pdf?, thumb_src: artwork_thumb_src(@version),
+              worker_src: asset_path("pdfjs.worker.min.js"),
+              boxes: fboxes, zoom: false %>
         <%# 스캔 빔 오버레이 — 방금 실행 시 JS가 표시 후 애니메이션 %>
         <div data-screening-target="scanner" class="pointer-events-none absolute inset-3 z-20 hidden overflow-hidden rounded-xl">
           <div class="scan-line"></div>

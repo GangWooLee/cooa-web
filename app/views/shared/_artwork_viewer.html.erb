@@ -1,15 +1,21 @@
 <%# 재사용 아트워크 뷰어 (단일/듀얼 pane). 3구역: 상단 바 / 캔버스 / 하단 바.
-     locals: panes [{image_src,label,boxes}]  또는  image_src + boxes(단일).  drawable, autofocus, height_class %>
+     locals: panes [{image_src,thumb_src,is_pdf,label,boxes}]  또는  image_src(+thumb_src,is_pdf) + boxes(단일).
+     image_src=메인 렌더 소스(PDF blob 또는 이미지), thumb_src=미니맵·필름스트립용 래스터(PDF=preview PNG),
+     is_pdf=true면 <canvas>에 PDF.js 렌더. worker_src=PDF.js worker asset_path. drawable, autofocus, height_class %>
 <%
-  panes     = local_assigns[:panes] || [{ image_src: local_assigns[:image_src], boxes: local_assigns.fetch(:boxes, []) }]
+  raw_panes = local_assigns[:panes] || [{ image_src: local_assigns[:image_src], thumb_src: local_assigns[:thumb_src],
+                                          is_pdf: local_assigns[:is_pdf], boxes: local_assigns.fetch(:boxes, []) }]
+  panes     = raw_panes.map { |pn| pn.merge(thumb_src: pn[:thumb_src] || (pn[:is_pdf] ? nil : pn[:image_src])) }
   drawable  = local_assigns.fetch(:drawable, false)
   autofocus = local_assigns.fetch(:autofocus, false)
+  worker_src = local_assigns[:worker_src]
   all_boxes = panes.flat_map { |pn| pn[:boxes] || [] }.uniq { |b| b[:seq] }.sort_by { |b| b[:seq] }
   mini      = panes.last
 %>
 <div data-controller="artwork-viewer"
      data-artwork-viewer-drawable-value="<%= drawable %>"
      data-artwork-viewer-autofocus-value="<%= autofocus %>"
+     data-artwork-viewer-worker-src-value="<%= worker_src %>"
      class="flex <%= local_assigns[:height_class] || 'h-full' %> w-full min-w-0 select-none flex-col">
 
   <%# ── 상단 바: 줌(좌) + 피드백 번호(우) ── %>
@@ -56,7 +62,12 @@
       <% panes.each_with_index do |pn, pi| %>
         <div data-artwork-viewer-target="pane" class="relative h-full min-w-0 flex-1 overflow-hidden <%= 'border-l-2 border-line' if pi.positive? %>">
             <div data-artwork-viewer-target="stage" class="absolute left-0 top-0 origin-top-left">
-              <img data-artwork-viewer-target="image" src="<%= pn[:image_src] %>" class="block max-w-none" draggable="false" alt="아트워크">
+              <% if pn[:is_pdf] %>
+                <%# PDF: PDF.js가 이 캔버스에 페이지1을 벡터 렌더(줌 시 재렌더). 오버레이 %-박스는 이미지와 동일. %>
+                <canvas data-artwork-viewer-target="page" data-pdf-src="<%= pn[:image_src] %>" class="block max-w-none"></canvas>
+              <% else %>
+                <img data-artwork-viewer-target="image" src="<%= pn[:image_src] %>" class="block max-w-none" draggable="false" alt="아트워크">
+              <% end %>
               <% (pn[:boxes] || []).each do |b| %>
                 <button type="button" data-artwork-viewer-target="box"
                         data-seq="<%= b[:seq] %>" data-x="<%= b[:x] %>" data-y="<%= b[:y] %>" data-w="<%= b[:w] %>" data-h="<%= b[:h] %>"
@@ -78,6 +89,9 @@
       <div data-artwork-viewer-target="hint"
            class="av-ui pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-ink/80 px-3 py-1 text-xs text-white shadow transition-opacity duration-500">현재 뷰에서 Shift+드래그로 영역 표시</div>
     <% end %>
+    <%# 멀티페이지 PDF 안전 경고(JS가 numPages>1이면 표시) — v1은 첫 페이지만 렌더 %>
+    <div data-artwork-viewer-target="notice"
+         class="av-ui pointer-events-none absolute right-3 top-3 hidden max-w-[70%] rounded-lg bg-amber-500/95 px-2.5 py-1 text-[11px] font-bold text-white shadow"></div>
   </div>
 
   <%# ── 하단 바: 미니맵(좌) + 썸네일 필름스트립(우) ── %>
@@ -85,8 +99,12 @@
     <div class="shrink-0 rounded-lg border border-line bg-white p-1 shadow-sm">
       <div data-artwork-viewer-target="minimap" data-action="click->artwork-viewer#minimapClick"
            class="relative w-[140px] cursor-crosshair overflow-hidden rounded">
-        <%# 미니맵 이미지는 첫 pane(=컨트롤러 nat 기준)과 일치시켜 뷰포트 정렬 보장 %>
-        <img src="<%= panes.first[:image_src] %>" class="block w-full" draggable="false" alt="">
+        <%# 미니맵 이미지는 첫 pane(=컨트롤러 nat 기준)과 일치시켜 뷰포트 정렬 보장. PDF는 preview PNG(thumb_src). %>
+        <% if panes.first[:thumb_src].present? %>
+          <img src="<%= panes.first[:thumb_src] %>" class="block w-full" draggable="false" alt="">
+        <% else %>
+          <div class="flex aspect-[16/9] w-full items-center justify-center bg-tint-2 text-[10px] text-line">미리보기 없음</div>
+        <% end %>
         <% (panes.first[:boxes] || []).each do |b| %>
           <span class="absolute" style="left:<%= b[:x] %>%;top:<%= b[:y] %>%;width:<%= b[:w] %>%;height:<%= b[:h] %>%;background:<%= b[:color] %>"></span>
         <% end %>
@@ -97,9 +115,10 @@
     <% if all_boxes.any? %>
       <div class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto rounded-lg border border-line bg-white px-2 shadow-sm">
         <% all_boxes.each do |b| %>
-          <button type="button" data-seq="<%= b[:seq] %>" data-action="artwork-viewer#focusSeq"
+          <%# aspect-ratio는 서버 근사(IMG_RATIO) → 뷰어 ready 시 correctThumbAspects가 실제 nat 비율로 교정 %>
+          <button type="button" data-seq="<%= b[:seq] %>" data-w="<%= b[:w] %>" data-h="<%= b[:h] %>" data-action="artwork-viewer#focusSeq"
                   class="av-thumb relative shrink-0 overflow-hidden rounded border-2 transition"
-                  style="height:54px;aspect-ratio:<%= box_aspect(b[:w], b[:h]) %>;border-color:<%= b[:color] %>;<%= crop_bg(mini[:image_src], b[:x], b[:y], b[:w], b[:h]) %>"
+                  style="height:54px;aspect-ratio:<%= box_aspect(b[:w], b[:h]) %>;border-color:<%= b[:color] %>;<%= crop_bg(mini[:thumb_src], b[:x], b[:y], b[:w], b[:h]) %>"
                   title="피드백 <%= b[:label] || b[:seq] %>">
             <span class="absolute left-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold leading-none text-white shadow" style="background:<%= b[:color] %>"><%= b[:label] || b[:seq] %></span>
           </button>

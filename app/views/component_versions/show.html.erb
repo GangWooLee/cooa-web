@@ -32,6 +32,8 @@
     <div class="min-h-0 min-w-0 flex-1 p-3" style="min-height:380px">
       <% if artwork?(@version) %>
         <%= render "shared/artwork_viewer", image_src: artwork_src(@version),
+              is_pdf: @version.artwork_pdf?, thumb_src: artwork_thumb_src(@version),
+              worker_src: asset_path("pdfjs.worker.min.js"),
               boxes: annotation_boxes(@annotations), drawable: policy(@version).leave_feedback?, zoom: true %>
       <% else %>
         <div class="flex h-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-line bg-tint-2 text-line">

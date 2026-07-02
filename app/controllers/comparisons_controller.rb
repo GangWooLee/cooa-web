@@ -13,8 +13,10 @@ class ComparisonsController < ApplicationController
   private
 
   def set_versions
-    @from = ComponentVersion.includes(:annotations).find(params[:from_id])
-    @to   = ComponentVersion.includes(:annotations).find(params[:to_id])
+    # annotations는 show가 별도 정렬·프리로드 쿼리로만 소비(@to 것은 미사용) — 이중 로드 제거.
+    # 첨부는 뷰어 src·PDF 분기가 즉시 참조하므로 blob까지 프리로드(PERF-8).
+    @from = ComponentVersion.with_attached_artwork.find(params[:from_id])
+    @to   = ComponentVersion.with_attached_artwork.find(params[:to_id])
     @component = @from.component
     @product   = @component.product
   end
