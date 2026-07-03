@@ -2,7 +2,6 @@ require "application_system_test_case"
 
 # 대시보드 트리: 폴더 클릭=펼침/접힘, 이름변경=우클릭 메뉴, "· 하위 N" 제거
 class DashboardCtxTest < ApplicationSystemTestCase
-
   def folder = Product.find_by(name: "레티놀 3% 세럼")
 
   test "폴더 이름 클릭 = 펼침/접힘(편집 아님)" do

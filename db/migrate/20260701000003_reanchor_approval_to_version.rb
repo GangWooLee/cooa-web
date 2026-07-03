@@ -23,7 +23,7 @@ class ReanchorApprovalToVersion < ActiveRecord::Migration[8.1]
     remove_column :approval_requests, :screening_run_id
 
     # 신 component_version 앵커
-    add_index :approval_requests, [:tenant_id, :component_version_id], unique: true,
+    add_index :approval_requests, [ :tenant_id, :component_version_id ], unique: true,
               name: "index_approval_requests_on_tenant_id_and_component_version_id"
     composite_fk!(:approval_requests, :component_version_id, :component_versions, name: "approval_requests_cv_tenant_fkey")
   end
@@ -41,7 +41,7 @@ class ReanchorApprovalToVersion < ActiveRecord::Migration[8.1]
     execute "ALTER TABLE approval_requests DROP CONSTRAINT approval_requests_cv_tenant_fkey"
     remove_index :approval_requests, name: "index_approval_requests_on_tenant_id_and_component_version_id"
     remove_column :approval_requests, :component_version_id
-    add_index :approval_requests, [:tenant_id, :screening_run_id], unique: true,
+    add_index :approval_requests, [ :tenant_id, :screening_run_id ], unique: true,
               name: "index_approval_requests_on_tenant_id_and_screening_run_id"
     composite_fk!(:approval_requests, :screening_run_id, :screening_runs, name: "approval_requests_run_tenant_fkey")
   end

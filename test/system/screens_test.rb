@@ -2,7 +2,6 @@ require "application_system_test_case"
 
 # 화면 캡처 + 핵심 인터랙션(뷰어 포커스) 검증
 class ScreensTest < ApplicationSystemTestCase
-
   def hero
     Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box")
   end
@@ -105,7 +104,7 @@ class ScreensTest < ApplicationSystemTestCase
     sleep 0.5
     save_screenshot(dir.join("6_dashboard_1366.png"))
 
-    [1366, 1280].each do |w|
+    [ 1366, 1280 ].each do |w|
       page.current_window.resize_to(w, 860)
       visit comparison_path(from_id: v5.id, to_id: v6.id)
       assert_text "피드백"

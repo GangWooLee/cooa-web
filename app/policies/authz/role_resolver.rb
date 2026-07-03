@@ -20,7 +20,7 @@ module Authz
         "designer" => %w[contributor assignee brand_admin],
         "pm" => %w[contributor brand_admin],
         "ra" => %w[ra_reviewer approver],
-        "scm" => %w[contributor],
+        "scm" => %w[contributor]
       }.freeze
 
       def initialize(user) = @user = user

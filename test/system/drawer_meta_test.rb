@@ -2,7 +2,6 @@ require "application_system_test_case"
 
 # 드로어 메타 — 커스텀 속성(Notion식) + 자유 역할 담당자(동적 행)
 class DrawerMetaTest < ApplicationSystemTestCase
-
   def leaf = Product.find_by(code: "CO0001")
 
   # 드로어 진입 + Stimulus 연결 정착(무거운 대시보드 뒤 드로어라 연결이 느릴 수 있음)

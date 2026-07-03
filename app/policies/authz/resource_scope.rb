@@ -21,7 +21,7 @@ module Authz
     # Phase 2b — UNWIRED (no caller yet). Holds the scope_id↔domain-id matching for product/component-scoped
     # role_assignments; 2a uses tenant-wide grants only (scope_id IS NULL). See freeze spec §3 (P3 M1).
     def scope_chain_ids(record)
-      [product_for(record)&.id, record.try(:component_id)].compact
+      [ product_for(record)&.id, record.try(:component_id) ].compact
     end
   end
 end

@@ -1,7 +1,6 @@
 require "test_helper"
 
 class ComponentsControllerTest < ActionDispatch::IntegrationTest
-
   def item = Product.find_by(code: "CO0001")
 
   test "구성요소 즉시 추가(자유 이름) → rename_component 리다이렉트" do

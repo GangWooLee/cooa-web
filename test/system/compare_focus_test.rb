@@ -1,7 +1,6 @@
 require "application_system_test_case"
 
 class CompareFocusTest < ApplicationSystemTestCase
-
   def comp = Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box")
   def scale_of
     page.evaluate_script(<<~JS)

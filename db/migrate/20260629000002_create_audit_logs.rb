@@ -28,11 +28,11 @@ class CreateAuditLogs < ActiveRecord::Migration[8.1]
       t.string   :chain_hash, null: false
       t.datetime :ts, null: false, default: -> { "now()" } # model sets it before hashing
     end
-    add_index :audit_logs, [:tenant_id, :tenant_seq], unique: true
-    add_index :audit_logs, [:tenant_id, :ts]
-    add_index :audit_logs, [:tenant_id, :actor_id, :ts]
-    add_index :audit_logs, [:tenant_id, :outcome]
-    add_index :audit_logs, [:tenant_id, :resource_type, :resource_id, :ts]
+    add_index :audit_logs, [ :tenant_id, :tenant_seq ], unique: true
+    add_index :audit_logs, [ :tenant_id, :ts ]
+    add_index :audit_logs, [ :tenant_id, :actor_id, :ts ]
+    add_index :audit_logs, [ :tenant_id, :outcome ]
+    add_index :audit_logs, [ :tenant_id, :resource_type, :resource_id, :ts ]
 
     enable_append_only_rls!("audit_logs")
 

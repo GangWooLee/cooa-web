@@ -6,7 +6,7 @@ class ReviewsInboxTest < ActionDispatch::IntegrationTest
     @v = Product.find_by!(code: "CO0001").components.find_by!(component_type: "outer_box")
                 .component_versions.find_by!(version_number: 5)
     lee = User.find_by!(email: "lee@cooa.dev")
-    post approval_requests_path, params: { component_version_id: @v.id, reviewer_ids: [lee.id] } # kim → lee 요청(버전 앵커)
+    post approval_requests_path, params: { component_version_id: @v.id, reviewer_ids: [ lee.id ] } # kim → lee 요청(버전 앵커)
   end
 
   test "지정된 리뷰어(lee)의 수신함에 요청이 보임" do

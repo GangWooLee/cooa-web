@@ -2,7 +2,6 @@ require "application_system_test_case"
 
 # 선택 필드(커스텀 속성 값·코드·채널)는 빈값으로 비울 수 있어야 함(필수=이름은 되돌림)
 class InlineClearableTest < ApplicationSystemTestCase
-
   test "커스텀 속성 값은 빈값으로 비울 수 있음(clearable)" do
     page.current_window.resize_to(1440, 900)
     prop = ProductProperty.find_by(name: "용량")

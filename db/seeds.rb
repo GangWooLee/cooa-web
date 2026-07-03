@@ -266,7 +266,7 @@ ScreeningService.new(us5, "US").run!(requested_by: lee)   # 미국: 적합
 
 # ── 데모 리뷰 요청(버전 앵커): kim이 CO0000 v5를 lee에게 리뷰 요청 → lee 수신함·kim SoD·lee 확인 시연.
 # hero CO0001 v5는 "리뷰 요청" 버튼 상태로 남김(E2E version_review_test 전제 유지).
-ApprovalRequest.submit_for!(us5, submitter_id: kim.id, reviewer_ids: [lee.id])
+ApprovalRequest.submit_for!(us5, submitter_id: kim.id, reviewer_ids: [ lee.id ])
 
 puts "Seed done: users=#{User.count} accounts=#{Account.count} role_assignments=#{RoleAssignment.count} " \
      "products=#{Product.count}(roots=#{Product.roots.count}) " \

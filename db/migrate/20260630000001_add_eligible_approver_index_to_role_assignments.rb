@@ -5,7 +5,7 @@ class AddEligibleApproverIndexToRoleAssignments < ActiveRecord::Migration[8.1]
   disable_ddl_transaction! # CONCURRENTLY cannot run inside a transaction
 
   def change
-    add_index :role_assignments, [:tenant_id, :role_key],
+    add_index :role_assignments, [ :tenant_id, :role_key ],
               where: "scope_id IS NULL", name: "idx_ra_eligible_approver",
               algorithm: :concurrently
   end

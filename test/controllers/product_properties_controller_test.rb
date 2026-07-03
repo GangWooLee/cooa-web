@@ -1,7 +1,6 @@
 require "test_helper"
 
 class ProductPropertiesControllerTest < ActionDispatch::IntegrationTest
-
   def leaf = Product.find_by(code: "CO0001")
 
   test "속성 즉시 추가 → rename_property 리다이렉트 + 기본 키명" do

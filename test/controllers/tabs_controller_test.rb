@@ -1,7 +1,6 @@
 require "test_helper"
 
 class TabsControllerTest < ActionDispatch::IntegrationTest
-
   def hero_versions
     comp = Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box")
     comp.component_versions.sort_by(&:version_number)

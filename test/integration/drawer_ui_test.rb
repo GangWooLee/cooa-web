@@ -2,7 +2,6 @@ require "test_helper"
 
 # 드로어/사이드바 UI 3건 회귀
 class DrawerUiTest < ActionDispatch::IntegrationTest
-
   def hero = Product.find_by(code: "CO0001")
 
   test "Fix1: 드로어 비교 링크는 풀페이지(_top)로 이탈(detail 프레임 가둠 방지)" do

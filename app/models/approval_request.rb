@@ -40,7 +40,7 @@ class ApprovalRequest < ApplicationRecord
 
   # 지정 리뷰어 집합 재구성(1..N). 요청자 자신은 제외(SoD 보완). ids는 User bigint. 멤버십 검증은 컨트롤러.
   def sync_requested_reviewers!(ids, exclude:)
-    want = Array(ids).map(&:to_i).uniq - [exclude].compact
+    want = Array(ids).map(&:to_i).uniq - [ exclude ].compact
     have = approval_request_reviewers.pluck(:reviewer_id)
     approval_request_reviewers.where(reviewer_id: have - want).delete_all if (have - want).any?
     (want - have).each { |rid| approval_request_reviewers.create!(reviewer_id: rid) }

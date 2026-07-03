@@ -41,11 +41,11 @@ class RlsAppConnectionTest < ActiveSupport::TestCase
 
   teardown do
     CooaAppSmokeConnection.remove_connection
-    ids = [@org_a&.id, @org_b&.id].compact
+    ids = [ @org_a&.id, @org_b&.id ].compact
     Product.where(tenant_id: ids).delete_all
     Account.where(tenant_id: ids).delete_all # accounts.user_id → users: before destroying the user
     @user_a&.destroy
-    [@org_a, @org_b].each { |o| o&.destroy }
+    [ @org_a, @org_b ].each { |o| o&.destroy }
   end
 
   # Login lookup (SessionsController#new/#create): accounts ⋈ users, tenant-scoped, under cooa_app.
@@ -54,7 +54,7 @@ class RlsAppConnectionTest < ActiveSupport::TestCase
       @app.exec_query("SELECT a.email, u.name FROM accounts a LEFT JOIN users u ON u.id = a.user_id " \
                       "WHERE a.status = 'active'").to_a
     end
-    assert_equal [{ "email" => "a@a.test", "name" => "사용자A" }], rows
+    assert_equal [ { "email" => "a@a.test", "name" => "사용자A" } ], rows
   end
 
   test "another tenant's account_id is invisible (cannot be honored at login)" do
@@ -70,7 +70,7 @@ class RlsAppConnectionTest < ActiveSupport::TestCase
     names = TenantContext.with_tenant(@org_a.id, connection: @app) do
       @app.select_values("SELECT name FROM products WHERE parent_id IS NULL")
     end
-    assert_equal ["A-root"], names
+    assert_equal [ "A-root" ], names
   end
 
   # The isolation FLOOR (P5 benchmark): with NO tenant context the policy casts the unset GUC to NULL and

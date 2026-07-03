@@ -1,7 +1,6 @@
 require "application_system_test_case"
 
 class SidebarToggleTest < ApplicationSystemTestCase
-
   def sidebar_right
     page.evaluate_script("(() => { const e=document.getElementById('app-sidebar'); return e ? Math.round(e.getBoundingClientRect().right) : -999 })()")
   end

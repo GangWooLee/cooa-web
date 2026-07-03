@@ -25,7 +25,7 @@ class ReviewPanelPresenterTest < ActiveSupport::TestCase
   end
 
   test "waiting_message: 지정 리뷰어 이름 or 일반 문구" do
-    assert_match "이쿠아", present(request: Req.new("pending", [Reviewer.new("이쿠아")])).waiting_message
+    assert_match "이쿠아", present(request: Req.new("pending", [ Reviewer.new("이쿠아") ])).waiting_message
     assert_match "검토 가능한 리뷰어", present(request: Req.new("pending", [])).waiting_message
   end
 end

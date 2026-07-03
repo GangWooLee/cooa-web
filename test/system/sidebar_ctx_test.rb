@@ -2,7 +2,6 @@ require "application_system_test_case"
 
 # 사이드바 우클릭 컨텍스트 메뉴(req5) + 스크리닝 스캔·순차 reveal(req1·2)
 class SidebarCtxTest < ApplicationSystemTestCase
-
   def hero_version
     Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box").component_versions.detect(&:current)
   end

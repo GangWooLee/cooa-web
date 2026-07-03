@@ -12,7 +12,7 @@ class AuditLogTest < ActiveSupport::TestCase
   test "record! builds a linked, verifiable per-tenant chain" do
     a = AuditLog.record!(action: "approve", resource_type: "ScreeningRun", resource_id: 1, outcome: "allow", after: { b: 2, a: 1 })
     b = AuditLog.record!(action: "reject", resource_type: "ScreeningRun", resource_id: 2, outcome: "allow")
-    assert_equal [1, 2], [a.tenant_seq, b.tenant_seq]
+    assert_equal [ 1, 2 ], [ a.tenant_seq, b.tenant_seq ]
     assert_nil a.prev_chain_hash
     assert_equal a.chain_hash, b.prev_chain_hash, "chain links seq n→n+1"
     assert_equal a.chain_hash, a.expected_chain_hash

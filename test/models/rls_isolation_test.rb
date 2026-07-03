@@ -40,11 +40,11 @@ class RlsIsolationTest < ActiveSupport::TestCase
 
   teardown do
     RlsAppConnection.remove_connection
-    ids = [@org_a&.id, @org_b&.id].compact
+    ids = [ @org_a&.id, @org_b&.id ].compact
     Product.where(tenant_id: ids).delete_all
     RoleAssignment.where(tenant_id: ids).delete_all
     Account.where(tenant_id: ids).delete_all
-    [@org_a, @org_b].each { |o| o&.destroy }
+    [ @org_a, @org_b ].each { |o| o&.destroy }
   end
 
   # ── role guarantee ───────────────────────────────────────────────────────
@@ -57,9 +57,9 @@ class RlsIsolationTest < ActiveSupport::TestCase
   # ── foundation: accounts ─────────────────────────────────────────────────
   test "accounts SELECT is scoped to the active tenant" do
     a = TenantContext.with_tenant(@org_a.id, connection: @app) { @app.select_values("SELECT email FROM accounts") }
-    assert_equal ["a@example.com"], a
+    assert_equal [ "a@example.com" ], a
     b = TenantContext.with_tenant(@org_b.id, connection: @app) { @app.select_values("SELECT email FROM accounts") }
-    assert_equal ["b@example.com"], b
+    assert_equal [ "b@example.com" ], b
   end
 
   test "accounts: unset tenant context yields zero rows (fail-CLOSED)" do
@@ -82,9 +82,9 @@ class RlsIsolationTest < ActiveSupport::TestCase
     Product.create!(tenant_id: @org_a.id, name: "P-A", kind: "folder")
     Product.create!(tenant_id: @org_b.id, name: "P-B", kind: "folder")
     a = TenantContext.with_tenant(@org_a.id, connection: @app) { @app.select_values("SELECT name FROM products") }
-    assert_equal ["P-A"], a
+    assert_equal [ "P-A" ], a
     b = TenantContext.with_tenant(@org_b.id, connection: @app) { @app.select_values("SELECT name FROM products") }
-    assert_equal ["P-B"], b
+    assert_equal [ "P-B" ], b
   end
 
   test "domain products: unset context yields zero rows (fail-CLOSED)" do

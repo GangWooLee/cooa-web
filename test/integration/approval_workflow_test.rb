@@ -22,14 +22,14 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
 
   test "리뷰어 지정 → requested_reviewer로 저장" do
     lee = User.find_by!(email: "lee@cooa.dev")
-    post approval_requests_path, params: { component_version_id: @v.id, reviewer_ids: [lee.id] }
+    post approval_requests_path, params: { component_version_id: @v.id, reviewer_ids: [ lee.id ] }
     assert_includes request_for.requested_reviewer_ids, lee.id
   end
 
   # 권한 시프트의 핵심: 요청받은 제품 담당자는 approve verb가 없어도(park=contributor) 확인 가능.
   test "요청받은 담당자(contributor)가 검토 확인 가능" do
     park = User.find_by!(name: "박쿠아")
-    post approval_requests_path, params: { component_version_id: @v.id, reviewer_ids: [park.id] }
+    post approval_requests_path, params: { component_version_id: @v.id, reviewer_ids: [ park.id ] }
     req = request_for
     sign_in_as(Account.find_by!(email: "park@cooa.dev"))
     post confirm_approval_request_path(req)
@@ -40,7 +40,7 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
   # SoD: 요청자 자신을 리뷰어로 지정해도 strip + 본인 확인 불가.
   test "자기 자신 리뷰어 지정은 strip되고 SoD로 확인 불가" do
     kim = User.find_by!(name: "김쿠아")
-    post approval_requests_path, params: { component_version_id: @v.id, reviewer_ids: [kim.id] }
+    post approval_requests_path, params: { component_version_id: @v.id, reviewer_ids: [ kim.id ] }
     req = request_for
     refute_includes req.requested_reviewer_ids, kim.id
     post confirm_approval_request_path(req) # 여전히 kim(요청자)
@@ -50,7 +50,7 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
   # 비요청·비approver(song=brand_admin, approve 없음)는 확인 불가.
   test "요청받지 않은 비approver는 확인 불가" do
     lee = User.find_by!(email: "lee@cooa.dev")
-    post approval_requests_path, params: { component_version_id: @v.id, reviewer_ids: [lee.id] }
+    post approval_requests_path, params: { component_version_id: @v.id, reviewer_ids: [ lee.id ] }
     req = request_for
     sign_in_as(Account.find_by!(email: "song@cooa.dev"))
     post confirm_approval_request_path(req)

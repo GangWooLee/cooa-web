@@ -26,8 +26,8 @@ class CreateApprovalWorkflowTables < ActiveRecord::Migration[8.1]
       t.timestamps
     end
     execute "ALTER TABLE approval_requests ADD CONSTRAINT approval_requests_tenant_id_id_key UNIQUE (tenant_id, id)"
-    add_index :approval_requests, [:tenant_id, :screening_run_id], unique: true # one request per run
-    add_index :approval_requests, [:tenant_id, :status]
+    add_index :approval_requests, [ :tenant_id, :screening_run_id ], unique: true # one request per run
+    add_index :approval_requests, [ :tenant_id, :status ]
     composite_fk!(:approval_requests, :screening_run_id, :screening_runs, name: "approval_requests_run_tenant_fkey")
     add_foreign_key :approval_requests, :users, column: :submitter_id
     enable_tenant_rls!("approval_requests")
@@ -43,7 +43,7 @@ class CreateApprovalWorkflowTables < ActiveRecord::Migration[8.1]
       t.integer  :lock_version, null: false, default: 0
       t.timestamps
     end
-    add_index :approval_steps, [:tenant_id, :approval_request_id], unique: true # two-eyes single step
+    add_index :approval_steps, [ :tenant_id, :approval_request_id ], unique: true # two-eyes single step
     composite_fk!(:approval_steps, :approval_request_id, :approval_requests, name: "approval_steps_request_tenant_fkey")
     add_foreign_key :approval_steps, :users, column: :approver_id
     enable_tenant_rls!("approval_steps")

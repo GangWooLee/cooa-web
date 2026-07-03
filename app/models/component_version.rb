@@ -3,7 +3,7 @@ class ComponentVersion < ApplicationRecord
   # 실무 포장 아트워크는 대개 PDF. 이미지와 공존(전환기·기존 데이터 보존) — 뷰어가 content_type로 분기.
   IMAGE_TYPES   = %w[image/png image/jpeg image/webp].freeze
   PDF_TYPE      = "application/pdf".freeze
-  ARTWORK_TYPES = (IMAGE_TYPES + [PDF_TYPE]).freeze
+  ARTWORK_TYPES = (IMAGE_TYPES + [ PDF_TYPE ]).freeze
   ARTWORK_MAX_BYTES = 30.megabytes # PDF는 이미지보다 큼(벡터·다중 요소)
 
   belongs_to :component

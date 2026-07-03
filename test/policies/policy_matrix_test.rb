@@ -76,12 +76,12 @@ class ApprovalRequestSoDTest < ActiveSupport::TestCase
 
   # 소프트 게이트: 요청받은 리뷰어는 approve verb가 없어도(예: contributor) 확인 가능("요청받음=권한").
   test "requested reviewer without approve verb may confirm (soft grant)" do
-    assert policy(%w[contributor], 2, 1, requested: [2]).confirm_review?
+    assert policy(%w[contributor], 2, 1, requested: [ 2 ]).confirm_review?
   end
 
   # SoD는 요청받아도 하드: 요청자 본인이 리뷰어로 지정돼도 자기 확인 불가.
   test "requested reviewer who is the requester is still SoD-blocked" do
-    refute policy(%w[contributor], 1, 1, requested: [1]).confirm_review?
+    refute policy(%w[contributor], 1, 1, requested: [ 1 ]).confirm_review?
   end
 
   test "requester is denied (SoD)" do

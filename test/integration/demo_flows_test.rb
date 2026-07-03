@@ -2,7 +2,6 @@ require "test_helper"
 
 # 데모 4개 화면 + 인터랙션 end-to-end (시드 데이터 기반)
 class DemoFlowsTest < ActionDispatch::IntegrationTest
-
   def hero_v(n)
     Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box")
            .component_versions.find_by(version_number: n)

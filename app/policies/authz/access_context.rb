@@ -17,7 +17,7 @@ module Authz
     def actor_id = actor.respond_to?(:domain_user_id) ? actor.domain_user_id : actor&.id
 
     def roles_on(record)
-      key = [record.class.name, record.try(:id)]
+      key = [ record.class.name, record.try(:id) ]
       @cache[key] ||= @resolver.roles_on(record)
     end
   end

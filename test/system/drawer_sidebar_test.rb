@@ -1,7 +1,6 @@
 require "application_system_test_case"
 
 class DrawerSidebarTest < ApplicationSystemTestCase
-
   # 같은 구성요소 행의 삭제버튼(absolute form) top 좌표
   def delete_top
     page.evaluate_script(<<~JS)

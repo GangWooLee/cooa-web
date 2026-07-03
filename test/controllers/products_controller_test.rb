@@ -2,7 +2,6 @@ require "test_helper"
 
 # 제품 트리 CRUD — 컨트롤러/리퀘스트 레벨(속성·파라미터·연쇄·검증 즉시 포착)
 class ProductsControllerTest < ActionDispatch::IntegrationTest
-
   def folder = Product.find_by(name: "레티놀 3% 세럼")
 
   # 방금 생성된 노드(리다이렉트 URL의 rename id로 정확히 특정 — 생성은 트리로 리다이렉트)
@@ -33,7 +32,7 @@ class ProductsControllerTest < ActionDispatch::IntegrationTest
     f = folder
     kim = User.find_by(name: "김쿠아")
     post products_path, params: { product: { kind: "item", parent_id: f.id },
-                                  members: [{ role: "designer", user_id: kim.id }] }
+                                  members: [ { role: "designer", user_id: kim.id } ] }
     item = created_product
     assert_equal kim, item.member_for("designer")
     patch product_path(item), params: { product: { name: "새이름" }, inline: 1 }
@@ -60,7 +59,7 @@ class ProductsControllerTest < ActionDispatch::IntegrationTest
     item = Product.find_by(code: "CO0001")
     assert item.product_members.count.positive?
     kim = User.find_by(name: "김쿠아")
-    patch product_path(item), params: { inline: 1, members: [{ role: "디자인", user_id: kim.id }] }
+    patch product_path(item), params: { inline: 1, members: [ { role: "디자인", user_id: kim.id } ] }
     assert_equal 1, item.product_members.reload.count
     assert_equal kim, item.member_for("디자인")
   end

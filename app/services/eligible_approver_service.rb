@@ -9,7 +9,7 @@ module EligibleApproverService
   def eligible_user_ids(exclude_user_id: nil)
     RoleAssignment.active.where(role_key: ELIGIBLE_ROLES, scope_id: nil)
                   .joins(:account).distinct.pluck("accounts.user_id")
-                  .compact - [exclude_user_id].compact
+                  .compact - [ exclude_user_id ].compact
   end
 
   def any?(exclude_user_id: nil)

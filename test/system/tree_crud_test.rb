@@ -2,7 +2,6 @@ require "application_system_test_case"
 
 # 트리: 즉시 생성 → 트리에서 인라인 명명(Notion식, 드로어 안 띄움) · 자유 구성요소 · 연쇄삭제
 class TreeCrudTest < ApplicationSystemTestCase
-
   # 호버 노출(opacity-0) 컨트롤은 좌표 클릭이 불안정 → JS 클릭으로 견고하게
   def js_click(css)
     find(css, visible: :all).execute_script("this.click()")

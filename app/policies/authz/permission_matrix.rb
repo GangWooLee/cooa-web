@@ -47,7 +47,7 @@ module Authz
         view_tenant view_product view_component_version upload_version
         leave_feedback view_screening_findings share_findings route_for_review request_modification
       ].freeze,
-      "cooa_staff" => [].freeze,
+      "cooa_staff" => [].freeze
     }.freeze
 
     def self.allows?(role_key, verb)

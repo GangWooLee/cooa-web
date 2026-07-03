@@ -15,9 +15,9 @@ class CreateApprovalRequestReviewers < ActiveRecord::Migration[8.1]
       t.bigint :reviewer_id, null: false # User(bigint) — 요청받은 리뷰어
       t.timestamps
     end
-    add_index :approval_request_reviewers, [:tenant_id, :approval_request_id, :reviewer_id],
+    add_index :approval_request_reviewers, [ :tenant_id, :approval_request_id, :reviewer_id ],
               unique: true, name: "arr_tenant_request_reviewer_key" # 요청당 리뷰어 중복 방지
-    add_index :approval_request_reviewers, [:tenant_id, :reviewer_id], name: "arr_tenant_reviewer_idx" # 수신함 쿼리
+    add_index :approval_request_reviewers, [ :tenant_id, :reviewer_id ], name: "arr_tenant_reviewer_idx" # 수신함 쿼리
     composite_fk!(:approval_request_reviewers, :approval_request_id, :approval_requests, name: "arr_request_tenant_fkey")
     add_foreign_key :approval_request_reviewers, :users, column: :reviewer_id
     enable_tenant_rls!("approval_request_reviewers")

@@ -15,7 +15,7 @@ class ProductTreeTest < ActiveSupport::TestCase
   test "조상 경로 / depth / leaf?" do
     leaf = Product.find_by(code: "CO0000") # 30ml
     assert leaf.leaf?
-    assert_equal ["레티놀 3% 세럼", "미국", "30ml"], leaf.self_and_ancestors.map(&:name)
+    assert_equal [ "레티놀 3% 세럼", "미국", "30ml" ], leaf.self_and_ancestors.map(&:name)
     assert_equal 2, leaf.depth
   end
 

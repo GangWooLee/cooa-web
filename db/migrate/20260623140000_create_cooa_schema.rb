@@ -176,11 +176,11 @@ class CreateCooaSchema < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :ingredient_limits, [:country, :inci_canonical]
+    add_index :ingredient_limits, [ :country, :inci_canonical ]
     add_index :ad_risk_expressions, :country
     add_index :label_requirements, :country
-    add_index :components, [:product_id, :position]
-    add_index :component_versions, [:component_id, :version_number]
-    add_index :annotations, [:component_version_id, :seq]
+    add_index :components, [ :product_id, :position ]
+    add_index :component_versions, [ :component_id, :version_number ]
+    add_index :annotations, [ :component_version_id, :seq ]
   end
 end
