@@ -46,6 +46,12 @@ class ApprovalRequest < ApplicationRecord
     (want - have).each { |rid| approval_request_reviewers.create!(reviewer_id: rid) }
   end
 
+  # 단건 append(claim 전용). sync_와 달리 기존 리뷰어를 보존한다. 유니크 인덱스
+  # arr_tenant_request_reviewer_key가 중복 백스톱 — 멱등 처리는 컨트롤러 rescue.
+  def add_reviewer!(user_id)
+    approval_request_reviewers.create!(reviewer_id: user_id)
+  end
+
   # SoD는 정책이 먼저 확인. 리뷰 중 콘텐츠 변경(stale)은 여기서 원자적으로 재검: 버전을 FOR UPDATE로 잠그고
   # 스냅샷 재비교 → 확인-커밋 사이 콘텐츠 발산 차단(TOCTOU). 발산 시 StaleReviewedTuple.
   def confirm_review!(reviewer_id:)

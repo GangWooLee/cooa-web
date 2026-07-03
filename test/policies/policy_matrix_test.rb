@@ -104,3 +104,60 @@ class ApprovalRequestSoDTest < ActiveSupport::TestCase
     refute policy(%w[approver], 2, 1, status: "reviewed").confirm_review?
   end
 end
+
+# claim(자기배정)의 SoD — confirm과 달리 HARD approve verb 필요(소프트게이트 미적용): 미배정 pending 리뷰를
+# 테넌트 owner/approver가 스스로 맡는다. claim? = can?(:approve) && pending? && actor_present? &&
+# submitter_distinct? && requested_reviewer_ids.none?. 리뷰어가 이미 있는 요청(타인 배정 포함)은 미배정이
+# 아니므로 claim 대상 아님 — 이미 지정된 리뷰어는 Segment A(내게 요청된 리뷰) 소속.
+class ApprovalRequestClaimTest < ActiveSupport::TestCase
+  StubContext = Struct.new(:roles, :actor_id) do
+    def roles_on(_record) = roles
+  end
+  Req = Struct.new(:submitter_id, :status, :requested_reviewer_ids) do
+    def pending? = status == "pending"
+  end
+
+  def policy(roles, actor_id, submitter_id, status: "pending", requested: [])
+    ApprovalRequestPolicy.new(StubContext.new(roles, actor_id), Req.new(submitter_id, status, requested))
+  end
+
+  test "approver(비요청자)는 미배정 리뷰를 claim할 수 있다" do
+    assert policy(%w[approver], 2, 1).claim?
+  end
+
+  test "owner도 claim할 수 있다 (HARD approve verb 보유)" do
+    assert policy(%w[owner], 2, 1).claim?
+  end
+
+  test "요청자 본인은 claim 불가 (SoD)" do
+    refute policy(%w[approver], 1, 1).claim?
+  end
+
+  test "owner도 SoD 예외 없음 — 자기 요청은 claim 불가" do
+    refute policy(%w[owner], 1, 1).claim?
+  end
+
+  # confirm의 소프트게이트("요청받음=권한")는 claim에 미적용 — approve verb가 없으면 스스로 맡을 수 없다.
+  test "approve verb 없는 역할(contributor)은 claim 불가" do
+    refute policy(%w[contributor], 2, 1).claim?
+  end
+
+  # 이미 지정된 리뷰어는 Segment A(내게 요청된 리뷰)에 있으므로 claim 대상이 아니다.
+  test "이미 지정된 리뷰어는 claim 대상 아님" do
+    refute policy(%w[approver], 2, 1, requested: [ 2 ]).claim?
+  end
+
+  # claim은 미배정 전용: 다른 리뷰어(3)가 이미 지정된 요청은 적격 액터(2)의 직접 POST로도 claim 불가.
+  # (UI Segment B의 where.missing 필터를 우회하는 직접 요청의 서버측 백스톱 — 타 리뷰어 배정 요청에 끼어들기 차단.)
+  test "다른 리뷰어가 이미 지정된 요청은 claim 불가 (미배정 전용)" do
+    refute policy(%w[approver], 2, 1, requested: [ 3 ]).claim?
+  end
+
+  test "nil actor(미연결 Account)는 fail-closed" do
+    refute policy(%w[approver], nil, 1).claim?
+  end
+
+  test "비-pending(reviewed) 요청은 claim 불가" do
+    refute policy(%w[approver], 2, 1, status: "reviewed").claim?
+  end
+end

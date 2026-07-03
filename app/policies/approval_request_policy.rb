@@ -7,6 +7,13 @@ class ApprovalRequestPolicy < ApplicationPolicy
     reviewer_capable?(:approve) && record.pending? && actor_present? && submitter_distinct?
   end
 
+  # claim(자기배정)은 HARD approve verb(테넌트 owner/approver) 필요 — confirm의 소프트게이트(요청받음=권한)를
+  # 적용하지 않는다. 미배정(리뷰어 0명)만 대상: 이미 리뷰어가 있는 요청은 Segment B(where.missing)에서 빠지며,
+  # 직접 POST로 타인에게 배정된 리뷰에 끼어드는 것도 requested_reviewer_ids.none?로 서버측 차단(UI 필터의 백스톱).
+  def claim?
+    can?(:approve) && record.pending? && actor_present? && submitter_distinct? && record.requested_reviewer_ids.none?
+  end
+
   private
 
   # 소프트 게이트(리프레임 철학·가산적): 요청받은 리뷰어 OR 테넌트 owner/approver 폴백. "요청받음 = 그

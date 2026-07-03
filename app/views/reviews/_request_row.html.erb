@@ -1,0 +1,23 @@
+<%# 리뷰 인박스 행(Segment A/B 공용). locals: req, claimable. claimable=true(B)면 인라인 "내가 맡기" 버튼. %>
+<% cv = req.component_version %>
+<li>
+  <div class="flex items-center gap-3 rounded-lg border border-line-soft p-3 transition hover:border-cooa">
+    <%= link_to component_version_path(cv), class: "flex min-w-0 flex-1 items-center justify-between gap-3" do %>
+      <div class="min-w-0">
+        <div class="flex items-center gap-2 text-[13px]">
+          <span class="shrink-0 rounded bg-tint px-1.5 py-0.5 text-[11px] font-bold text-ink/70"><%= cv.product.code %></span>
+          <span class="truncate font-bold text-ink"><%= cv.component.display_name %> <%= cv.vlabel.upcase %></span>
+        </div>
+        <div class="mt-1 truncate text-[12px] text-line"><%= cv.product.name %></div>
+      </div>
+      <div class="flex shrink-0 items-center gap-1.5 text-[12px] text-line">
+        요청자 <%= avatar(req.submitter, size: 18) %> <span class="text-ink"><%= req.submitter.name %></span>
+        <span class="ml-1"><%= req.requested_at&.strftime("%m.%d") %></span>
+      </div>
+    <% end %>
+    <% if claimable %>
+      <%= button_to "내가 맡기", claim_approval_request_path(req), form: { class: "shrink-0" },
+            class: "shrink-0 cursor-pointer rounded-lg bg-cooa-gradient px-3 py-2 text-[12px] font-bold text-white transition hover:opacity-90" %>
+    <% end %>
+  </div>
+</li>

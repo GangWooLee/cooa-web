@@ -1,34 +1,48 @@
 <% content_for :title, "내게 요청된 리뷰" %>
 <div class="flex h-full flex-col">
   <div class="flex items-center justify-between border-b border-line-soft px-5 py-3">
-    <h1 class="text-base font-bold text-ink">내게 요청된 리뷰 <span class="text-line">(<%= @requests.size %>)</span></h1>
+    <h1 class="text-base font-bold text-ink">내게 요청된 리뷰 <span class="text-line">(<%= @assigned.size %>)</span></h1>
   </div>
 
   <div class="min-h-0 flex-1 overflow-auto p-4">
-    <% if @requests.any? %>
+    <%# ── Segment A: 내게 요청된 리뷰(내가 지정 리뷰어) ── %>
+    <% if @assigned.any? %>
       <ul class="space-y-2">
-        <% @requests.each do |req| %>
-          <% cv = req.component_version %>
-          <li>
-            <%= link_to component_version_path(cv),
-                  class: "flex items-center justify-between gap-3 rounded-lg border border-line-soft p-3 transition hover:border-cooa" do %>
-              <div class="min-w-0">
-                <div class="flex items-center gap-2 text-[13px]">
-                  <span class="shrink-0 rounded bg-tint px-1.5 py-0.5 text-[11px] font-bold text-ink/70"><%= cv.product.code %></span>
-                  <span class="truncate font-bold text-ink"><%= cv.component.display_name %> <%= cv.vlabel.upcase %></span>
-                </div>
-                <div class="mt-1 truncate text-[12px] text-line"><%= cv.product.name %></div>
-              </div>
-              <div class="flex shrink-0 items-center gap-1.5 text-[12px] text-line">
-                요청자 <%= avatar(req.submitter, size: 18) %> <span class="text-ink"><%= req.submitter.name %></span>
-                <span class="ml-1"><%= req.requested_at&.strftime("%m.%d") %></span>
-              </div>
-            <% end %>
-          </li>
-        <% end %>
+        <%= render partial: "request_row", collection: @assigned, as: :req, locals: { claimable: false } %>
       </ul>
     <% else %>
       <div class="py-16 text-center text-[13px] text-line">요청된 리뷰가 없습니다.</div>
+    <% end %>
+
+    <%# ── Segment B: 리뷰어 미배정 — 내가 맡을 수 있는 리뷰(적격 owner/approver만) ── %>
+    <% if @eligible %>
+      <div class="mt-8 border-t border-line-soft pt-5">
+        <h2 class="mb-3 text-[13px] font-bold text-ink">리뷰어 미배정 <span class="font-medium text-line">— 내가 맡을 수 있는 리뷰</span></h2>
+        <% if @inbox.any? %>
+          <%# 브랜드(루트 제품) 필터 %>
+          <div class="mb-3 flex flex-wrap items-center gap-1.5 text-[12px]">
+            <%= link_to "전체", reviews_path,
+                  class: "rounded-full px-2.5 py-1 font-medium transition #{@inbox.active_filter.nil? ? 'bg-cooa text-white' : 'bg-tint text-line hover:text-cooa'}" %>
+            <% @inbox.brand_options.each do |b| %>
+              <%= link_to b.name, reviews_path(brand: b.id),
+                    class: "rounded-full px-2.5 py-1 font-medium transition #{@inbox.active_filter == b.id ? 'bg-cooa text-white' : 'bg-tint text-line hover:text-cooa'}" %>
+            <% end %>
+          </div>
+          <%# 브랜드 그룹(펼침 기본) %>
+          <div class="space-y-3">
+            <% @inbox.groups.each do |group| %>
+              <details open class="rounded-lg border border-line-soft">
+                <summary class="cursor-pointer px-3 py-2 text-[12px] font-bold text-ink"><%= group.brand.name %> <span class="text-line">(<%= group.requests.size %>)</span></summary>
+                <ul class="space-y-2 px-3 pb-3">
+                  <%= render partial: "request_row", collection: group.requests, as: :req, locals: { claimable: true } %>
+                </ul>
+              </details>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="py-8 text-center text-[13px] text-line">맡을 수 있는 미배정 리뷰가 없습니다.</div>
+        <% end %>
+      </div>
     <% end %>
   </div>
 </div>

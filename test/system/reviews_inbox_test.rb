@@ -18,9 +18,9 @@ class ReviewsInboxTest < ApplicationSystemTestCase
     click_button "리뷰 요청"
     assert_text "리뷰 대기"
 
-    # lee로 전환 → 사이드바 "내게 요청된 리뷰" → CO0001 행 → 버전 뷰 → 검토 확인
+    # lee로 전환 → 사이드바 "내 리뷰 인박스" → CO0001 행 → 버전 뷰 → 검토 확인
     system_sign_in("lee@cooa.dev")
-    click_link "내게 요청된 리뷰"
+    click_link "내 리뷰 인박스"
     assert_text "내게 요청된 리뷰"
     find("a", text: "CO0001").click
     accept_confirm { click_button "✓ 검토 확인" } # v5는 미해결 피드백 → 소프트 경고 수락
@@ -35,7 +35,7 @@ class ReviewsInboxTest < ApplicationSystemTestCase
     click_button "리뷰 요청"
 
     system_sign_in("park@cooa.dev") # contributor, 비요청
-    click_link "내게 요청된 리뷰"
+    click_link "내 리뷰 인박스"
     assert_text "요청된 리뷰가 없습니다"
   end
 end

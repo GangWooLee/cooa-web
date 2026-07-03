@@ -56,6 +56,7 @@ Rails.application.routes.draw do
   resources :approval_requests, only: [ :create ] do
     member do
       post :confirm
+      post :claim   # 미배정 pending 리뷰 자기배정(적격 owner/approver)
     end
   end
 

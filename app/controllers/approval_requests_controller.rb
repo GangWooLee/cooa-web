@@ -34,6 +34,27 @@ class ApprovalRequestsController < ApplicationController
     redirect_back fallback_location: root_path, status: :see_other, notice: "검토 확인되었습니다."
   end
 
+  # claim = 미배정 pending 리뷰 자기배정. claim?는 HARD approve verb + SoD + 미지정을 게이트(정책).
+  # add_reviewer!의 유니크 백스톱이 더블클릭/동시 요청을 RecordNotUnique로 거르고 여기서 멱등 처리.
+  def claim
+    req = ApprovalRequest.find(params[:id])
+    authorize req, :claim?
+    return head :forbidden if current_account.user_id.blank? # 미브리지 계정 fail-closed(create와 동일 방어)
+    begin
+      req.add_reviewer!(current_account.user_id)
+    rescue ActiveRecord::RecordNotUnique # 더블클릭/동시 claim → 멱등
+      return redirect_back fallback_location: reviews_path, status: :see_other, notice: "이미 맡으신 리뷰입니다."
+    end
+    # confirm/submit의 audit! 헬퍼는 status before/after 전용이라 claim은 직접 record!(after=배정 reviewer).
+    # action 키 "claim"은 정책 query(claim?)명과 일치 — deny 감사(application_controller pundit 경로)도 같은
+    # 키를 유도하므로 allow·deny를 한 action으로 상관 가능(confirm_review/submit_for_approval와 동일 불변식).
+    AuditLog.record!(action: "claim", resource_type: "ApprovalRequest", resource_id: req.id,
+                     outcome: "allow", before: nil, after: { "reviewer_id" => current_account.user_id },
+                     request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
+    redirect_back fallback_location: reviews_path, status: :see_other,
+                  notice: "리뷰를 맡았습니다 — '내게 요청된 리뷰'에 추가되었습니다."
+  end
+
   private
 
   # 전이 → 감사(allow). 요청 tenant tx와 원자: 실패 시 전이도 롤백(감사 없는 리뷰 없음). action 키
