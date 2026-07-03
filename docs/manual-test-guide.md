@@ -359,13 +359,18 @@ COOA_DEMO_STEP_UP_OFF=1 bin/dev  # ★ frictionless: 승인 무마찰 (re_auth_f
 > 아래는 **사용자 1회 셋업 + 5개 검증 항목**.
 
 ### ☐ 4.0 셋업 (1회)
-1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → OAuth 동의 화면(External, scope: email/profile/openid) 구성.
-2. 사용자 인증 정보 → **OAuth 클라이언트 ID 생성**(유형: 웹 애플리케이션) → 승인된 리디렉션 URI에 `http://localhost:3000/auth/google_oauth2/callback` 추가.
-3. bin/dev를 띄우는 셸에서: `export GOOGLE_CLIENT_ID=<client-id>` · `export GOOGLE_CLIENT_SECRET=<secret>` → `bin/dev` 재기동.
-4. 로그인 페이지에 "Google로 로그인" 버튼이 보이면 셋업 완료(버튼은 env 게이트).
+> **콘솔 들어가기 전 실행**: `bin/rails auth:google_preflight` — 콘솔에 붙여넣을 **정확한 리디렉션 URI** 출력 + env/gem 준비 상태 확인(전 환경 안전).
 
-### ☐ 4.1 시드 계정 email-link 바인딩 `[브라우저]`
-본인 Google 계정 이메일로 시드 계정을 하나 맞춰두고(콘솔에서 `Account.find_by(email: "kim@cooa.dev").update!(email: "<본인@gmail>")` 등) → Google 로그인 → 대시보드 진입 + 이후 재로그인도 성공(재방문 매칭).
+1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → OAuth 동의 화면(External, scope: email/profile/openid) 구성.
+2. 사용자 인증 정보 → **OAuth 클라이언트 ID 생성**(유형: 웹 애플리케이션) → 승인된 리디렉션 URI에 preflight가 출력한 값(`http://localhost:3000/auth/google_oauth2/callback`) 추가.
+3. bin/dev를 띄우는 셸에서: `export GOOGLE_CLIENT_ID=<client-id>` · `export GOOGLE_CLIENT_SECRET=<secret>` → `bin/dev` 재기동.
+4. `bin/rails auth:google_preflight`로 "✓ 앱 측 준비 완료" 확인 + 로그인 페이지에 "Google로 로그인" 버튼 확인.
+
+> **가장 쉬운 첫 테스트 = §4.2 초대 플로우(rails 콘솔 0)**. 직접 로그인(§4.1)만 시드 계정 정렬이 필요하며 그것도 rake로 처리.
+> dev 환경에선 로그인 거부 시 브라우저에 **구체 사유**가 표시된다(예: "매칭 계정 없음 — auth:link_google 실행"). 프로덕션은 generic 유지.
+
+### ☐ 4.1 (선택) 직접 로그인 — 기존 멤버가 Google로 `[브라우저]`
+`bin/rails auth:link_google[<본인@gmail>]`(dev 전용 — owner kim 계정을 내 Gmail로 정렬) → "Google로 로그인" → 대시보드 진입(owner 권한) + 재로그인도 성공(재방문 매칭). 원복: `bin/rails auth:unlink_google`.
 
 ### ☐ 4.2 초대 → 수락 (핵심 저니) `[브라우저 2개]`
 김쿠아(owner)로 멤버 페이지 → 다른 본인 이메일로 초대 생성 → **링크 복사** → 시크릿 창에서 링크 열기 → "OO 조직에 초대되었습니다" → Google로 계속 → 해당 Google 계정으로 로그인 → 대시보드 진입 · 멤버 페이지에 새 멤버 등재(역할 칩 확인).

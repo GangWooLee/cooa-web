@@ -46,6 +46,16 @@ class OidcCallbackTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_path
   end
 
+  # dev_reject_hint 게이트 회귀: test 환경(=prod 동등)에서는 거부 메시지가 이메일·[dev] 사유를
+  # 절대 누출하지 않는다(열거 방지 유지). dev 힌트는 Rails.env.development?에서만 붙는다.
+  test "reject flash는 test/prod에서 이메일·[dev] 힌트 누출 0" do
+    oidc_callback(uid: "kc-x", email: "stranger@evil.test")
+    alert = flash[:alert].to_s
+    assert_equal "허가되지 않은 계정입니다.", alert
+    refute_includes alert, "stranger@evil.test"
+    refute_includes alert, "[dev]"
+  end
+
   test "unverified email is rejected — no binding (P2 C-1)" do
     oidc_callback(uid: "kc-unv", email: "lee@cooa.dev", email_verified: false)
     assert_redirected_to new_session_path

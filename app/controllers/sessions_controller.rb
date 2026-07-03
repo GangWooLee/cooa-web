@@ -5,7 +5,7 @@ class SessionsController < ApplicationController
   layout "auth"
   allow_unauthenticated_access only: %i[new create omniauth_callback auth_failure]
   skip_after_action :verify_authorized # sessions are not a Pundit-authorized resource
-  before_action :ensure_local_login_enabled, only: [:new, :create]
+  before_action :ensure_local_login_enabled, only: [ :new, :create ]
 
   def new
     @accounts = Account.active.includes(:user).order(:id)
@@ -39,7 +39,7 @@ class SessionsController < ApplicationController
                               idp_provider: auth.provider.to_s, idp_subject: auth.uid) # returning (bound)
     account ||= bind_first_login(auth)                                                 # first login (guarded)
     account ||= accept_invitation_signup(auth, invite_raw)                             # invitation-gated 신규(Phase 3)
-    return reject!("허가되지 않은 계정입니다.") unless account&.active?
+    return reject!("허가되지 않은 계정입니다.#{dev_reject_hint(auth)}") unless account&.active?
 
     consume_matching_invitation(account) if invite_raw.present? # bind 승리 시 유령 pending 소비(재초대 차단 방지)
 
@@ -72,6 +72,25 @@ class SessionsController < ApplicationController
   def oidc_email_verified?(auth)
     raw = auth.extra&.raw_info
     raw && (raw["email_verified"] == true || raw["email_verified"].to_s == "true")
+  end
+
+  # 로그인 실패 원인 진단 — **development 전용**. 프로덕션/test는 항상 ""를 반환해 generic 거부 메시지
+  # (열거 방지)를 그대로 유지한다. 소셜 로그인 셋업 중 "왜 거부됐는지"를 브라우저에서 바로 알려주는 용도.
+  def dev_reject_hint(auth)
+    return "" unless Rails.env.development?
+    email = auth&.info&.email.to_s.downcase
+    return " [dev] 이메일 정보 없음" if email.blank?
+    return " [dev] email_verified=false (Google Workspace 미검증 도메인?)" unless oidc_email_verified?(auth)
+    acc = Account.find_by(tenant_id: Current.tenant_id, email: email)
+    if acc.nil?
+      " [dev] #{email}로 매칭되는 계정 없음 — `bin/rails auth:link_google[#{email}]` 실행 또는 초대 플로우 사용"
+    elsif acc.idp_subject.present?
+      " [dev] #{email}는 이미 다른 IdP subject에 바인딩됨(재바인딩 금지) — `auth:unlink_google`로 초기화"
+    elsif !acc.active?
+      " [dev] #{email} 계정이 비활성 상태"
+    else
+      " [dev] #{email} 매칭되나 바인딩 실패 — 서버 로그 확인"
+    end
   end
 
   # 초대-게이트 신규 온보딩(Phase 3): 검증된 이메일 + 유효 티켓 + **초대 email == 검증 email**(토큰만
