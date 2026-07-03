@@ -132,6 +132,8 @@ if product_path
   else
     fails << "쓰기:구성요소 생성 실패 → HTTP #{sess.response.response_code}"
   end
+elsif ENV["SMOKE_REQUIRE_WRITE"] == "1"
+  fails << "쓰기 경로 필수(SMOKE_REQUIRE_WRITE=1)인데 dev DB에 제품 없음 — 시드 필요(COOA_DB_USER=$USER bin/rails db:seed). 스모크를 owner로 돌리지 말 것(권한 결함 은폐)."
 else
   puts "  · 제품 없음 — 쓰기 경로 건너뜀"
 end

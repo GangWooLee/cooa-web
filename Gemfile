@@ -70,6 +70,9 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
+
+  # Git 훅 관리(pre-commit/commit-msg/pre-push) — 문서화된 규율을 기계적 게이트로. bin/setup가 `lefthook install` 수행.
+  gem "lefthook", require: false
 end
 
 group :development do
@@ -88,7 +91,6 @@ group :test do
   # N+1 게이트 — critical path 통합 테스트에서 Prosopite.scan으로 N+1이면 fail(R5). bullet보다 엄격.
   gem "prosopite"
   gem "pg_query" # prosopite의 SQL 지문(fingerprint) 정확화 — scan에 필수
-
 end
 
 gem "rotp", "~> 6.3"

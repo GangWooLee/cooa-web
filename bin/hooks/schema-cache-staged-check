@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# R1/R6 게이트 — db/migrate/ 변경을 스테이지하면 db/schema_cache.yml 도 함께 스테이지돼야 한다.
+# (마이그레이션 후 스키마 캐시를 재덤프해 같이 커밋). 이 규율의 존재 이유인 stale-schema_cache 사고의 기계적 차단.
+# 우회: git commit --no-verify (컬럼 미변경 데이터 전용 마이그레이션 등).
+set -uo pipefail
+staged="$(git diff --cached --name-only --diff-filter=ACMR)"
+if printf '%s\n' "$staged" | grep -qE '^db/migrate/.+\.rb$'; then
+  if ! printf '%s\n' "$staged" | grep -qx 'db/schema_cache.yml'; then
+    cat >&2 <<'MSG'
+✗ 차단(R1/R6): db/migrate/ 변경이 스테이지됐는데 db/schema_cache.yml 이 없습니다.
+  마이그레이션 후 스키마 캐시를 재덤프해 함께 커밋하세요:
+      COOA_DB_USER=$USER bin/rails db:schema:cache:dump
+      git add db/schema_cache.yml
+  (컬럼을 바꾸지 않는 데이터 전용 마이그레이션이면: git commit --no-verify 로 우회)
+MSG
+    exit 1
+  fi
+fi
+exit 0

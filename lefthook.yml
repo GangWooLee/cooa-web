@@ -1,0 +1,24 @@
+# 기계적 개발 규율 게이트(git 계층). 설치: `bundle exec lefthook install` (bin/setup가 자동 수행).
+# 우회(escape hatch): `git <cmd> --no-verify`  또는  `LEFTHOOK=0 git <cmd>`.
+# 무엇이 어디서 강제되나 전체 지도: docs/harness.md
+pre-commit:
+  parallel: true
+  commands:
+    rubocop:
+      glob: "*.rb"
+      run: bin/rubocop --force-exclusion {staged_files}
+    schema-cache-freshness:
+      # R1/R6 — db/migrate/ 를 스테이지하면 db/schema_cache.yml 재덤프 동봉 강제(stale-cache 사고 차단).
+      run: bin/hooks/schema-cache-staged-check
+
+commit-msg:
+  commands:
+    claude-trailers:
+      # Claude 트레일러가 있으면 '완전한지'만 검증(사람 커밋 무영향).
+      run: bin/hooks/commit-msg-trailers {1}
+
+pre-push:
+  commands:
+    full-ci:
+      # 완성된 전체 게이트(lint·security·RLS/grant/audit 자세·tests·system·smoke). 우회: git push --no-verify
+      run: bin/ci
