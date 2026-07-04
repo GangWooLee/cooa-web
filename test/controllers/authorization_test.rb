@@ -29,8 +29,27 @@ class AuthorizationTest < ActionDispatch::IntegrationTest
     assert_difference -> { AuditLog.where(outcome: "deny").count }, 1 do
       post confirm_approval_request_path(req)
     end
-    log = AuditLog.where(outcome: "deny").order(:tenant_seq).last
-    assert_equal "confirm_review", log.action
-    assert_equal "ApprovalRequest", log.resource_type
+    # H1 leak-immunity: identify THE deny this test provoked, not "the newest deny in the whole table".
+    # The old unscoped `AuditLog.where(outcome: "deny").order(:tenant_seq).last` picked whichever deny had
+    # the global-max tenant_seq — so a COMMITTED probe deny leaked from another tenant (rls_app_connection_test
+    # writes tenant=@org_a, action='probe', outcome='deny') could win and flip log.action to 'probe' (the
+    # intermittent flake). Scoping to THIS tenant + THIS action makes the query immune by construction.
+    demo = TenantConfig::DEMO_TENANT_ID
+    # Proof-in-place: plant exactly such a foreign-tenant deny row and prove the scoped query still ignores
+    # it. Seq = GLOBAL max + 1 (NOT 1): the demo confirm_review deny sits at seq 2, so only a strictly larger
+    # seq lands at the tail of the OLD `.order(:tenant_seq).last` — the worst case the scope must survive
+    # (this is what the F5 revert experiment exploits to turn the old query RED). Owner bypasses RLS for the
+    # insert; a SAVEPOINT we roll back is the ONLY cleanup, since audit_logs' immutable trigger blocks DELETE.
+    AuditLog.transaction(requires_new: true) do
+      poison_seq = AuditLog.maximum(:tenant_seq).to_i + 1
+      AuditLog.connection.execute(<<~SQL)
+        INSERT INTO audit_logs (tenant_id, action, resource_type, outcome, tenant_seq, chain_hash)
+        VALUES ('99999999-9999-9999-9999-999999999999', 'probe', 'X', 'deny', #{poison_seq}, 'h')
+      SQL
+      log = AuditLog.where(tenant_id: demo, action: "confirm_review", outcome: "deny").order(:tenant_seq).last
+      assert_equal "confirm_review", log.action, "scoped query must ignore the leaked foreign-tenant probe deny"
+      assert_equal "ApprovalRequest", log.resource_type
+      raise ActiveRecord::Rollback # discard the planted probe (cannot DELETE — immutable trigger)
+    end
   end
 end

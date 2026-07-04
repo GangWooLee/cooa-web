@@ -2,6 +2,7 @@ ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "rails/test_help"
 require "prosopite"
+require_relative "support/committed_state_cleanup" # shared leak-proof teardown for the NON-transactional RLS suites
 
 # N+1 게이트(R5): scan 블록 안에서 N+1이 감지되면 raise → 테스트 실패. 전역 스캔이 아니라
 # assert_no_n_plus_one { ... } 로 critical path에만 옵트인(오탐·픽스처 잡음 회피).

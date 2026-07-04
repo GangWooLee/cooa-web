@@ -9,15 +9,10 @@ end
 # Verifies the Phase 0a/0b isolation foundation (ADR-002 §7) across foundation + domain tables:
 # tenant-scoped reads, fail-CLOSED on unset context, WITH CHECK on writes, no-bypass app role.
 class RlsIsolationTest < ActiveSupport::TestCase
+  include CommittedStateCleanup # single-sourced RLS_TABLES/READ_ONLY + leak-proof cleanup_committed_rls_state!
+
   # Cross-connection visibility needs committed rows → opt out of transactional fixtures.
   self.use_transactional_tests = false
-
-  # cooa_app DML targets (RLS) + read-only (global KB / users / active_storage). structure.sql strips
-  # GRANTs (pg_dump -x), so (re)apply them here as the owner — keeps the test self-sufficient.
-  RLS_TABLES = "organizations, accounts, role_assignments, products, components, component_versions, " \
-               "annotations, annotation_comments, ingredients, label_texts, screening_runs, " \
-               "screening_findings, product_members, product_properties".freeze
-  READ_ONLY = "users, ingredient_limits, label_requirements, ad_risk_expressions".freeze
 
   setup do
     owner = ActiveRecord::Base.connection
@@ -39,12 +34,11 @@ class RlsIsolationTest < ActiveSupport::TestCase
   end
 
   teardown do
+    # Cleanup FIRST (leak-proof, per-step isolated), remove the app connection LAST. The previous order
+    # (remove_connection → then UN-rescued delete_all) leaked committed orgs/accounts whenever any delete
+    # raised, because the remaining cleanup steps were then skipped (H2).
+    cleanup_committed_rls_state!([ @org_a&.id, @org_b&.id ])
     RlsAppConnection.remove_connection
-    ids = [ @org_a&.id, @org_b&.id ].compact
-    Product.where(tenant_id: ids).delete_all
-    RoleAssignment.where(tenant_id: ids).delete_all
-    Account.where(tenant_id: ids).delete_all
-    [ @org_a, @org_b ].each { |o| o&.destroy }
   end
 
   # ── role guarantee ───────────────────────────────────────────────────────

@@ -7,12 +7,16 @@ class AuditLogTest < ActiveSupport::TestCase
     @user = User.create!(name: "감사자", role: "ra", avatar_color: "#222222", email: "auditor@test")
     @account = Account.create!(tenant_id: Current.tenant_id, user: @user, email: "auditor@test", status: "active")
     Current.account = @account
+    # The per-tenant chain is relative, not absolute: assert on the DELTA from whatever this tenant already
+    # holds, so a leaked committed audit row (an immutable row TRUNCATE-only cleanup could miss) can't flip
+    # these from "0-based" and flake. Account/User creation above does not audit, so this is the pre-test max.
+    @base_seq = AuditLog.where(tenant_id: Current.tenant_id).maximum(:tenant_seq) || 0
   end
 
   test "record! builds a linked, verifiable per-tenant chain" do
     a = AuditLog.record!(action: "approve", resource_type: "ScreeningRun", resource_id: 1, outcome: "allow", after: { b: 2, a: 1 })
     b = AuditLog.record!(action: "reject", resource_type: "ScreeningRun", resource_id: 2, outcome: "allow")
-    assert_equal [ 1, 2 ], [ a.tenant_seq, b.tenant_seq ]
+    assert_equal [ @base_seq + 1, @base_seq + 2 ], [ a.tenant_seq, b.tenant_seq ]
     assert_nil a.prev_chain_hash
     assert_equal a.chain_hash, b.prev_chain_hash, "chain links seq n→n+1"
     assert_equal a.chain_hash, a.expected_chain_hash
@@ -52,7 +56,7 @@ class AuditLogTest < ActiveSupport::TestCase
     d = AuditLog.record!(action: "run_screening", resource_type: "ComponentVersion", outcome: "deny", denial_reason: "pundit")
     assert_nil d.actor_id
     assert_equal "deny", d.outcome
-    assert_equal 1, d.tenant_seq
+    assert_equal @base_seq + 1, d.tenant_seq
   end
 
   test "tampering is detectable — recompute diverges from the stored chain_hash" do
@@ -73,11 +77,13 @@ class AuditLogTest < ActiveSupport::TestCase
   end
 
   test "UNIQUE(tenant_id, tenant_seq) backstops the chain against a duplicate sequence" do
-    AuditLog.record!(action: "approve", resource_type: "X", resource_id: 1, outcome: "allow") # seq 1
+    AuditLog.record!(action: "approve", resource_type: "X", resource_id: 1, outcome: "allow") # seq @base_seq+1
+    # Re-insert the SAME (tenant_id, tenant_seq) record! just took — must violate the UNIQUE backstop. Uses
+    # @base_seq+1 (not literal 1) so the collision holds regardless of a leaked pre-existing chain offset.
     assert_raises(ActiveRecord::RecordNotUnique) do
       AuditLog.connection.execute(<<~SQL)
         INSERT INTO audit_logs (tenant_id, tenant_seq, action, resource_type, outcome, chain_hash)
-        VALUES ('#{Current.tenant_id}', 1, 'dup', 'X', 'deny', 'h')
+        VALUES ('#{Current.tenant_id}', #{@base_seq + 1}, 'dup', 'X', 'deny', 'h')
       SQL
     end
   end

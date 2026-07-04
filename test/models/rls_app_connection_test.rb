@@ -11,12 +11,9 @@ end
 # (foundation) by exercising the login lookup, dashboard scope, and a same-tenant INSERT — the latter
 # is the regression guard for the sequence-USAGE grant (bigserial PKs fail INSERT without it).
 class RlsAppConnectionTest < ActiveSupport::TestCase
-  self.use_transactional_tests = false # cross-connection visibility needs committed rows
+  include CommittedStateCleanup # single-sourced RLS_TABLES/READ_ONLY + leak-proof cleanup_committed_rls_state!
 
-  RLS_TABLES = "organizations, accounts, role_assignments, products, components, component_versions, " \
-               "annotations, annotation_comments, ingredients, label_texts, screening_runs, " \
-               "screening_findings, product_members, product_properties".freeze
-  READ_ONLY = "users, ingredient_limits, label_requirements, ad_risk_expressions".freeze
+  self.use_transactional_tests = false # cross-connection visibility needs committed rows
 
   setup do
     owner = ActiveRecord::Base.connection
@@ -40,12 +37,26 @@ class RlsAppConnectionTest < ActiveSupport::TestCase
   end
 
   teardown do
+    # Cleanup FIRST, connection LAST (see rls_isolation_test — H2). The shared cleanup deletes accounts
+    # BEFORE @user_a is destroyed here (accounts.user_id → users), each step independently rescued.
+    cleanup_committed_rls_state!([ @org_a&.id, @org_b&.id ])
+    begin
+      @user_a&.destroy
+    rescue StandardError => e
+      warn "[committed-cleanup] user destroy failed (continuing): #{e.class}: #{e.message}"
+    end
+    # F3 double safety net for the append-only audit row the probe test commits: its own `ensure` TRUNCATEs,
+    # but a crash between that INSERT and the ensure would leak a COMMITTED audit row that NOTHING else can
+    # remove — the immutable trigger blocks DELETE (owner included), so TRUNCATE is the ONLY path, and it is
+    # necessarily GLOBAL (RLS-immutable rows can't be org-scoped away). Idempotent. Assumes SERIAL runs
+    # (PARALLEL_WORKERS=1); if the audit suites ever run in parallel, this global TRUNCATE must be redesigned
+    # (it would clobber a concurrent worker's audit rows).
+    begin
+      ActiveRecord::Base.connection.execute("TRUNCATE audit_logs")
+    rescue StandardError => e
+      warn "[committed-cleanup] audit truncate failed (continuing): #{e.class}: #{e.message}"
+    end
     CooaAppSmokeConnection.remove_connection
-    ids = [ @org_a&.id, @org_b&.id ].compact
-    Product.where(tenant_id: ids).delete_all
-    Account.where(tenant_id: ids).delete_all # accounts.user_id → users: before destroying the user
-    @user_a&.destroy
-    [ @org_a, @org_b ].each { |o| o&.destroy }
   end
 
   # Login lookup (SessionsController#new/#create): accounts ⋈ users, tenant-scoped, under cooa_app.
