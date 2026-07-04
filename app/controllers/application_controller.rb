@@ -17,11 +17,38 @@ class ApplicationController < ActionController::Base
   # :index here would raise on controllers without an :index action (raise_on_missing_callback_actions).
   after_action :verify_authorized
   rescue_from Pundit::NotAuthorizedError, with: :deny_access
+  # 전역 rescue 계층(E1 · docs/error-handling.md): 리소스 조회 실패 → 404, 파라미터 누락 → 400. html이면
+  # 정적 브랜드 페이지(public/*.html) 렌더, 그 외(JSON/Turbo Stream)는 본문 없이 상태코드만. RecordInvalid는
+  # 전역 rescue하지 않는다 — 폼마다 표준이 다르다(파일 업로드=인라인 422 · PRG 소형 폼=flash alert).
+  rescue_from ActiveRecord::RecordNotFound, with: :render_not_found
+  rescue_from ActionController::ParameterMissing, with: :render_bad_request
 
   private
 
   # Pundit "user" = role-resolution context: the authenticated Account (roles via AssignmentResolver).
   def pundit_user = Authz::AccessContext.new(actor: Current.account)
+
+  # 도메인 액터(연결된 User) 없는 계정은 감사(allow)를 남기는 도메인 쓰기를 수행할 수 없다 — actor가 nil이면
+  # AuditLog.record!가 fail-closed로 raise해 500이 된다. 그 전에 fail-closed 403으로 막는 공용 가드(E4 통일).
+  # before_action이라 authorize보다 먼저 돌지만, 미브리지 계정은 어차피 도메인 쓰기 불가라 순서는 무해하고
+  # (halt 시 after_action verify_authorized는 실행되지 않음), bridged 계정은 그대로 통과해 정상 authorize된다.
+  def require_domain_actor
+    head :forbidden if current_account&.user_id.blank?
+  end
+
+  # 전역 rescue 렌더(E1). html = 정적 브랜드 페이지 파일 렌더(레이아웃·asset 파이프라인 무의존),
+  # 그 외 포맷 = 본문 없는 상태코드만(fetch/Turbo 소비자에 HTML 404 본문을 떠넘기지 않음).
+  def render_not_found(_error) = render_static_error(:not_found)
+  def render_bad_request(_error) = render_static_error(:bad_request)
+
+  def render_static_error(status)
+    if request.format.html?
+      code = Rack::Utils::SYMBOL_TO_STATUS_CODE[status]
+      render file: Rails.public_path.join("#{code}.html"), status: status, layout: false, content_type: "text/html"
+    else
+      head status
+    end
+  end
 
   # deny → 403 for mutations/non-html (anti-enumeration; RLS already 404s other tenants' rows),
   # redirect+alert for GET html. Persistent audit_log row = Phase 3 (Phase 1 = structured log).

@@ -2,11 +2,14 @@
 # 디자이너는 스크리닝 없이 요청, RA가 검토 중 스크리닝 수행. create=리뷰 요청+콘텐츠 스냅샷; confirm=stale
 # 재검(변경됨→deny)+SoD(정책). 전이는 audit_log 1행. "고쳐야 함"은 피드백(annotation) 채널 — 변경 요청 폐지.
 class ApprovalRequestsController < ApplicationController
+  # create/claim은 도메인 액터(연결 User) 필수 — submitter_id/reviewer_id는 User FK라 미브리지 계정이면
+  # 500(NOT NULL·AuditLog fail-closed)이 난다. 공용 가드로 fail-closed 403(E4 — 기존 인라인 2곳 대체).
+  before_action :require_domain_actor, only: %i[create claim]
+
   # create = 리뷰 요청(component_version 기준). 버전의 소유 제품이 verb를 게이트. reviewer_ids로 담당자 지정.
   def create
     cv = ComponentVersion.find(params[:component_version_id])
     authorize cv, :submit_for_approval?
-    return head :forbidden if current_account.user_id.blank? # M1: 미브리지 계정 → submitter_id nil NOT NULL 500 방지(fail-closed)
     req = ApprovalRequest.submit_for!(cv, submitter_id: current_account.user_id,
                                           reviewer_ids: sanitized_reviewer_ids(cv))
     # L1: 이미 검토 확인된(terminal) 버전에 직접 POST → no-op. 오해소지 audit/notice 방지.
@@ -39,7 +42,6 @@ class ApprovalRequestsController < ApplicationController
   def claim
     req = ApprovalRequest.find(params[:id])
     authorize req, :claim?
-    return head :forbidden if current_account.user_id.blank? # 미브리지 계정 fail-closed(create와 동일 방어)
     # 요청은 이미 RLS 트랜잭션 안(Authentication#scope_to_tenant) — arr_tenant_request_reviewer_key 위반이 그
     # tx를 통째로 abort시키면 이후 AuditLog INSERT가 InFailedSqlTransaction. requires_new(=SAVEPOINT)로 격리 →
     # 위반은 세이브포인트만 롤백하고 아래 rescue가 멱등 처리(바깥 tx는 온전). Stage 3 role_assignments 직접
@@ -47,6 +49,7 @@ class ApprovalRequestsController < ApplicationController
     begin
       ApprovalRequest.transaction(requires_new: true) { req.add_reviewer!(current_account.user_id) }
     rescue ActiveRecord::RecordNotUnique # 더블클릭/동시 claim → 멱등
+      Rails.logger.info("[idempotent] duplicate claim ignored req=#{req.id} account=#{current_account.id}")
       return redirect_back fallback_location: reviews_path, status: :see_other, notice: "이미 맡으신 리뷰입니다."
     end
     # confirm/submit의 audit! 헬퍼는 status before/after 전용이라 claim은 직접 record!(after=배정 reviewer).

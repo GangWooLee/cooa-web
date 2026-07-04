@@ -35,6 +35,22 @@ class ComponentVersionTest < ActiveSupport::TestCase
     assert v.errors[:artwork].any? { |m| m.include?("30MB") }, "크기 오류 메시지"
   end
 
+  test "0바이트(빈/잘린 업로드) 거부" do
+    v = version_with("empty.pdf", "application/pdf", io: StringIO.new("")) # 타입 통과 후 크기 0에서 차단
+    v.valid?
+    assert v.errors[:artwork].any? { |m| m.include?("빈 파일") }, "0바이트는 거부(뷰어 빈화면·probe 오작동 상류 방어)"
+  end
+
+  test "파일명 극단(한글·특수문자·200자)은 업로드 검증을 깨지 않음(green)" do
+    weird = version_with(%(한글 파일명 <>"'&.png), "image/png") # 내용은 유효(1B) — 파일명만 극단
+    weird.valid?
+    assert_empty weird.errors[:artwork], "특수문자 파일명이라도 내용이 유효하면 통과"
+
+    long_name = version_with("#{"가" * 200}.png", "image/png")
+    long_name.valid?
+    assert_empty long_name.errors[:artwork], "초장문 파일명도 통과(파일명은 검증 대상 아님)"
+  end
+
   # ── 업로드 시점 PDF 프로브(SEC-2/F5) — pdfinfo 필요(없으면 생략 정책이라 skip) ──
 
   def upload_version_with(fixture)
@@ -43,8 +59,16 @@ class ComponentVersionTest < ActiveSupport::TestCase
     v
   end
 
+  # 로컬은 pdfinfo 부재 시 skip(프로브 생략 정책 그대로) · CI는 부재를 flunk로 승격 —
+  # poppler 미설치로 프로브 테스트가 조용히 통과(착시)하는 것을 CI에서 막는다(S4).
+  def require_pdfinfo!
+    return if PdfProbe.available?
+    flunk("CI엔 poppler(pdfinfo) 필수 — 프로브 테스트가 조용히 skip되면 안 됨") if ENV["CI"]
+    skip "pdfinfo 없음(프로브 생략 정책)"
+  end
+
   test "프로브: 정상 PDF 통과 / 손상 PDF 거부 / 초대형 MediaBox(DoS 벡터) 거부" do
-    skip "pdfinfo 없음(프로브 생략 정책)" unless PdfProbe.available?
+    require_pdfinfo!
     ok = upload_version_with("sample_artwork.pdf")
     ok.valid?
     assert_empty ok.errors[:artwork]
@@ -59,7 +83,7 @@ class ComponentVersionTest < ActiveSupport::TestCase
   end
 
   test "PdfProbe 서비스 단독: 판정 3종" do
-    skip "pdfinfo 없음" unless PdfProbe.available?
+    require_pdfinfo!
     assert PdfProbe.check(Rails.root.join("test/fixtures/files/sample_artwork.pdf")).ok
     refute PdfProbe.check(Rails.root.join("test/fixtures/files/corrupt.pdf")).ok
     refute PdfProbe.check(Rails.root.join("test/fixtures/files/huge_page.pdf")).ok

@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { csrfToken } from "controllers/lib/dom"
+import { showNetErrorToast } from "controllers/lib/net_error_toast"
 
 // 드래그 순서변경(HTML5 DnD) — 좌측 핸들로 잡아 끌고, 행 위 드롭. drop 후 순서 PATCH.
 // _active 가드: 다른 드래그(버전 슬롯 등)와 섞이지 않게.
@@ -53,7 +54,7 @@ export default class extends Controller {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
       body: JSON.stringify({ ids })
-    }).then((res) => { if (!res.ok) this._resync() }).catch(() => this._resync())
+    }).then((res) => { if (!res.ok) this._resync() }).catch(() => { showNetErrorToast(); this._resync() }) // 네트워크 실패=무음 reload 직전 안내(E5)
   }
 
   // 서버 거부/네트워크 실패 시 낙관적 DOM 변경을 서버 상태로 되돌림(조용한 유실 방지)

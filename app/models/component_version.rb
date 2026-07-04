@@ -27,6 +27,8 @@ class ComponentVersion < ApplicationRecord
   #       미저장 레코드의 blob이 잠시 고아로 남을 수 있음(로컬 디스크 데모에서 무해 · 정기 purge로 정리).
   attr_accessor :require_artwork
   validates :artwork, presence: true, if: :require_artwork
+  # 입력 위생(S1): 과도한 변경사유 거부(nil/빈값 허용). 메시지 한글(full_messages 영문 회피).
+  validates :change_reason, length: { maximum: 500, message: "— 500자를 넘을 수 없습니다" }
   validate :artwork_format_and_size, if: -> { artwork.attached? }
 
   def vlabel = "v#{version_number}"
@@ -41,6 +43,10 @@ class ComponentVersion < ApplicationRecord
   def artwork_format_and_size
     unless ARTWORK_TYPES.include?(artwork.content_type)
       errors.add(:artwork, "는 PDF 또는 PNG·JPG·WEBP 파일이어야 합니다")
+      return
+    end
+    if artwork.byte_size.to_i.zero? # 0바이트(빈/잘린 업로드) 차단(S4) — 뷰어 빈화면·probe 오작동 상류 방어
+      errors.add(:artwork, "— 빈 파일은 업로드할 수 없습니다")
       return
     end
     if artwork.byte_size.to_i > ARTWORK_MAX_BYTES

@@ -5,6 +5,7 @@ class ComponentsController < ApplicationController
   def create
     product = Product.find(params[:product_id])
     authorize product, :upload_version?
+    # 이름=고정값·position=서버 계산이라 검증 실패 여지가 사실상 없음 → create! 유지(비-bang 불요, E3).
     c = product.components.create!(name: "제목 없음 구성요소", position: next_position(product.components))
     redirect_to product_path(product, rename_component: c.id)
   end
@@ -14,8 +15,15 @@ class ComponentsController < ApplicationController
     component = Component.find(params[:id])
     authorize component, :upload_version?
     name = params.dig(:component, :name).to_s.strip
-    component.update!(name: name) if name.present? # present 가드 후라 실패는 버그 → 표면화
-    redirect_to product_path(component.product_id)
+    return redirect_to product_path(component.product_id) if name.blank? # 빈 이름은 무시(기존 동작)
+
+    if component.update(name: name)
+      redirect_to product_path(component.product_id)
+    else
+      # 입력 검증 실패(이름 길이 200 초과 등, S1)는 500 표면화가 아니라 flash 안내로 우아하게(E3 정합).
+      redirect_to product_path(component.product_id),
+                  alert: component.errors.full_messages.to_sentence.presence || "이름을 저장하지 못했습니다."
+    end
   end
 
   # 드래그 순서변경 — 제품 스코프 내에서만

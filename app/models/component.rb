@@ -11,6 +11,9 @@ class Component < ApplicationRecord
        { outer_box: "outer_box", container: "container", insert: "insert", barcode: "barcode", etc: "etc" },
        prefix: :type
 
+  # 입력 위생(S1): 과도한 이름 거부(nil/빈값 허용 — display_name 폴백). 메시지 한글(full_messages 영문 회피).
+  validates :name, length: { maximum: 200, message: "— 200자를 넘을 수 없습니다" }
+
   scope :ordered, -> { order(:position, :id) }
 
   def type_label = component_type && TYPES[component_type]

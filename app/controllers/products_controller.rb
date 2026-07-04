@@ -25,7 +25,8 @@ class ProductsController < ApplicationController
       # 사이드바(+)에서 만들면 사이드바에서, 그 외(대시보드 상단 아이콘)는 대시보드에서 인라인 명명
       redirect_to root_path(params[:origin] == "side" ? { rename_side: @product.id } : { rename: @product.id })
     else
-      redirect_back fallback_location: root_path
+      redirect_back fallback_location: root_path,
+                    alert: @product.errors.full_messages.to_sentence.presence || "항목을 만들지 못했습니다."
     end
   end
 
@@ -39,7 +40,8 @@ class ProductsController < ApplicationController
       sync_members(@product) if @product.leaf?
       redirect_to(params[:return] == "tree" ? root_path : product_path(@product))
     else
-      redirect_back fallback_location: product_path(@product)
+      redirect_back fallback_location: product_path(@product),
+                    alert: @product.errors.full_messages.to_sentence.presence || "변경 사항을 저장하지 못했습니다."
     end
   end
 

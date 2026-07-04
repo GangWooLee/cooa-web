@@ -127,6 +127,13 @@ class ProductsControllerTest < ActionDispatch::IntegrationTest
     assert_response :redirect
   end
 
+  test "E3 생성 검증 실패 시 flash alert 노출(무피드백 redirect 금지)" do
+    leaf = Product.find_by(code: "CO0001") # 비폴더 부모 → 검증 거부
+    post products_path, params: { product: { kind: "item", parent_id: leaf.id } }
+    assert_response :redirect
+    assert flash[:alert].present?, "검증 실패는 flash alert로 안내되어야 함"
+  end
+
   test "폴더 삭제 → 하위·구성요소·버전 연쇄 제거" do
     f = folder
     descendant_ids = f.self_and_descendant_ids

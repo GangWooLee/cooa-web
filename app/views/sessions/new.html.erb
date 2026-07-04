@@ -6,9 +6,7 @@
     <span class="rounded bg-tint px-1.5 py-0.5 text-[11px]">데모</span>
   </p>
 
-  <% if flash[:alert] %>
-    <p class="mb-4 rounded-lg bg-red-50 px-3 py-2 text-[13px] text-red-700"><%= flash[:alert] %></p>
-  <% end %>
+  <%# flash[:alert]는 auth 레이아웃이 렌더(중복 방지). %>
 
   <div class="flex flex-col gap-2">
     <% @accounts.each do |account| %>

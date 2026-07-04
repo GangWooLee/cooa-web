@@ -15,6 +15,11 @@ class ScreeningsController < ApplicationController
     return redirect_to screening_component_version_path(@version) if @country.blank?
     ScreeningService.new(@version, @country).run!(requested_by: current_user)
     redirect_to screening_component_version_path(@version, ran: 1)
+  rescue ActiveRecord::RecordInvalid => e
+    # 서비스 내부 tx(create!)의 검증 실패는 사용자가 조치하기 어려운 내부 오류 — 조용히 삼키지 않고
+    # Rails.error로 관측한 뒤 안내(flash)로 되돌린다(E3).
+    Rails.error.report(e, handled: true, source: "screenings#run_screening")
+    redirect_to screening_component_version_path(@version), alert: "스크리닝 실행에 실패했습니다. 잠시 후 다시 시도해주세요."
   end
 
   private

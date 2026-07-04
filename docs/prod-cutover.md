@@ -142,6 +142,7 @@ CREATE ROLE cooa_app LOGIN PASSWORD '<COOA_APP_PASSWORD>'
 **모니터링**
 - `audit:detect_bola`(deny 급증=BOLA 신호)를 야간 recurring으로 등록(`config/recurring.yml`). 알림 싱크 연동은 2b.
 - 배포 게이트 `rls:audit`/`audit:verify`를 **체크인된 배포 스크립트**로 고정(사람 누락 방지; 2b에 블로킹 CI로 승격).
+- **잡 영구 실패 관측(E6)**: `solid_queue_failed_executions`를 주기 점검 — 비어있지 않으면 preprocessed 썸네일 변형 등 잡의 영구 실패 신호다. `ApplicationJob`은 일시 오류(`ActiveRecord::Deadlocked`)만 재시도하고 ActiveStorage 손상/포맷 오류는 재시도 없이 실패로 적재되므로, 이 테이블이 1차 관측면이다(예외 상세는 `Rails.error` 구조화 로그 `[error_report]`). 알림 싱크는 2b.
 
 ## 13. 2b 스케일 게이트 (트리거 명시 — 2a에선 손대지 말 것)
 - **audit_logs RANGE 파티셔닝(by `ts`) + DROP 아카이빙** — 불변 트리거가 DELETE 차단 → DROP만이 purge 경로. 트리거: 풀드 전환 OR 단일테이블 >~1천만 행.

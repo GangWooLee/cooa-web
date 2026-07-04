@@ -18,7 +18,9 @@ class Product < ApplicationRecord
   normalizes :name, with: ->(v) { v.to_s.strip }
   # 국가 자유입력 — 알려진 라벨/코드는 코드로 정규화(screening fact 매칭 보존), 그 외엔 원문 유지
   normalizes :country, with: ->(v) { ApplicationRecord.normalize_country(v) }
-  validates :name, presence: true
+  # 입력 위생(S1): 과도한 이름 거부(보수적 상한). 메시지 한글 — 로케일 en·full_messages 기본 영문 회피(E2 정합).
+  validates :name, presence: { message: "— 이름을 입력해 주세요" },
+                   length: { maximum: 200, message: "— 200자를 넘을 수 없습니다" }
   validates :code, uniqueness: { allow_blank: true }
   validate :parent_not_self_or_descendant
 

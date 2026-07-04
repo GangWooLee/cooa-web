@@ -2,6 +2,10 @@
 # manage_members(owner/brand_admin) 게이트이며, 같은 백스톱(RoleAssignment 모델 검증 + DB CHECK)을 공유한다.
 # 감사는 uuid PK라 resource_id=nil(관례)·식별자는 after 페이로드로.
 class RoleAssignmentsController < ApplicationController
+  # grant/revoke는 감사(allow)를 남긴다 — 도메인 액터(연결 User) 없는 계정이면 AuditLog.record!가
+  # fail-closed로 raise(500). 공용 가드로 먼저 fail-closed 403(E4).
+  before_action :require_domain_actor, only: %i[create destroy]
+
   def create
     authorize current_organization, :manage_members?
 
@@ -25,6 +29,7 @@ class RoleAssignmentsController < ApplicationController
   rescue ActiveRecord::RecordInvalid => e
     redirect_to members_path, alert: e.record.errors.full_messages.to_sentence
   rescue ActiveRecord::RecordNotUnique
+    Rails.logger.info("[idempotent] duplicate role grant ignored account=#{params[:account_id]} role=#{role_key} tenant=#{Current.tenant_id}")
     redirect_to members_path, alert: "이미 부여된 권한입니다."
   end
 

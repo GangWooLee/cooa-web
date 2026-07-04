@@ -422,3 +422,65 @@ RoleAssignment.create!(account: acc, tenant_id: acc.tenant_id,
 ```
 owner는 스코프 부여 불가(모델 검증 `owner grants must be tenant-wide`) · 부여 대상 제품/구성요소 삭제 시
 grant는 FK cascade로 자동 정리된다.
+
+---
+
+## 8. 엣지케이스 시나리오 카탈로그 (E/S-트랙 강건화 매핑)
+
+축별 엣지 시나리오와 자동화 매핑. **1줄 요약만** — 상세 절차는 위 § 또는 테스트 파일이 진실원천(중복 서술 금지).
+
+**태그**: `[자동:파일]` 해당 테스트가 회귀 잠금 · `[수동전용]` 자동화 부적합(실브라우저/실측) · `[공백]` 아직 자동·수동 모두 미커버(정직 표기).
+
+### (a) 더블 제출
+- 동일 버전 리뷰요청 2회 → 멱등(행 1개·우아) `[자동:test/integration/edge_resubmit_test.rb]`
+- reviewed 버전 재요청 → terminal no-op "이미 검토 확인된 버전입니다." `[자동:edge_resubmit_test.rb]`
+- claim 더블클릭 → 멱등(SAVEPOINT 격리 RecordNotUnique) `[자동:test/integration/review_claim_test.rb]`
+- grant 재부여 → 멱등 "이미 부여된 권한입니다." `[자동:test/integration/scoped_invite_test.rb]`
+
+### (b) 스테일 / 뒤로가기
+- 리뷰 중 콘텐츠 변경 → confirm stale 차단(§3.4) `[자동:test/integration/approval_workflow_test.rb]`
+- 삭제된 구성요소로의 스테일 업로드 POST → 404 우아 처리 `[자동:test/integration/full_journey_test.rb]`
+- 브라우저 back-button bfcache 후 만료 폼 재제출 거동 `[공백]`(bfcache 캐시는 자동화 부재 · 수동 관찰)
+
+### (c) URL 조작
+- 크로스테넌트/스코프 URL 직접 진입 차단(§5.2·§6.1) `[자동:test/integration/scoped_access_test.rb · v15_edge_test.rb]`
+- 비가시 버전 리뷰요청 직접 POST → 403 `[자동:v15_edge_test.rb]`
+- tenant-wide grant를 스코프 회수 경로로 삭제 시도 → 404(능력 경계) `[자동:test/integration/scoped_invite_test.rb]`
+- 페르소나별 직접 POST 우회 → 403(§2.2) `[수동전용]` + `[자동:authorization_test.rb]`
+
+### (d) 파일 극단
+- 0바이트(빈/잘린) 거부 · 잘못된 타입(gif) 거부 · 30MB 초과 거부 `[자동:test/models/component_version_test.rb]`
+- 손상/암호화/초대형 MediaBox PDF 거부(pdfinfo 프로브 · CI는 poppler 필수) `[자동:component_version_test.rb]`
+- 파일명 극단(한글·특수문자·200자) green — 파일명은 검증을 깨지 않음 `[자동:component_version_test.rb]`
+
+### (e) 입력 극단
+- XSS 페이로드(script·onerror 속성·속성 브레이크아웃) → 렌더 시 이스케이프·원시 태그 부재 `[자동:test/integration/edge_input_test.rb]`
+- 길이 한도+1 거부(제품명 200·구성요소명 200·변경사유 500·코멘트 2000) `[자동:edge_input_test.rb]`
+- 이모지-only 허용 · 공백-only 거부(presence) · 빈 이름류 처리 `[자동:edge_input_test.rb]`
+
+### (f) 세션 경계
+- token_version bump → 다음 POST 세션 폐기·로그인 리다이렉트·부작용 0(§1.2) `[자동:test/integration/edge_session_test.rb]`
+- 미로그인 쓰기 POST 3종(리뷰요청·초대·grant) → 로그인 리다이렉트·부작용 0 `[자동:edge_session_test.rb]`
+- 비-owner suspend → 강제 로그아웃(§1.3) `[수동전용]`(라이브 세션 실측)
+- 유휴 타임아웃 60분(§1.4) `[공백]`(실측 타임아웃 자동화 없음 · 콘솔로 last_seen 조작만)
+
+### (g) 빈 상태
+- `/brands/:id` 해피패스 → 대시보드 렌더 `[자동:test/integration/edge_empty_state_test.rb]`
+- 제품 0 테넌트 대시보드 → 빈 상태 우아 렌더 `[자동:edge_empty_state_test.rb]`
+- 스코프 grant 0 → fail-closed 빈 대시보드(§5) `[자동:v15_edge_test.rb]`
+- 리뷰 인박스 빈 큐(맡을 리뷰 없음) `[자동:test/integration/reviews_inbox_test.rb]`
+
+### (h) 동시성
+- 동시 claim 레이스 → 멱등(SAVEPOINT 격리) `[자동:review_claim_test.rb]`
+- 초대 수락 레이스 → 단일 소비 `[자동:test/integration/invitation_signup_test.rb]`
+- submit/confirm RecordNotUnique 백스톱(동시 INSERT·동시 스텝) → 우아한 flash `[자동:edge_resubmit_test.rb]`
+- 리뷰 중 편집 vs confirm 직렬화(FOR UPDATE) `[자동:approval_workflow_test.rb]`
+
+### (i) 전 체인
+- 업로드→피드백→미배정요청→claim→피드백/해소→확인→새버전(current 전환)→비교→신버전 피드백 `[자동:full_journey_test.rb]`
+- 4개 화면 데모 흐름 `[자동:test/integration/demo_flows_test.rb]`
+- 왕복 정합(사이드바 배지 == Segment A) 제출→claim→confirm `[자동:v15_edge_test.rb]`
+
+### 자동화 부적합 / 잔여 공백 (정직 표기)
+- JS 실패 폴백(turbo:fetch-request-error 공용 토스트 · E5) — importmap 컴파일 + smoke 부팅으로만 검증, 실패 토스트 실브라우저 발화는 `[공백]`
+- back-button bfcache 만료 폼 재제출 `[공백]` · 유휴 타임아웃 60분 실측 `[공백]`

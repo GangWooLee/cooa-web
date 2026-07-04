@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { csrfToken } from "controllers/lib/dom"
+import { showNetErrorToast } from "controllers/lib/net_error_toast"
 
 // 트리 드래그앤드롭 이동 — 폴더 위 가운데=안으로(자식), 행 사이 상/하=형제 정렬. 자기/자손은 거부.
 // 재배치 후 깊이·들여쓰기가 바뀌므로 서버 렌더 트리를 다시 가져온다(Turbo.visit / reload).
@@ -80,7 +81,7 @@ export default class extends Controller {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
       body: JSON.stringify(body)
-    }).then(() => this._resync()).catch(() => this._resync())
+    }).then(() => this._resync()).catch(() => { showNetErrorToast(); this._resync() }) // 네트워크 실패=무음 reload 직전 안내(E5)
   }
 
   // 성공=깊이/들여쓰기 재렌더, 거부(422)=서버 트리로 재동기 — 어느 쪽이든 서버 상태로 정합

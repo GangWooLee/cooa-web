@@ -54,8 +54,13 @@ class ApprovalRequest < ApplicationRecord
 
   # SoD는 정책이 먼저 확인. 리뷰 중 콘텐츠 변경(stale)은 여기서 원자적으로 재검: 버전을 FOR UPDATE로 잠그고
   # 스냅샷 재비교 → 확인-커밋 사이 콘텐츠 발산 차단(TOCTOU). 발산 시 StaleReviewedTuple.
+  #
+  # requires_new(=SAVEPOINT): 요청은 이미 RLS 트랜잭션 안(Authentication#scope_to_tenant). 단일 스텝 유니크
+  # (tenant, approval_request_id) 위반(동시 confirm)이 바깥 tx를 통째로 abort시키면 컨트롤러의
+  # RecordNotUnique rescue가 InFailedSqlTransaction으로 되레 500이 된다. 세이브포인트로 격리 → 위반은
+  # 세이브포인트만 롤백하고 컨트롤러가 멱등 처리(바깥 tx 온전). claim의 add_reviewer! 관례와 동일(대칭).
   def confirm_review!(reviewer_id:)
-    transaction do
+    transaction(requires_new: true) do
       component_version.lock! # FOR UPDATE — 동시 편집과 직렬화
       raise StaleReviewedTuple if ReviewedTuple.stale?(self)
       approval_steps.create!(approver_id: reviewer_id, decision: "confirmed", acted_at: Time.current)
