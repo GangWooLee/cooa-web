@@ -108,9 +108,12 @@ class ApplicationController < ActionController::Base
   end
 
   # 대시보드 셸의 제품 트리 행 (대시보드 index / 상세 풀요청 공용). 표시 루트는 가시집합 기준(D3).
+  # 가시 제품 전체를 프리로드와 함께 1회 로드 → tree_preorder가 parent_id 그룹핑으로 preorder를 만든다.
+  # 하위 레벨의 children/연관(담당자·구성요소) 재쿼리 N+1이 제거되고(R5), 표시 루트 재루팅(부모 비가시)은
+  # tree_preorder가 내포하므로 visible_roots를 거치지 않는다(:children 프리로드도 불요 — .children 미접근).
   def load_dashboard_rows
-    roots = visible_roots(Product.includes(:children, :parent, :owner, { product_members: :user },
-                                           { components: :component_versions }))
-    @rows = Product.tree_preorder(roots)
+    visible = policy_scope(Product.includes(:parent, :owner, { product_members: :user },
+                                            { components: :component_versions }))
+    @rows = Product.tree_preorder(visible)
   end
 end

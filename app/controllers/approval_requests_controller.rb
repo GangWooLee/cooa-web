@@ -40,8 +40,12 @@ class ApprovalRequestsController < ApplicationController
     req = ApprovalRequest.find(params[:id])
     authorize req, :claim?
     return head :forbidden if current_account.user_id.blank? # 미브리지 계정 fail-closed(create와 동일 방어)
+    # 요청은 이미 RLS 트랜잭션 안(Authentication#scope_to_tenant) — arr_tenant_request_reviewer_key 위반이 그
+    # tx를 통째로 abort시키면 이후 AuditLog INSERT가 InFailedSqlTransaction. requires_new(=SAVEPOINT)로 격리 →
+    # 위반은 세이브포인트만 롤백하고 아래 rescue가 멱등 처리(바깥 tx는 온전). Stage 3 role_assignments 직접
+    # grant와 동일 관례 — "rescue 후 DB 호출 없음"이라는 취약한 불변식에 의존하지 않는다.
     begin
-      req.add_reviewer!(current_account.user_id)
+      ApprovalRequest.transaction(requires_new: true) { req.add_reviewer!(current_account.user_id) }
     rescue ActiveRecord::RecordNotUnique # 더블클릭/동시 claim → 멱등
       return redirect_back fallback_location: reviews_path, status: :see_other, notice: "이미 맡으신 리뷰입니다."
     end

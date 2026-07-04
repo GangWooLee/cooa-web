@@ -1,14 +1,31 @@
 # COOA 권한 시스템 — 손에 잡히는 수동 테스트 체크리스트
 
-> ## ⚠️ [2026-07-01 v0.4 리프레임 — §1-1·일부 ③ 보정 · ④ step-up 삭제]
-> 규제 전자서명(step-up TOTP)이 **제거**되고 승인이 **경량 "버전 리뷰"**로 바뀌었습니다. 따라서:
-> - **실행**: 모드 구분 없이 그냥 **`bin/dev`** 하나. 페르소나 TOTP 등록·`/step-up`·인증앱 불필요.
-> - **④ step-up 섹션은 삭제됨**(TOTP 전자서명 기능 제거 — 이 문서 관련 절 정리 완료·Stage 3).
-> - **③ 승인 흐름 → "버전 리뷰" 흐름**으로 보정: 리뷰 UI는 **스크리닝 화면이 아니라 버전 뷰**(`/versions/:id`)의 "버전 리뷰" 패널. 흐름 = **리뷰 요청**(`POST /approval_requests`) → 다른 신원(이쿠아 리뷰어)으로 **검토 확인**(`POST /approval_requests/:id/confirm`, 코드 입력 없음) / **변경 요청**(`/request_changes`). 상태 `pending→reviewed/changes_requested`. SoD(요청자≠확인자)·stale 가드(요청 후 콘텐츠 변경 시 확인 차단)·감사는 동일. M1은 하드 차단 대신 "리뷰어 미배정" 소프트 안내.
-> - **추가(Point 4)**: 단일 버전 뷰(`/versions/:id`)에서도 아트워크 Shift+드래그로 **피드백** 남기고, 리뷰어가 annotation을 **반영 확인(resolve)** 가능.
-> - 격리·인증·세션·매트릭스·감사(①②⑤⑥⑦)는 그대로 유효.
-
 > 목표: `bin/dev`로 띄운 데모를 직접 클릭·콘솔·rake로 만지며 권한 시스템이 **어디까지·어떻게** 만들어졌는지 체감한다. 페르소나·콘솔·rake는 실제 코드(`/Users/igangu/COOA/web`)에서 추출.
+>
+> 리뷰 모델은 **경량 "버전 리뷰"**다: 리뷰어가 한 버전을 **검토 확인**하거나, 고칠 점은 아트워크에 **피드백**(annotation)으로 남긴다(별도의 "변경 요청/반려" 상태 없음). 리뷰는 **버전 뷰**(`/versions/:id`)의 "버전 리뷰" 패널에 앵커된다(스크리닝 비의존 — 디자이너는 스크리닝 없이 요청, RA가 검토 중 스크리닝). SoD(요청자≠확인자)·stale 가드·감사는 그대로.
+
+---
+
+## 0. v1.5 통합 데모 스크립트 (팀 데모용 · 한 번에 흐르는 대본)
+
+> 각 줄 = **[로그인 페르소나]** 행동 → *기대 화면*. 상세 메커니즘·변형은 괄호의 § 참조(중복 서술은 그쪽에).
+> 실행 §1-1(`bin/dev`) · 페르소나/이메일 §1-2 · 버전 리뷰 패널 도달 경로 §1-4.
+
+### ① 품질 크로스컷 리뷰 — 미배정 제출 → 인박스 대기큐 → 내가 맡기 → 검토 확인
+1. **[박쿠아·SCM]** 버전 리뷰 패널(§1-4)에서 리뷰어 미지정으로 **"리뷰 요청"** → *패널이 "리뷰 대기 / 요청됨"(주황)으로 전환* (§3.1)
+2. **[이쿠아·RA]** 사이드바 **"내 리뷰 인박스"**(`/reviews`) → *"리뷰어 미배정 — 내가 맡을 수 있는 리뷰"(Segment B) 큐에 그 버전이 보임* (§3.5)
+3. **[이쿠아]** 그 카드의 **"내가 맡기"** → *"내게 요청된 리뷰"(Segment A)로 이동 + 사이드바 배지 +1* (§3.5)
+4. **[이쿠아]** 버전 뷰로 가 **"✓ 검토 확인"** → *패널이 초록 "✓ 검토 확인됨 · 이쿠아 · 시각"* (§3.3)
+
+### ② 법무 크로스컷 리뷰 — 동일 절차, 다른 버전·리뷰어(검토 도메인만 교체)
+- **[박쿠아]** 다른 버전을 미지정으로 **"리뷰 요청"** → **[김쿠아·owner]** 인박스에서 **"내가 맡기"** → 버전 뷰 **"✓ 검토 확인"**. *①과 완전히 같은 흐름을 다른 신원(법무 검토)으로 재현*. 고칠 점이 있으면 확인 대신 아트워크에 **피드백**(Shift+드래그 annotation)을 남긴다(변경 요청 상태 없음 — §3.5).
+
+### ③ 외부 협력자 스코프 온보딩 — 초대 → 시크릿창 수락 → 제한 뷰 → 재-스코프 → 회수
+1. **[김쿠아·owner]** 멤버 페이지 → 이메일·역할 `external_collaborator`·**범위=제품 하나(CO0100)** 초대 발급 → **링크 복사** → *로스터에 pending 초대* (§4.6)
+2. **[시크릿 창]** 링크 열기 → "**<제품명>** 제품에 한정 참여합니다" → Google로 수락 → *대시보드에 **그 제품만** + 조상 브랜드명 무유출* (§5.1)
+3. **[외부 협력자]** 타 제품 URL 직접 진입 → *권한 안내 후 루트로 리다이렉트(콘텐츠 미노출)* (§5.2)
+4. **[김쿠아]** 로스터 행 인라인 **"+ 스코프"**로 두 번째 제품(CO0200) 직접 grant → *협력자는 재로그인 없이 즉시 두 제품 가시* (§5·§5.4)
+5. **[김쿠아]** 스코프 배지 옆 **×**로 회수 → *협력자의 다음 요청에서 해당 제품 소멸(fail-closed·요청 간 stale 역할 없음)* (§5)
 
 ---
 
@@ -21,7 +38,7 @@
 COOA_DB_USER=$USER bin/rails db:prepare      # db:seed 자동 → 데모 org/계정/규제데이터
 COOA_DB_USER=$USER bin/rails rls:grant_app   # structure.sql가 GRANT를 strip → cooa_app 권한 재적용(필수)
 
-# 실행 (단일 모드 — step-up TOTP 제거됨, v0.4)
+# 실행 (단일 모드 — 별도 인증앱·코드 입력 없음)
 bin/dev
 ```
 
@@ -33,17 +50,17 @@ bin/dev
 
 | 표시명 | 이메일 | 도메인역할 | 부여 role_key | 핵심 능력 |
 |---|---|---|---|---|
-| 김쿠아 | `kim@cooa.dev` | 디자이너 | **owner** + brand_admin | 전권(상신·승인·반려·담당자관리). **유일 owner** |
-| 송쿠아 | `song@cooa.dev` | PM | brand_admin | 담당자/제품 관리 O · 상신/승인 **X** |
-| 이쿠아 | `lee@cooa.dev` | RA | **ra_reviewer** + **approver** | 상신 O · 승인/반려 O · 담당자관리 X (= 결재자) |
-| 박쿠아 | `park@cooa.dev` | SCM | contributor | 상신 O · 승인 **X** · 담당자관리 **X** (최소권한) |
+| 김쿠아 | `kim@cooa.dev` | 디자이너 | **owner** + brand_admin | 전권(리뷰 요청·검토 확인·claim·담당자관리). **유일 owner** |
+| 송쿠아 | `song@cooa.dev` | PM | brand_admin | 담당자/제품 관리 O · 리뷰 요청/검토 확인 **X** |
+| 이쿠아 | `lee@cooa.dev` | RA | **ra_reviewer** + **approver** | 리뷰 요청 O · 검토 확인·claim O · 담당자관리 X (= 적격 리뷰어) |
+| 박쿠아 | `park@cooa.dev` | SCM | contributor | 리뷰 요청 O · 검토 확인/claim **X** · 담당자관리 **X** (최소권한) |
 
-> approve/reject·검토 확인은 코드 입력 없이 동작(step-up TOTP는 v0.4에서 제거).
+> 검토 확인은 별도 코드 입력 없이 동작한다. 요청받은 담당자는 approve verb 없이도 확인 가능(소프트 게이트) — claim(미배정 자기배정)만 HARD approve verb를 요구.
 > 시드에 순수 viewer/assignee 페르소나는 없음 — viewer 권한은 모든 페르소나의 기준선으로만 체감.
 
-**역할→verb 매트릭스 핵심** (`app/policies/authz/permission_matrix.rb`, MATRIX_VERSION=1):
-- `approve`/`reject` → **owner, approver만**
-- `submit_for_approval` → contributor·ra_reviewer·owner 보유, **brand_admin엔 없음**
+**역할→verb 매트릭스 핵심** (`app/policies/authz/permission_matrix.rb`, MATRIX_VERSION=1). 내부 verb 키 `approve`는 리뷰 모델에서 **검토 확인·claim 능력**을 가리킨다(ADR-002 §6 권한 상한 식별자 유지):
+- `approve` → **owner, approver만** (= claim 적격 · 미지정 요청 확인 폴백)
+- `submit_for_approval`(리뷰 요청) → contributor·ra_reviewer·owner 보유, **brand_admin엔 없음**
 - `manage_members`/`manage_product` → **brand_admin, owner만**
 
 ### 1-3. 콘솔 두 모드 (RLS 때문에 갈림 — 중요)
@@ -55,9 +72,9 @@ bin/dev
 
 데모 테넌트 id 상수: `TenantConfig::DEMO_TENANT_ID` (= `Organization.find_by(name: "COOA Demo").id`).
 
-### 1-4. 결재 화면 도달 경로 (③에서 반복 사용)
+### 1-4. 버전 리뷰 패널 도달 경로 (③에서 반복 사용)
 
-대시보드(`/`) → `레티놀 3% 세럼` → `일본(CO0001)` → 구성요소 `단상자(outer_box)` → 버전 **v5** → 우상단 **"인허가 스크리닝"**(`versions/:id/screening`). 시드가 이 v5(JP)에 스크리닝을 미리 실행해 둠 → 우측 **결재 패널**이 이미 보임.
+대시보드(`/`) → `레티놀 3% 세럼` → `일본(CO0001)` → 구성요소 `단상자(outer_box)` → 버전 **v5** → 버전 뷰(`/versions/:id`) 하단 **"버전 리뷰"** 패널. 리뷰는 버전에 앵커되어 **스크리닝과 무관하게** 요청/확인할 수 있다(디자이너는 스크리닝 없이 요청, RA는 필요 시 우상단 "인허가 스크리닝"(`versions/:id/screening`)을 검토 중 수행). 시드는 이 v5(JP)를 "리뷰 요청" 가능한 상태로 남겨 둠.
 
 ### 1-5. 범례
 
@@ -117,22 +134,22 @@ bin/dev
 
 ### ☐ 2.1 페르소나별 버튼 가시성 `[UI · 전환]`
 - **무엇** — 같은 화면이라도 로그인 역할에 따라 액션 버튼이 조건부로 나타난다(SoD를 화면에서 체감).
-- **방법** — `bin/dev` → 1-4의 스크리닝 화면 진입 → 우측 결재 패널의 **"결재 상신"** 버튼을 각 페르소나로 관찰:
+- **방법** — `bin/dev` → 1-4의 버전 리뷰 패널 진입 → **"리뷰 요청"** 버튼을 각 페르소나로 관찰:
 
-  | 페르소나 | "결재 상신" |
+  | 페르소나 | "리뷰 요청" |
   |---|---|
   | 박쿠아(contributor) | 보임 |
   | 이쿠아(ra+approver) | 보임 |
   | 김쿠아(owner) | 보임 |
-  | 송쿠아(brand_admin) | **"상신 권한이 없습니다."** 텍스트로 대체 |
+  | 송쿠아(brand_admin) | **"리뷰 요청 권한이 없습니다."** 텍스트로 대체 |
 - **확인** — 송쿠아만 버튼 부재. 이어 제품 드로어 → **담당자** 편집 → 저장: 송/김 성공, 박/이 **403**.
-- **메커니즘** — 뷰의 `policy(@run).submit_for_approval?` 조건부 렌더(`screening.html.erb`) + `ApplicationPolicy#can?`가 `roles_on(record) ∩ MATRIX(verb)` 교집합으로 판정. 담당자는 뷰에서 숨기지 않고 컨트롤러가 막음: `ProductsController#update`의 `authorize @product, :manage_members? if params[:members].present?`.
+- **메커니즘** — 뷰의 `policy(@version).submit_for_approval?` 조건부 렌더(`_review_panel.html.erb`) + `ApplicationPolicy#can?`가 `roles_on(record) ∩ MATRIX(verb)` 교집합으로 판정. 담당자는 뷰에서 숨기지 않고 컨트롤러가 막음: `ProductsController#update`의 `authorize @product, :manage_members? if params[:members].present?`.
 
 ### ☐ 2.2 직접 POST 우회 → 403 `[UI · devtools]` 또는 `[콘솔]`
-- **무엇** — 버튼이 없어도, 권한 없는 페르소나가 승인 POST를 직접 쏴도 서버가 거부.
-- **방법** — (선행) 박쿠아로 **결재 상신** 클릭(pending 생성). 송쿠아로 로그인 → DevTools 콘솔:
+- **무엇** — 버튼이 없어도, 권한 없는 페르소나가 검토 확인 POST를 직접 쏴도 서버가 거부.
+- **방법** — (선행) 박쿠아로 **리뷰 요청** 클릭(pending 생성). 송쿠아로 로그인 → DevTools 콘솔:
   ```js
-  fetch('/approval_requests/REQ_ID/approve', {
+  fetch('/approval_requests/REQ_ID/confirm', {
     method: 'POST',
     headers: { 'X-CSRF-Token': document.querySelector('meta[name=csrf-token]').content },
   }).then(r => console.log(r.status));   // => 403
@@ -143,35 +160,34 @@ bin/dev
     song = Account.joins(:user).find_by(users: { email: "song@cooa.dev" })
     req  = ApprovalRequest.order(:id).last
     ctx  = Authz::AccessContext.new(actor: song)
-    pp ApprovalRequestPolicy.new(ctx, req).approve?   # => false
+    pp ApprovalRequestPolicy.new(ctx, req).confirm_review?   # => false
   end
   ```
-- **확인** — HTTP **403**(`head :forbidden`), `log/development.log`에 `[authz][deny] verb=approve?`, audit_logs에 outcome=deny 1행.
+- **확인** — HTTP **403**(`head :forbidden`), `log/development.log`에 `[authz][deny] verb=confirm_review?`, audit_logs에 outcome=deny 1행.
 - **메커니즘** — 모든 mutation은 `after_action :verify_authorized` 강제. 거부 시 `Pundit::NotAuthorizedError` → `deny_access`가 비-GET엔 `head :forbidden` + `audit_deny`가 별도 테넌트 tx로 deny 기록(`application_controller.rb`).
 
 ---
 
-## ③ 승인 워크플로 (핵심)
+## ③ 버전 리뷰 워크플로 (핵심)
 
-> 대상 고정: **CO0001 / 일본 / 단상자 / v5** (owner=김쿠아, JP 스크리닝 시드됨).
+> 대상 고정: **CO0001 / 일본 / 단상자 / v5** (owner=김쿠아). 리뷰는 버전에 앵커 — 스크리닝 비의존.
 > id 헬퍼 `[콘솔]`:
 > ```ruby
 > TenantContext.with_tenant(TenantConfig::DEMO_TENANT_ID) do
->   cv  = Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box").component_versions.find_by(version_number: 5)
->   run = cv.screening_runs.where(country: "JP").last
->   [cv.id, run.id]   # /versions/<cv.id>/screening , screening_run_id=<run.id>
+>   cv = Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box").component_versions.find_by(version_number: 5)
+>   cv.id   # /versions/<cv.id> 하단 "버전 리뷰" 패널
 > end
 > ```
 
-### ☐ 3.1 상신 → pending `[UI]`
-- **무엇** — RA가 규제 사인오프를 "상신"하면 `approval_request` 1건 생성 + C1 검토튜플 캡처.
-- **방법** — 김쿠아로 스크리닝 화면 → 결재 블록 **"결재 상신"** 클릭.
-- **확인** — 패널이 **"결재 대기 / 상신됨"**(주황) + "제출자 김쿠아". 플래시 "승인 요청이 제출되었습니다."
-- **메커니즘** — `POST /approval_requests?screening_run_id=` → `authorize run, :submit_for_approval?` → `ApprovalRequest.submit_for!`가 `ReviewedTuple.capture`(라벨텍스트·성분·아트워크·verdict·룰셋버전 해시) + M1 평가 수행. 전이는 원자 tx + `audit_log` 1행.
+### ☐ 3.1 리뷰 요청 → pending `[UI]`
+- **무엇** — 버전 리뷰 패널에서 "리뷰 요청"하면 `approval_request` 1건 생성 + 콘텐츠 스냅샷(검토튜플) 캡처. 담당자를 리뷰어로 지정할 수도, 미지정으로 둘 수도 있다.
+- **방법** — 김쿠아로 버전 뷰(1-4) → "버전 리뷰" 패널 → (선택) 담당자 체크 → **"리뷰 요청"** 클릭.
+- **확인** — 패널이 **"리뷰 대기 / 요청됨"**(주황) + "요청자 김쿠아". 플래시 = 지정 시 "…님에게 리뷰를 요청했습니다.", 미지정 시 "리뷰 요청이 제출되었습니다 — 리뷰어를 지정하지 않아 자격 리뷰어 누구나 확인할 수 있습니다."
+- **메커니즘** — `POST /approval_requests?component_version_id=` → `authorize cv, :submit_for_approval?` → `ApprovalRequest.submit_for!`가 `ReviewedTuple.capture`(라벨텍스트·성분·아트워크·verdict·룰셋버전 해시) 후 status `pending`. 전이는 원자 tx + `audit_log`(action `submit_for_approval`) 1행.
 
-### ☐ 3.2 M1 — 유일 approver 제거 → `blocked_no_approver` `[콘솔]`+`[UI]`
-- **무엇** — 테넌트에 "상신자와 구별되는" 승인자격 신원이 0이면 상신 결과가 pending이 아니라 `blocked_no_approver`.
-- **방법** — owner(김쿠아)는 상신자라 자동 제외 → 이쿠아의 approver만 빼면 적격자 0:
+### ☐ 3.2 M1 — 적격 리뷰어 0 → 소프트 "리뷰어 미배정" 안내(하드 차단 아님) `[콘솔]`+`[UI]`
+- **무엇** — 테넌트에 "요청자와 구별되는" 검토 자격 신원이 0이어도 요청은 **여전히 pending**으로 생성된다(리프레임: 하드 차단 폐지). UI는 소프트 안내만 띄운다.
+- **방법** — owner(김쿠아)는 요청자라 자동 제외 → 이쿠아의 approver만 빼면 적격자 0:
   ```ruby
   TenantContext.with_tenant(TenantConfig::DEMO_TENANT_ID) do
     lee_id = User.find_by(email: "lee@cooa.dev").id
@@ -179,18 +195,18 @@ bin/dev
                   .where(accounts: { user_id: lee_id }).destroy_all
   end
   ```
-  김쿠아로 **결재 상신**(이미 상신했으면 콘솔에서 `ApprovalRequest.find_by(screening_run_id: run.id).destroy` 후 재상신).
-- **확인** — 빨간 박스 **"승인 불가 — 승인 가능한 결재자가 없습니다…"** (복구: `COOA_DB_USER=$USER bin/rails db:seed`).
-- **메커니즘** — `submit_for!` 내부 `EligibleApproverService.any?(market:, exclude_user_id: submitter)`. 적격 = `RoleAssignment.active.where(role_key: %w[owner approver])` − 제출자. brand_admin·contributor는 ELIGIBLE에 없음.
+  김쿠아로 리뷰어 미지정 **"리뷰 요청"**.
+- **확인** — 플래시 **"리뷰 요청됨 — 아직 검토 가능한 구성원(요청자와 다른 리뷰어)이 없습니다."** (하드 차단·빨간 박스 없음. 복구: `COOA_DB_USER=$USER bin/rails db:seed`).
+- **메커니즘** — 컨트롤러 `submit_notice`가 `EligibleApproverService.any?(exclude_user_id: req.submitter_id)`로 분기(시장관할 필터 없음). 적격 = tenant-wide `RoleAssignment.active.where(role_key: %w[owner approver])` − 제출자. brand_admin·contributor는 적격 아님.
 
-### ☐ 3.3 M2 / SoD — 본인 상신 건 본인 승인 불가 `[UI · 전환]`
-- **무엇** — approve verb 보유자라도(owner 포함) 자신이 상신한 결재는 승인 불가.
-- **방법** — 김쿠아(owner)가 상신해 pending인 화면을 김쿠아로 본다 → 승인 폼 없음 + 회색 **"본인이 상신한 결재는 승인할 수 없습니다 (SoD)."** → 이쿠아(approver)로 전환 → 같은 URL 재방문 → **"승인"**+**"반려"** 버튼 등장 → 승인 클릭.
-- **확인** — 김쿠아: SoD 문구. 이쿠아: 승인 후 초록 **"✓ 승인 완료 · 이쿠아 · 시각"**, 플래시 "승인되었습니다."
-- **메커니즘** — `ApprovalRequestPolicy#approve? = can?(:approve) && record.pending? && actor_present? && submitter_distinct?`. `actor_id`는 도메인 User bigint로 브리지(`access_context.rb`) → 제출자와 동일 식별자 비교. **owner도 SoD 예외 없음**.
+### ☐ 3.3 SoD — 본인 요청 건 본인 확인 불가 `[UI · 전환]`
+- **무엇** — 검토 verb 보유자라도(owner 포함) 자신이 요청한 리뷰는 확인 불가.
+- **방법** — 김쿠아(owner)가 요청해 pending인 패널을 김쿠아로 본다 → 확인 버튼 없음 + 회색 **"본인이 요청한 리뷰는 본인이 확인할 수 없습니다 (SoD)."** → 이쿠아(approver)로 전환 → 같은 버전 뷰 재방문 → **"✓ 검토 확인"** 버튼 등장 → 클릭.
+- **확인** — 김쿠아: SoD 문구. 이쿠아: 확인 후 초록 **"✓ 검토 확인됨 · 이쿠아 · 시각"**, 플래시 "검토 확인되었습니다."
+- **메커니즘** — `ApprovalRequestPolicy#confirm_review? = reviewer_capable?(:approve) && record.pending? && actor_present? && submitter_distinct?`. `reviewer_capable?` = 요청받은 리뷰어 OR `can?(:approve)`(소프트 게이트 — 지정 담당자는 verb 없어도 확인 가능) · `submitter_distinct?`가 SoD(요청자≠확인자, **owner 예외 없음**). `actor_id`는 도메인 User bigint 브리지(`access_context.rb`).
 
-### ☐ 3.4 C1 stale — 상신 후 검토대상 변경 → 승인 차단 `[UI/콘솔]`
-- **무엇** — 상신 시점에 검토한 내용(라벨텍스트·성분·아트워크·verdict)이 그 후 바뀌면 승인 순간 재검증에서 막혀 서명 불가. pending 유지 + deny 감사(TOCTOU 방어).
+### ☐ 3.4 stale — 요청 후 검토대상 변경 → 확인 차단 `[UI/콘솔]`
+- **무엇** — 요청 시점에 캡처한 내용(라벨텍스트·성분·아트워크·verdict)이 그 후 바뀌면 확인 순간 재검증에서 막힌다. pending 유지 + deny 감사(TOCTOU 방어).
 - **방법** — 먼저 3.1로 pending 생성. 검토대상 변경:
   - `[UI]` `/versions/:id/edit`("버전 수정")에서 **아트워크 재업로드** → `artifact_digest` 변경.
   - `[콘솔]` label_text 편집:
@@ -199,33 +215,32 @@ bin/dev
       cv.label_texts.find_by(text_type: "label").update!(content: "STALE TEST EDIT")
     end
     ```
-  이쿠아로 전환 → **"승인"** 클릭.
-- **확인** — 빨간 플래시 **"검토 내용이 변경되어 승인할 수 없습니다. 재스크리닝 후 재제출하세요."** 패널은 여전히 pending. 감사 deny 1행:
+  이쿠아로 전환 → **"✓ 검토 확인"** 클릭.
+- **확인** — 빨간 플래시 **"검토 내용이 변경되어 확인할 수 없습니다. 변경 내용을 다시 검토하세요."** 패널은 여전히 pending. 감사 deny 1행:
   ```ruby
   AuditLog.where(resource_type: "ApprovalRequest", outcome: "deny").order(:id).last
-  # action="approve", denial_reason="stale_reviewed_tuple"
+  # action="confirm_review", denial_reason="stale_reviewed_tuple"
   ```
-- **메커니즘** — `ApprovalRequest#approve!`가 tx에서 `component_version.lock!`(FOR UPDATE)로 직렬화 후 `ReviewedTuple.stale?`(라이브 content/artifact/verdict/버전 vs 캡처값) → 불일치면 `raise StaleReviewedTuple`. 컨트롤러 rescue → `audit_stale` + redirect, status는 pending 유지.
+- **메커니즘** — `ApprovalRequest#confirm_review!`가 tx에서 `component_version.lock!`(FOR UPDATE)로 직렬화 후 `ReviewedTuple.stale?`(라이브 content/artifact/verdict/버전 vs 캡처값) → 불일치면 `raise StaleReviewedTuple`. 컨트롤러 rescue → `audit_stale` + redirect, status는 pending 유지.
   > 정직 노트: label_text 직접 편집 UI는 없음(버전 수정 폼은 `change_reason/current/artwork`만 permit). 순수 UI로는 아트워크 재업로드로 staleness 재현.
 
-### ☐ 3.5 reject(반려) `[UI]`
-- **무엇** — 승인자격 신원이 pending 건을 반려하면 terminal `rejected`.
-- **방법** — 이쿠아로 pending 화면 → **"반려"** → 확인 다이얼로그. (사유 포함은 `[콘솔]` `ApprovalRequest.find(id).reject!(approver_id: lee.id, reason: "라벨 미흡")`.)
-- **확인** — 패널 빨간 **"✗ 반려됨 · 이쿠아"**, 플래시 "반려되었습니다." 이후 재상신해도 `submit_for!`가 terminal이라 무변경.
-- **메커니즘** — `reject?` 게이트는 approve?와 동일(can? + pending + actor + SoD). `reject!`가 `approval_steps`(rejected) 생성 + `status:"rejected"`.
+### ☐ 3.5 claim(미배정 자기배정) + 피드백 채널 `[UI]`
+- **무엇** — "고쳐야 함"은 별도 상태(반려)가 아니라 **피드백**(annotation)이다. 그리고 리뷰어 미지정 요청은 적격자가 인박스에서 **자기배정(claim)**해 맡는다("변경 요청/반려" 상태 폐지).
+- **방법** — (claim) 박쿠아로 미지정 **"리뷰 요청"** → 이쿠아로 사이드바 **"내 리뷰 인박스"**(`/reviews`) → "리뷰어 미배정"(Segment B)의 카드 **"내가 맡기"** → "내게 요청된 리뷰"(Segment A)로 이동 + 배지 +1. (피드백) 버전 뷰 아트워크에서 **Shift+드래그**로 코멘트를 남기면 요청자가 반영, 리뷰어가 **반영 확인(resolve)**.
+- **확인** — claim 후 인박스 A에 등장·B에서 소멸·플래시 "리뷰를 맡았습니다 …". 미해결 피드백이 있으면 pending 패널에 **"미해결 피드백 N개 — 반영 후 재요청하거나, 리뷰어가 검토 확인합니다."**
+- **메커니즘** — `POST /approval_requests/:id/claim` → `ApprovalRequestPolicy#claim? = can?(:approve) && pending? && actor_present? && submitter_distinct? && requested_reviewer_ids.none?`(HARD approve verb + 미배정만). `add_reviewer!`의 유니크 백스톱을 컨트롤러가 SAVEPOINT(`requires_new`)로 격리해 동시 claim을 멱등 처리.
 
-### ☐ 3.6 결재 패널 상태 한눈 매핑 (참고, `screening.html.erb`)
+### ☐ 3.6 버전 리뷰 패널 상태 한눈 매핑 (참고, `_review_panel.html.erb`)
 
 | 상태 | 화면 |
 |---|---|
-| 상신 전 + 상신권한 O | 그라데이션 **"결재 상신"** |
-| 상신 전 + 권한 X | 회색 **"상신 권한이 없습니다."** |
-| pending + 승인가능 | **"결재 대기/상신됨"** + 승인/반려 폼 |
-| pending + 상신본인 | **"본인이 상신한 결재는 승인할 수 없습니다 (SoD)."** |
-| pending + 무자격 타인 | **"승인 권한이 있는 결재자를 대기 중입니다."** |
-| blocked_no_approver | 빨강 **"승인 불가 — …"** |
-| approved | 초록 **"✓ 승인 완료"** |
-| rejected | 빨강 **"✗ 반려됨"** |
+| 요청 전 + 요청권한 O | 그라데이션 **"리뷰 요청"**(+ 담당자 리뷰어 지정 체크박스) |
+| 요청 전 + 권한 X | 회색 **"리뷰 요청 권한이 없습니다."** |
+| pending + 확인가능 | **"리뷰 대기/요청됨"** + **"✓ 검토 확인"** 버튼 |
+| pending + 요청본인 | **"본인이 요청한 리뷰는 본인이 확인할 수 없습니다 (SoD)."** |
+| pending + 무자격 타인 | 대기 안내(`waiting_message`) |
+| pending + 미해결 피드백 | 분홍 **"미해결 피드백 N개 — …"** |
+| reviewed | 초록 **"✓ 검토 확인됨 · 이름 · 시각"** |
 
 ---
 
@@ -315,13 +330,13 @@ bin/dev
 | **격리 (Isolation)** | ⑥ 6.1, 6.2 / ⑦ 7.1 | RLS FORCE + GUC, 컨텍스트 없으면 fail-CLOSED(0행) |
 | **인증 (AuthN)** | ① 1.1~1.4 | account-picker + 매 요청 token_version/idle 폐기, 픽세이션 방어 |
 | **인가 (AuthZ)** | ② 2.1, 2.2 / ③ 3.6 / 1-2매트릭스 | role→verb 매트릭스 교집합, 뷰 숨김 + 서버 403(verify_authorized) |
-| **직무분리 (SoD)** | ③ 3.3 (M2) / ② 2.1 | 상신자 ≠ 승인자 강제, owner 예외 없음 |
+| **직무분리 (SoD)** | ③ 3.3 (M2) / ② 2.1 | 요청자 ≠ 확인자 강제, owner 예외 없음 |
 | **스코프 격리 (Scoping)** | §4.6 / §5.1~5.4 | 제품-한정 grant·초대 — 서브트리만 가시·조상 브랜드명 무유출, 타 제품 fail-closed |
-| **가용성 (Availability)** | ⑤ 5.1 / ③ 3.2 (M1) | last-owner 가드, 적격 승인자 0이면 blocked_no_approver |
+| **가용성 (Availability)** | ⑤ 5.1 / ③ 3.2 (M1) | last-owner 가드, 적격 리뷰어 0이면 소프트 안내(하드 차단 폐지) |
 | **감사 (Audit/Integrity)** | ⑦ 7.1, 7.2 / ② 2.2 | append-only 트리거 + 해시체인 verify + BOLA 탐지 |
 
 ### 추천 진행 순서
-1. `bin/dev` → ① 로그인/전환 → ② 버튼 가시성 → ③ 박 상신·이/김 검토 확인·SoD·stale·변경 요청.
+1. `bin/dev` → ① 로그인/전환 → ② 버튼 가시성 → ③ 박 리뷰 요청·이/김 검토 확인·claim·SoD·stale·피드백.
 2. §4 Google 초대(제품-스코프 §4.6 포함) · §5 스코프 격리(최디자) 브라우저 검증.
 3. `COOA_DB_USER=$USER bin/rails console` → ⑤ owner 가드 3종 → ⑥ 격리 3-라이너 → ⑦ audit UPDATE/DELETE 거부.
 4. `COOA_DB_USER=$USER bin/rails rls:audit` & `audit:verify` & `audit:detect_bola`.

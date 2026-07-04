@@ -62,12 +62,28 @@ class Product < ApplicationRecord
   def ancestors = self_and_ancestors[0...-1]
   def depth = ancestors.size
 
-  # 트리 사전순(pre-order) 평탄화 → [[node, depth], …] (대시보드 트리 행용)
-  def self.tree_preorder(nodes = roots.includes(:children), level = 0, acc = [])
-    nodes.each do |n|
-      acc << [ n, level ]
-      tree_preorder(n.children, level + 1, acc)
+  # 트리 사전순(pre-order) 평탄화 → [[node, depth], …] (대시보드 트리 행·스코프 select·상위 후보 공용).
+  # 평탄 컬렉션 1회를 parent_id로 그룹핑해 in-memory로 walk — :children 연관을 재귀 접근하지 않으므로
+  # 하위 레벨(2+)에서 children를 재쿼리하던 잠복 N+1이 사라진다(Stage 3 리뷰어 실증 · members_controller의
+  # 로컬 in-memory 우회를 이 메서드로 역-통합). 표시 루트 = 로드된 집합에서 부모가 집합 밖(또는 nil)인 노드
+  # → 스코프 계정의 재루팅(부모 비가시)도 이 규칙이 그대로 처리(visible_roots 규칙 내포). nodes에 프리로드를
+  # 실어 보내면 하위 노드도 같은 인스턴스라 프리로드가 유지되고, walk가 parent 타깃을 in-memory로 걸어
+  # self_and_ancestors(node_path_label)의 조상 walk도 쿼리 0건이 된다(.children 경유 inverse_of :parent 대체).
+  # 형제 정렬은 has_many :children(order :position, :id)와 동일 — 시드는 position 전부 지정이라 순서 무회귀.
+  def self.tree_preorder(nodes = all)
+    nodes = nodes.to_a
+    in_set = nodes.map(&:id).to_set
+    by_parent = nodes.group_by(&:parent_id)
+    display_roots = nodes.select { |n| n.parent_id.nil? || in_set.exclude?(n.parent_id) }
+    acc = []
+    walk = lambda do |parent, siblings, level|
+      siblings.sort_by { |n| [ n.position || 0, n.id ] }.each do |n|
+        n.association(:parent).target = parent if parent # 조상 walk in-memory 보존(inverse_of :parent 대체)
+        acc << [ n, level ]
+        walk.call(n, by_parent[n.id] || [], level + 1)
+      end
     end
+    walk.call(nil, display_roots, 0)
     acc
   end
 
