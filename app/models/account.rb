@@ -47,6 +47,6 @@ class Account < ApplicationRecord
   end
 
   def owner_grant?
-    role_assignments.active.exists?(role_key: "owner", scope_id: nil)
+    role_assignments.active.tenant_wide.exists?(role_key: "owner")
   end
 end

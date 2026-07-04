@@ -865,13 +865,16 @@ CREATE TABLE public.role_assignments (
     account_id uuid NOT NULL,
     role_key character varying NOT NULL,
     scope_type character varying DEFAULT 'tenant'::character varying NOT NULL,
-    scope_id uuid,
     market character varying,
     granted_by uuid,
     granted_at timestamp(6) without time zone DEFAULT now() NOT NULL,
     expires_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    scope_product_id bigint,
+    scope_component_id bigint,
+    CONSTRAINT ra_owner_tenant_wide CHECK ((((role_key)::text <> 'owner'::text) OR ((scope_product_id IS NULL) AND (scope_component_id IS NULL)))),
+    CONSTRAINT ra_scope_coherence CHECK (((((scope_type)::text = 'tenant'::text) AND (scope_product_id IS NULL) AND (scope_component_id IS NULL)) OR (((scope_type)::text = 'product'::text) AND (scope_product_id IS NOT NULL) AND (scope_component_id IS NULL)) OR (((scope_type)::text = 'component'::text) AND (scope_product_id IS NULL) AND (scope_component_id IS NOT NULL)))),
     CONSTRAINT role_assignments_role_key_check CHECK (((role_key)::text = ANY ((ARRAY['owner'::character varying, 'brand_admin'::character varying, 'ra_reviewer'::character varying, 'approver'::character varying, 'assignee'::character varying, 'contributor'::character varying, 'viewer'::character varying, 'external_collaborator'::character varying])::text[]))),
     CONSTRAINT role_assignments_scope_type_check CHECK (((scope_type)::text = ANY ((ARRAY['tenant'::character varying, 'product'::character varying, 'component'::character varying])::text[])))
 );
@@ -1472,10 +1475,10 @@ CREATE INDEX idx_on_tenant_id_resource_type_resource_id_ts_0d52db2ecc ON public.
 
 
 --
--- Name: idx_ra_eligible_approver; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_ra_eligible_approver_v2; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_ra_eligible_approver ON public.role_assignments USING btree (tenant_id, role_key) WHERE (scope_id IS NULL);
+CREATE INDEX idx_ra_eligible_approver_v2 ON public.role_assignments USING btree (tenant_id, role_key) WHERE ((scope_product_id IS NULL) AND (scope_component_id IS NULL));
 
 
 --
@@ -1878,10 +1881,10 @@ CREATE UNIQUE INDEX invitations_tenant_open_email_key ON public.invitations USIN
 
 
 --
--- Name: uniq_role_assignment; Type: INDEX; Schema: public; Owner: -
+-- Name: uniq_role_assignment_v2; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uniq_role_assignment ON public.role_assignments USING btree (tenant_id, account_id, role_key, scope_id, market) NULLS NOT DISTINCT;
+CREATE UNIQUE INDEX uniq_role_assignment_v2 ON public.role_assignments USING btree (tenant_id, account_id, role_key, scope_product_id, scope_component_id, market) NULLS NOT DISTINCT;
 
 
 --
@@ -1977,6 +1980,14 @@ ALTER TABLE ONLY public.annotation_comments
 
 ALTER TABLE ONLY public.product_members
     ADD CONSTRAINT fk_rails_274f9b79fe FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: role_assignments fk_rails_285fb9b6dc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.role_assignments
+    ADD CONSTRAINT fk_rails_285fb9b6dc FOREIGN KEY (scope_product_id) REFERENCES public.products(id) ON DELETE CASCADE;
 
 
 --
@@ -2081,6 +2092,14 @@ ALTER TABLE ONLY public.component_versions
 
 ALTER TABLE ONLY public.approval_steps
     ADD CONSTRAINT fk_rails_e41a89c75c FOREIGN KEY (approver_id) REFERENCES public.users(id);
+
+
+--
+-- Name: role_assignments fk_rails_e724ce2fcb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.role_assignments
+    ADD CONSTRAINT fk_rails_e724ce2fcb FOREIGN KEY (scope_component_id) REFERENCES public.components(id) ON DELETE CASCADE;
 
 
 --
@@ -2409,6 +2428,10 @@ CREATE POLICY tenant_isolation ON public.screening_runs USING ((tenant_id = (NUL
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260704000004'),
+('20260704000003'),
+('20260704000002'),
+('20260704000001'),
 ('20260702000002'),
 ('20260702000001'),
 ('20260701000004'),

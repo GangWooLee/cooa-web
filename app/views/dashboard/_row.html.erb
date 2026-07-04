@@ -5,7 +5,7 @@
   row_data = { "tree-table-target": "row", "tree-dnd-target": "row",
                "node-id": node.id, "depth": depth, kind: (node.folder? ? "folder" : "item"),
                "node-kind": (node.folder? ? "folder" : "leaf"), "node-name": node.name,
-               "node-path": node.path_label, "node-confirm": del_confirm, "parent-id": node.parent_id }
+               "node-path": node_path_label(node), "node-confirm": del_confirm, "parent-id": node.parent_id }
   if node.folder?
     row_data[:action] = "click->tree-table#toggle click->tree#select contextmenu->tree-ctx#open #{dnd}"
   else

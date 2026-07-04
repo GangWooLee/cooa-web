@@ -60,11 +60,26 @@ module UiHelper
                 title: "#{user.name} #{user.role_short}"
   end
 
-  # 조상 경로 브레드크럼 (루트 › … › 현재 [› trailing])
+  # 가시 조상 체인 (Stage 2 D3 브랜드명 유출 차단): 스코프 한정 계정에는 policy-가시 조상만 남긴다.
+  # 가시성은 하향 서브트리 폐포라 가시 조상은 self로 끝나는 연속 접미부 → select(가시)가 곧 그 접미부.
+  # tenant-wide/데모 User(visible_product_id_set=nil)엔 no-op(전체 반환) → 무회귀·추가쿼리 0.
+  def visible_ancestors(node)
+    chain = node.self_and_ancestors
+    set = visible_product_id_set
+    return chain if set.nil?
+
+    chain.select { |a| set.include?(a.id) }
+  end
+
+  # 전체 경로 라벨(가시 조상만) — 드로어 "경로"·트리 data-node-path 공용. 모델 path_label과 달리 액터
+  # 가시성 인지(권한 없는 상위 브랜드명 비노출).
+  def node_path_label(node) = visible_ancestors(node).map(&:name).join(" › ")
+
+  # 조상 경로 브레드크럼 (루트 › … › 현재 [› trailing]) — 가시 조상만
   #  · 폴더 세그먼트 → 대시보드(해당 폴더 펼침)  · 리프 세그먼트 → 드로어
   def node_breadcrumb(product, trailing: nil)
     sep = content_tag(:span, "›", class: "px-1 text-line")
-    crumbs = product.self_and_ancestors.map do |a|
+    crumbs = visible_ancestors(product).map do |a|
       href = a.folder? ? root_path(focus: a.id) : product_path(a)
       link_to(a.name, href, class: "text-line hover:text-cooa")
     end

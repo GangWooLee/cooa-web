@@ -2164,9 +2164,21 @@ columns:
     serial:
     identity:
     generated: ''
-    name: scope_id
-    cast_type: *5
-    sql_type_metadata: *6
+    name: scope_component_id
+    cast_type: *7
+    sql_type_metadata: *8
+    'null': true
+    default:
+    default_function:
+    collation:
+    comment:
+  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: scope_product_id
+    cast_type: *7
+    sql_type_metadata: *8
     'null': true
     default:
     default_function:
@@ -3531,7 +3543,7 @@ indexes:
   role_assignments:
   - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
     table: role_assignments
-    name: idx_ra_eligible_approver
+    name: idx_ra_eligible_approver_v2
     unique: false
     columns:
     - tenant_id
@@ -3539,7 +3551,7 @@ indexes:
     lengths: {}
     orders: {}
     opclasses: {}
-    where: "(scope_id IS NULL)"
+    where: "((scope_product_id IS NULL) AND (scope_component_id IS NULL))"
     type:
     using: :btree
     include:
@@ -3565,13 +3577,14 @@ indexes:
     valid: true
   - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
     table: role_assignments
-    name: uniq_role_assignment
+    name: uniq_role_assignment_v2
     unique: true
     columns:
     - tenant_id
     - account_id
     - role_key
-    - scope_id
+    - scope_product_id
+    - scope_component_id
     - market
     lengths: {}
     orders: {}
@@ -3684,4 +3697,4 @@ indexes:
     comment:
     valid: true
   users: []
-version: 20260702000002
+version: 20260704000004

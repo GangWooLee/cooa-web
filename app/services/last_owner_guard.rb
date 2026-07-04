@@ -21,7 +21,7 @@ module LastOwnerGuard
 
   def other_active_owners?(tenant_id, losing_account_id)
     RoleAssignment.active
-                  .where(tenant_id: tenant_id, role_key: "owner", scope_id: nil)
+                  .where(tenant_id: tenant_id, role_key: "owner").tenant_wide
                   .joins(:account).where(accounts: { status: "active" })
                   .where.not(account_id: losing_account_id)
                   .exists?

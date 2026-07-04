@@ -38,7 +38,7 @@
         <% end %>
         <%# 경로 — 표시 전용(이동은 트리 드래그앤드롭). 클릭 편집 안 함 %>
         <dt class="font-bold text-line">경로</dt>
-        <dd class="min-w-0 break-words px-1 text-ink"><%= product.path_label %></dd>
+        <dd class="min-w-0 break-words px-1 text-ink"><%= node_path_label(product) %></dd>
         <% unless product.folder? %>
           <%= render "products/inline_meta", product: product, label: "품목코드", attr: :code, kind: :text, display: product.code %>
           <%= render "products/inline_meta", product: product, label: "국가", attr: :country, kind: :select,

@@ -383,3 +383,42 @@ COOA_DEMO_STEP_UP_OFF=1 bin/dev  # ★ frictionless: 승인 무마찰 (re_auth_f
 
 ### ☐ 4.5 초대 취소 `[브라우저]`
 초대 생성 → 취소 → 링크 열면 무효 · audit_logs에 invitation.create/revoke 기록(`AuditLog.where("action LIKE 'invitation%'")`).
+
+## 5. 스코프 grant (제품 한정 접근) 검증 — Stage 2 `[브라우저]`
+
+역할 부여가 **테넌트 전역이 아니라 제품 하나에만** 묶였을 때(external_collaborator), 그 신원이 해당 제품
+서브트리만 보고 그 밖은 접근조차 못 하는지 확인한다. 시드에 검증용 신원 **최디자(choi@partner.example —
+CO0200 제품 한정)** 가 이미 있으므로 콘솔 0으로 시작 가능.
+
+> ⚠️ **Stage 3 전 외부 협력자 초대 금지.** 현재 초대 수락 경로(§4.2)는 무조건 **tenant-wide** grant를
+> 만든다(scope 초대 미구현). 외부 협력자를 초대하면 전 테넌트(모든 브랜드)가 노출된다. 외부 협력자는
+> Stage 3의 scope 초대가 들어오기 전까지 **콘솔에서 product-scope grant로만** 생성하라(아래 레시피).
+>
+> 📌 **Stage 3 구현 각주:** 스코프 초대 경로는 `scope_product_id`/`scope_component_id`의 **테넌트 소속 검증 필수**(FK는 존재만 확인 — 교차-테넌트 정합은 앱 검증 책임).
+
+### ☐ 5.1 스코프 신원 로그인 → 제한된 트리 `[브라우저]`
+계정 픽커에서 **최디자**로 로그인 → 대시보드/사이드바에 **CO0200(미국·시카 수딩 크림 SKU)만** 보임.
+다른 브랜드(레티놀 3% 세럼·비타민C 브라이트닝 앰플)와 **조상 브랜드명("시카 수딩 크림")은 트리 노드로
+렌더되지 않음**(재루팅으로 브랜드명 유출 차단). CO0200은 최상위(display root)로 올라와 보인다.
+CO0200 행/이름을 클릭해 드로어를 열면 상단 **"경로"가 `미국`만** 표시되고(권한 없는 상위 브랜드명
+`시카 수딩 크림`은 브레드크럼·경로에 노출 안 됨). 대조로 tenant-wide 신원(김·이)이 같은 SKU를 열면 경로가
+`시카 수딩 크림 › 미국` 전체로 보인다.
+
+### ☐ 5.2 타 제품 직접 URL 차단 `[브라우저]`
+최디자 상태에서 타 제품의 상세를 직접 주소로 진입(`/products/<CO0001 id>`) → 콘텐츠 미노출(권한 안내 후
+루트로 리다이렉트). 타 제품 버전(`/versions/<id>`)도 동일. 변이(예: 타 제품에 구성요소 추가 POST)는 403.
+
+### ☐ 5.3 리뷰 인박스 Segment B 미노출 `[브라우저]`
+최디자로 `/reviews` → "리뷰어 미배정 — 내가 맡을 수 있는 리뷰"(Segment B) 섹션이 **아예 없음**
+(external_collaborator는 적격 리뷰어가 아님). owner/approver(김·이)로 로그인하면 Segment B가 보인다(대조).
+
+### ☐ 5.4 (참고) 콘솔에서 product-scope grant 만들기 `[rails console]`
+```ruby
+acc  = Account.find_by!(email: "<협력자 이메일>")        # 초대 대신 사전 생성된 계정
+prod = Product.find_by!(code: "CO0200")                  # 부여할 제품(리프 SKU 권장)
+RoleAssignment.create!(account: acc, tenant_id: acc.tenant_id,
+                       role_key: "external_collaborator", scope_type: "product",
+                       scope_product_id: prod.id)         # component 한정이면 scope_type:"component"+scope_component_id
+```
+owner는 스코프 부여 불가(모델 검증 `owner grants must be tenant-wide`) · 부여 대상 제품/구성요소 삭제 시
+grant는 FK cascade로 자동 정리된다.

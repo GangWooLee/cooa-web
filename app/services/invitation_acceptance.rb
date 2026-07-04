@@ -22,7 +22,7 @@ class InvitationAcceptance
       )
       RoleAssignment.create!(
         account: account, tenant_id: Current.tenant_id, role_key: invitation.role_key,
-        scope_type: "tenant", scope_id: nil,
+        scope_type: "tenant", # tenant-wide grant (scope 초대는 Stage 3) — typed 컬럼은 NULL 기본
         granted_by: invitation.invited_by_account_id, granted_at: Time.current
       )
       invitation.update!(accepted_account_id: account.id)

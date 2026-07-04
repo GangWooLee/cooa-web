@@ -10,7 +10,7 @@ class ApplicationController < ActionController::Base
   include Authentication
 
   before_action :set_nav
-  helper_method :header_tabs, :pending_review_count
+  helper_method :header_tabs, :pending_review_count, :visible_product_id_set
 
   # Strict Pundit (ADR-002 §0 BOLA defense): every action must authorize (or explicitly skip_authorization).
   # verify_policy_scoped is enabled per-controller for index-like actions (DashboardController) — referencing
@@ -61,7 +61,29 @@ class ApplicationController < ActionController::Base
   def set_nav
     return unless nav_ready? && Current.tenant_id
 
-    @tree_roots = policy_scope(Product.roots.includes(:children))
+    @tree_roots = visible_roots(Product.includes(:children, :parent))
+  end
+
+  # 표시 루트 = 가시 제품 중 부모가 비가시(또는 nil)인 노드 (Stage 2 D3). 테넌트-와이드 액터면 Product.roots와
+  # 동일(무회귀). 스코프 한정 계정이면 부여 서브트리를 최상위로 끌어올리되 비가시 조상은 렌더하지 않음(브랜드명
+  # 유출 차단). policy_scope가 가시집합을 결정 → 그 안에서 부모가 비가시인 노드만 루트. tree_preorder 재사용.
+  def visible_roots(base)
+    visible = policy_scope(base).to_a
+    ids = Set.new(visible.map(&:id))
+    visible.select { |p| p.parent_id.nil? || ids.exclude?(p.parent_id) }
+           .sort_by { |p| [ p.position || 0, p.id ] }
+  end
+
+  # Request-memoized visible product-id Set for visibility-aware ANCESTOR rendering (breadcrumb /
+  # data-node-path clip — Stage 2 D3 브랜드명 유출 차단). nil = "all products visible" (tenant-wide / demo
+  # User): callers skip clipping (no regression). Reuses ProductPolicy::Scope so the visible set that scopes
+  # dashboard rows and the set that clips ancestor labels are ONE source. Not routed through Pundit's
+  # policy_scope → does not perturb verify_policy_scoped tracking.
+  def visible_product_id_set
+    return @visible_product_id_set if defined?(@visible_product_id_set)
+
+    ids = ProductPolicy::Scope.visible_ids_or_all(pundit_user)
+    @visible_product_id_set = ids&.to_set
   end
 
   # 상단 히스토리 탭 — 렌더 시점에 계산해야 함. set_nav(before_action)는 액션의 TabHistory.track보다
@@ -85,9 +107,10 @@ class ApplicationController < ActionController::Base
     end
   end
 
-  # 대시보드 셸의 제품 트리 행 (대시보드 index / 상세 풀요청 공용)
+  # 대시보드 셸의 제품 트리 행 (대시보드 index / 상세 풀요청 공용). 표시 루트는 가시집합 기준(D3).
   def load_dashboard_rows
-    @rows = Product.tree_preorder(policy_scope(Product.roots.includes(:children, :owner, { product_members: :user },
-                                                                       { components: :component_versions })))
+    roots = visible_roots(Product.includes(:children, :parent, :owner, { product_members: :user },
+                                           { components: :component_versions }))
+    @rows = Product.tree_preorder(roots)
   end
 end

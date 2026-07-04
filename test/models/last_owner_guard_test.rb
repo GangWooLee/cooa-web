@@ -7,12 +7,12 @@ class LastOwnerGuardTest < ActiveSupport::TestCase
     @org = Organization.create!(name: "Guard Tenant", region: "JP")
     @u1 = User.create!(name: "오너1", role: "ra", avatar_color: "#111111", email: "o1@guard.test")
     @a1 = Account.create!(tenant_id: @org.id, user: @u1, email: "o1@guard.test", status: "active")
-    @owner1 = RoleAssignment.create!(tenant_id: @org.id, account: @a1, role_key: "owner", scope_type: "tenant", scope_id: nil)
+    @owner1 = RoleAssignment.create!(tenant_id: @org.id, account: @a1, role_key: "owner", scope_type: "tenant")
     @a2 = Account.create!(tenant_id: @org.id, email: "c@guard.test", status: "active") # not an owner yet
   end
 
   def make_second_owner!
-    RoleAssignment.create!(tenant_id: @org.id, account: @a2, role_key: "owner", scope_type: "tenant", scope_id: nil)
+    RoleAssignment.create!(tenant_id: @org.id, account: @a2, role_key: "owner", scope_type: "tenant")
   end
 
   test "suspending the LAST active owner is refused" do

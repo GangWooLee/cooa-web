@@ -25,7 +25,8 @@ class Product < ApplicationRecord
   def country_label = ApplicationRecord.country_label(country)
   def member_for(role) = product_members.find_by(role: role)&.user
 
-  # 전체 경로(루트 › … › self) — 드로어 "경로" 표시용
+  # 전체 경로(루트 › … › self) — 구조적 전체 체인(액터 무관). 화면 표시는 가시성 인지 헬퍼
+  # UiHelper#node_path_label을 쓴다(스코프 계정에 권한 없는 상위 브랜드명 비노출·Stage 2 D3).
   def path_label = self_and_ancestors.map(&:name).join(" › ")
 
   # 폴더/항목은 kind로 구분(구조 무관) — 빈 폴더도 폴더로 동작

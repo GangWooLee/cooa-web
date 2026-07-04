@@ -31,7 +31,7 @@ park = User.create!(name: "박쿠아", role: "scm",      avatar_color: "#5f9e57"
 TEAM = [ kim, song, lee, park ]
 
 # ── 인증 신원(Account) + 역할 부여(role_assignment) — Phase 2a-1 ──────────────
-# Account=로그인 신원, User=도메인 '사람'(Strategy B). role_assignment는 tenant-wide(scope_id=NULL).
+# Account=로그인 신원, User=도메인 '사람'(Strategy B). 팀 role_assignment는 tenant-wide(scope 미설정).
 # 페르소나: 김=운영자(owner), 송=brand_admin, 이=RA(ra_reviewer+approver), 박=contributor.
 # idp_subject=nil(미바인딩) → Phase 2b 첫 OIDC 로그인이 verified email로 동일 행에 바인딩. idp_subject는
 # 실 IdP subject만 담음(센티넬 없음 — crafted auth.uid가 시드행과 충돌 불가, P2 리뷰). owner도 SoD 예외 없음.
@@ -44,10 +44,16 @@ PERSONA_ROLES = {
 TEAM.each do |u|
   acc = Account.create!(tenant_id: demo_org.id, user: u, email: u.email, status: "active")
   PERSONA_ROLES.fetch(u.role).each do |rk|
-    RoleAssignment.create!(account: acc, tenant_id: demo_org.id, role_key: rk,
-                           scope_type: "tenant", scope_id: nil)
+    RoleAssignment.create!(account: acc, tenant_id: demo_org.id, role_key: rk, scope_type: "tenant")
   end
 end
+
+# 5번째 페르소나 — 최디자(외부 협력 디자이너). tenant-wide가 아니라 CO0200 제품 하나에만 묶인
+# product-scope 부여(external_collaborator). Stage 2 스코프 격리의 살아있는 검증 신원(사이드바·대시보드에
+# CO0200만·타 제품 URL 차단). User.role은 표시용 기존 enum(designer) 재사용 — 실 authz는 아래 role_assignment.
+# scope_product_id 부여는 co0200 생성 이후(제품 트리 아래)에서 수행한다.
+choi = User.create!(name: "최디자", role: "designer", avatar_color: "#8e5aa8", email: "choi@partner.example")
+choi_acc = Account.create!(tenant_id: demo_org.id, user: choi, email: choi.email, status: "active")
 
 # ── 규제 데이터 (실제 CSV 큐레이션) ─────────────────────────────────────────
 puts "Regulatory facts..."
@@ -183,6 +189,10 @@ co0100 = node(name: "중국", parent: vitc, code: "CO0100", country: "CN", chann
 cica   = node(name: "시카 수딩 크림", position: 2, kind: "folder")
 co0200 = node(name: "미국", parent: cica, code: "CO0200", country: "US", channel: "Amazon",
               owner: lee, deadline: Date.new(2026, 9, 5), position: 0)
+
+# 최디자(외부 협력) — CO0200 제품 하나에만 external_collaborator 스코프 부여(Stage 2 격리 검증 신원).
+RoleAssignment.create!(account: choi_acc, tenant_id: demo_org.id, role_key: "external_collaborator",
+                       scope_type: "product", scope_product_id: co0200.id)
 
 # 리프(SKU)에 팀 + 구성요소
 [ co0000, co0000l, co0001, co0100, co0200 ].each { |p| assign_team(p, TEAM) }
