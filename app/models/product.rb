@@ -64,6 +64,32 @@ class Product < ApplicationRecord
   def ancestors = self_and_ancestors[0...-1]
   def depth = ancestors.size
 
+  # 브랜드 루트 = 트리 최상위 조상(자신이 루트면 자신). "팀"의 개념 단위(Stage 4 T1): 팀 멤버십 =
+  # 이 루트 대상 product-scope role_assignment(teams 테이블 없음 — 기존 트리+스코프 기구 재사용).
+  # self_and_ancestors[0]가 곧 루트(체인 head). 단일 노드 해석용 — 목록 렌더는 ReviewInboxPresenter의
+  # in-memory 맵 walk가 별도(그쪽은 프리로드 맵으로 N+1 0건, 여기는 .parent walk라 리스트에 부적합).
+  def brand_root = self_and_ancestors.first
+
+  # 씨앗 제품 id들의 self+자손 id 집합 — (id, parent_id) 1회 로드 후 in-memory 확장(노드별 children
+  # 재귀 없음 → N+1 0건). 테넌트 RLS 컨텍스트 내에서 동작. 스코프 서브트리 계산 단일 출처:
+  # ProductPolicy::Scope(가시성)·members 스코프 로스터(T3)·브랜드 페이지 트리/멤버 요약(T4) 공용.
+  def self.subtree_ids(seed_ids)
+    seed_ids = Array(seed_ids).compact.map(&:to_i) # 파라미터(문자열 id)도 안전 — pluck는 정수라 타입 정합 필수
+    return [] if seed_ids.empty?
+
+    by_parent = Hash.new { |h, k| h[k] = [] }
+    where(tenant_id: Current.tenant_id).pluck(:id, :parent_id).each { |id, pid| by_parent[pid] << id }
+    visited = Set.new
+    stack = seed_ids.dup
+    until stack.empty?
+      id = stack.pop
+      next unless visited.add?(id)
+
+      stack.concat(by_parent[id])
+    end
+    visited.to_a
+  end
+
   # 트리 사전순(pre-order) 평탄화 → [[node, depth], …] (대시보드 트리 행·스코프 select·상위 후보 공용).
   # 평탄 컬렉션 1회를 parent_id로 그룹핑해 in-memory로 walk — :children 연관을 재귀 접근하지 않으므로
   # 하위 레벨(2+)에서 children를 재쿼리하던 잠복 N+1이 사라진다(Stage 3 리뷰어 실증 · members_controller의

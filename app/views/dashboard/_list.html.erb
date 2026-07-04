@@ -15,6 +15,9 @@
     </nav>
   </div>
 
+  <%# 브랜드 팀 페이지 헤더(T4) — /brands/:id에서만 %>
+  <% if @brand %><%= render "dashboard/brand_header" %><% end %>
+
   <%# 액션 툴바 — 새로 만들기(폴더/항목) + 미구현은 비활성 %>
   <div class="flex min-w-0 flex-wrap items-center gap-2 px-6 py-3">
     <%# 상단 생성 아이콘 — 선택 노드 기준(폴더→자식 / 파일→형제 / 미선택→루트 맨 아래) %>

@@ -1,15 +1,18 @@
 # 초대 생성/회수 — manage_members(owner/brand_admin) 게이트. raw 토큰 링크는 생성 응답에서만
 # 존재(digest만 저장 — 재표시 불가, 재발급=회수+신규). 링크는 flash 경유(URL/로그 미노출).
 class InvitationsController < ApplicationController
+  include MemberAdministration
+
   # 초대 생성/회수는 감사(allow)를 남긴다 — 도메인 액터(연결 User) 없는 계정이면 AuditLog.record!가
   # fail-closed로 raise(500). 공용 가드로 먼저 fail-closed 403(E4).
   before_action :require_domain_actor, only: %i[create destroy]
 
   def create
-    authorize current_organization, :manage_members?
-    # 스코프 초대(D4): scope_product_id가 있으면 product 스코프, 없으면 tenant-wide(하위호환). 모델 검증이 게이트
-    # (교차테넌트/미존재 제품·역할 정합은 Invitation 검증에서 거부 → 아래 RecordInvalid rescue로 안내).
+    # 스코프 초대(D4): scope_product_id가 있으면 product 스코프, 없으면 tenant-wide(하위호환). 2단 인가(T3):
+    # scoped brand_admin은 "대상 제품" 레코드로 authorize → 타 브랜드/tenant-wide 발급은 자연 deny(403·감사).
     scope_product_id = params[:scope_product_id].presence
+    authorize_member_write!(scope_product_id)
+    # 모델 검증이 백스톱(교차테넌트/미존재 제품·역할 정합은 Invitation 검증에서 거부 → RecordInvalid rescue로 안내).
     invitation, raw = Invitation.generate!(
       email: params[:email], role_key: params[:role_key],
       invited_by_account_id: current_account.id,
@@ -33,8 +36,9 @@ class InvitationsController < ApplicationController
   end
 
   def destroy
-    authorize current_organization, :manage_members?
     invitation = Invitation.find(params[:id])
+    # 2단 인가(T3): scoped admin은 자기 브랜드 스코프 초대만 회수(대상 제품 레코드로 authorize).
+    authorize_member_write!(invitation.scope_product_id)
     if invitation.accepted_at.present?
       redirect_to members_path, alert: "이미 수락된 초대는 취소할 수 없습니다."
     else
@@ -46,8 +50,4 @@ class InvitationsController < ApplicationController
       redirect_to members_path, notice: "초대를 취소했습니다."
     end
   end
-
-  private
-
-  def current_organization = Organization.find(Current.tenant_id)
 end

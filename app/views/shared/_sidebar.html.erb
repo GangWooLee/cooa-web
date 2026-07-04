@@ -21,8 +21,9 @@
     <% end %>
   <% end %>
 
-  <%# 멤버(조직 로스터·초대, Phase 3) — 로스터 열람권자에게만 노출 %>
-  <% if Current.account && policy(Organization.find(Current.tenant_id)).list_tenant_accounts? %>
+  <%# 멤버(조직 로스터·초대, Phase 3) — 로스터 열람권자에게만 노출. tenant-wide 읽기권자 OR scoped
+      brand_admin(자기 브랜드) — scoped admin은 조직 verb를 통과 못 하므로 can_view_members?로 판정(T3). %>
+  <% if can_view_members? %>
     <%= link_to members_path, data: { turbo: false },
           class: "mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium text-ink transition hover:bg-tint #{'bg-tint' if current_page?(members_path)}" do %>
       <%= ui_icon "user", size: 16, klass: "text-line" %>
@@ -55,7 +56,7 @@
         <% active_ids |= fnode.self_and_ancestors.map(&:id) %>
       <% end %>
       <% (@tree_roots || []).each do |node| %>
-        <%= render "shared/tree_node", node: node, active_ids: active_ids, current_id: @product&.id %>
+        <%= render "shared/tree_node", node: node, active_ids: active_ids, current_id: @product&.id, root: true %>
       <% end %>
     </div>
 

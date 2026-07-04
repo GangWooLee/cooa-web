@@ -78,11 +78,11 @@ class ApprovalRequestsController < ApplicationController
                      request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
   end
 
-  # 지정 리뷰어는 서버측에서 이 버전 제품의 담당자(member)로 제한(임의 id 방어; 요청자 제외는 모델).
-  # 상한 캡(S3): 과도한 지정 방어.
+  # 지정 리뷰어는 서버측에서 후보 풀(권한 평면 — 브랜드 루트 서브트리 스코프 + tenant-wide grant)로 제한
+  # (임의 id 방어; 요청자 제외는 모델 sync_requested_reviewers!). 후보 정의는 리뷰 패널 체크박스와 단일
+  # 출처(ReviewCandidates) — UI에 뜬 후보만 지정 가능. 상한 캡(S3): 과도한 지정 방어.
   def sanitized_reviewer_ids(component_version)
-    member_ids = component_version.product.members.distinct.pluck(:id)
-    (Array(params[:reviewer_ids]).map(&:to_i).uniq & member_ids).first(20)
+    (Array(params[:reviewer_ids]).map(&:to_i).uniq & ReviewCandidates.user_ids_for(component_version)).first(20)
   end
 
   # 지정 리뷰어가 있으면 그들에게 요청됨을 안내. 없으면 M1 소프트(적격 리뷰어 부재는 차단 아닌 안내).

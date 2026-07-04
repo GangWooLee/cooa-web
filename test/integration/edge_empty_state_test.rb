@@ -4,11 +4,17 @@ require "test_helper"
 # 정상 렌더되는지. (2) 제품 0 테넌트 대시보드 — 시드 후 전삭제(트랜잭션 내·롤백 안전)해도 대시보드가 빈
 # 상태로 우아하게 렌더되는지(제품 행 전무·500 없음). setup=시드 + 김쿠아(owner) 로그인.
 class EdgeEmptyStateTest < ActionDispatch::IntegrationTest
-  test "S7 GET /brands/:id 해피패스 → 대시보드 렌더" do
+  test "S7 GET /brands/:id 해피패스 → 브랜드 팀 페이지 렌더(서브트리 스코프)" do
     brand = Product.find_by!(name: "레티놀 3% 세럼") # 브랜드 루트(폴더)
     get brand_path(id: brand.id)
     assert_response :success
-    assert_match "데이터 관리", @response.body, "브랜드 별칭 라우트도 대시보드(index)를 렌더"
+    assert_match "데이터 관리", @response.body, "브랜드 페이지도 대시보드(index) 셸을 렌더"
+    assert_match "브랜드 팀", @response.body, "T4 실구현 — 브랜드 팀 헤더"
+    # 메인 트리(테이블)는 그 브랜드 서브트리만 — 사이드바 전체 트리(모든 브랜드)와 구분해 테이블 행으로 단언.
+    table_ids = css_select("table tbody tr[data-node-id]").map { |tr| tr["data-node-id"] }
+    assert_includes table_ids, brand.id.to_s, "그 브랜드 루트는 메인 트리에 렌더"
+    vitc_id = Product.find_by!(name: "비타민C 브라이트닝 앰플").id.to_s
+    assert_not_includes table_ids, vitc_id, "타 브랜드 루트는 메인 트리(서브트리) 밖 — 부재"
   end
 
   test "S7 제품 0 대시보드 → 빈 상태 우아 렌더(제품 행 전무)" do

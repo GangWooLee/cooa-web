@@ -36,7 +36,8 @@
         <%# 스코프(D4): "전체 조직"=tenant-wide · 제품 선택=그 제품 서브트리 한정(외부 에이전시). 컨트롤러가 scope_type 도출. %>
         <label class="block text-[11px] font-bold text-line">범위</label>
         <select name="scope_product_id" class="mt-1 rounded-lg border border-line-soft px-2 py-2 text-[13px]">
-          <option value="">전체 조직</option>
+          <%# scoped brand_admin은 tenant-wide 발급 불가(서버 강제) → "전체 조직" 옵션도 숨김(T3) %>
+          <% if @can_issue_tenant_wide %><option value="">전체 조직</option><% end %>
           <%= options_for_select(scope_product_options(@scope_products)) %>
         </select>
       </div>

@@ -10,19 +10,20 @@
       <%= form_with url: approval_requests_path, method: :post, class: "space-y-2" do |f| %>
         <%= hidden_field_tag :component_version_id, @version.id %>
         <% if candidates.any? %>
-          <div class="text-[11px] font-bold text-line">리뷰어 지정 (담당자)</div>
+          <%# 후보 = 권한 평면(role_assignment) 기준 브랜드 팀 — 표시 명부(담당자)와 분리(Stage 4 T2) %>
+          <div class="text-[11px] font-bold text-line">리뷰어 지정 (브랜드 팀)</div>
           <div class="space-y-1">
-            <% candidates.each do |pm| %>
+            <% candidates.each do |u| %>
               <label class="flex cursor-pointer items-center gap-2 rounded-md border border-line-soft px-2 py-1.5 text-[12px] hover:border-cooa">
-                <%= check_box_tag "reviewer_ids[]", pm.user_id, false, class: "accent-cooa" %>
-                <%= avatar(pm.user, size: 18) %>
-                <span class="font-medium text-ink"><%= pm.user.name %></span>
-                <span class="text-line"><%= pm.role_short %></span>
+                <%= check_box_tag "reviewer_ids[]", u.id, false, class: "accent-cooa" %>
+                <%= avatar(u, size: 18) %>
+                <span class="font-medium text-ink"><%= u.name %></span>
+                <span class="text-line"><%= u.role_short %></span>
               </label>
             <% end %>
           </div>
         <% else %>
-          <p class="text-[11px] text-line">지정할 담당자가 없습니다 — 요청 시 자격 리뷰어 누구나 확인할 수 있습니다.</p>
+          <p class="text-[11px] text-line">지정할 리뷰어가 없습니다 — 요청 시 자격 리뷰어 누구나 확인할 수 있습니다.</p>
         <% end %>
         <%= f.submit "리뷰 요청", class: "w-full cursor-pointer rounded-lg bg-cooa-gradient px-4 py-2.5 text-[13px] font-bold text-white" %>
       <% end %>

@@ -28,9 +28,10 @@ class ReviewPanelPresenter
     names.any? ? "#{names.join(", ")}님의 검토를 기다리는 중입니다." : "검토 가능한 리뷰어를 기다리는 중입니다."
   end
 
-  # 리뷰어 지정 후보 = 이 제품 담당자(자신 제외, 중복 제거).
+  # 리뷰어 지정 후보 = 버전의 브랜드 루트(팀 단위) 서브트리 스코프 grant + tenant-wide grant 보유 계정의
+  # 연결 User(Stage 4 T2 — 권한 평면 기준, 자신 제외). 표시 명부(product_member)가 아니라 role_assignment
+  # 가 후보를 결정한다 → 화이트리스트(sanitized_reviewer_ids)와 단일 출처(ReviewCandidates).
   def candidate_members(current_user)
-    version.product.product_members.select(&:user)
-           .reject { |pm| pm.user_id == current_user&.id }.uniq(&:user_id)
+    ReviewCandidates.users_for(version, exclude_user_id: current_user&.id)
   end
 end

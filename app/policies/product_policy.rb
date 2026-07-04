@@ -40,18 +40,9 @@ class ProductPolicy < ApplicationPolicy
       expand_descendants(seed.uniq)
     end
 
-    def expand_descendants(seed)
-      by_parent = Hash.new { |h, k| h[k] = [] }
-      Product.where(tenant_id: Current.tenant_id).pluck(:id, :parent_id).each { |id, pid| by_parent[pid] << id }
-      visited = Set.new
-      stack = seed
-      until stack.empty?
-        id = stack.pop
-        next unless visited.add?(id)
-
-        stack.concat(by_parent[id])
-      end
-      visited.to_a
-    end
+    # A product grant covers self + all descendants. Shared in-memory expansion (Product.subtree_ids):
+    # one (id, parent_id) load, no per-node children recursion. Same algorithm the members scoped roster
+    # (T3) and the brand page (T4) reuse, so the subtree definition never drifts.
+    def expand_descendants(seed) = Product.subtree_ids(seed)
   end
 end

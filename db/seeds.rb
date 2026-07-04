@@ -194,6 +194,14 @@ co0200 = node(name: "미국", parent: cica, code: "CO0200", country: "US", chann
 RoleAssignment.create!(account: choi_acc, tenant_id: demo_org.id, role_key: "external_collaborator",
                        scope_type: "product", scope_product_id: co0200.id)
 
+# 6번째 페르소나 — 정브랜(브랜드관리). "비타민C 브라이트닝 앰플" 브랜드 루트에 brand_admin product-scope
+# = 그 브랜드의 팀 admin(scoped sub-admin, Stage 4 T3). tenant-wide 아님 → 자기 브랜드만 관리·가시.
+# 스키마·모델이 이미 허용(owner만 tenant-wide 강제). 픽커 노출 + manual-guide 스코프 admin 검증용.
+jung = User.create!(name: "정브랜", role: "pm", avatar_color: "#3f8f8f", email: "jung@cooa.dev")
+jung_acc = Account.create!(tenant_id: demo_org.id, user: jung, email: jung.email, status: "active")
+RoleAssignment.create!(account: jung_acc, tenant_id: demo_org.id, role_key: "brand_admin",
+                       scope_type: "product", scope_product_id: vitc.id)
+
 # 리프(SKU)에 팀 + 구성요소
 [ co0000, co0000l, co0001, co0100, co0200 ].each { |p| assign_team(p, TEAM) }
 

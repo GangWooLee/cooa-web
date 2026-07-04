@@ -1,7 +1,8 @@
 <% current = (current_id && current_id == node.id) %>
+<% root = local_assigns.fetch(:root, false) %>
 <% if node.folder? %>
   <details <%= "open" if active_ids.include?(node.id) %>>
-    <summary class="flex cursor-pointer list-none items-center gap-1 rounded-md px-2 py-1.5 hover:bg-tint <%= 'bg-accent/60' if active_ids.include?(node.id) %>"
+    <summary class="group/brand flex cursor-pointer list-none items-center gap-1 rounded-md px-2 py-1.5 hover:bg-tint <%= 'bg-accent/60' if active_ids.include?(node.id) %>"
              data-node-id="<%= node.id %>" data-node-kind="folder" data-node-name="<%= node.name %>" data-node-path="<%= node_path_label(node) %>"
              data-node-confirm="<%= delete_confirm(node) %>" data-action="contextmenu->tree-ctx#open">
       <%= ui_icon "caret", size: 15, klass: "tree-caret shrink-0 text-line" %>
@@ -17,6 +18,14 @@
                 class: "w-full rounded border border-cooa px-1 py-0.5 text-[14px] font-semibold focus:outline-none" %>
         <% end %>
       </span>
+      <%# 루트(브랜드) 노드 → 브랜드 팀 페이지 진입(T4). 트리 토글 관례 훼손 없이 이름 옆 아이콘 링크
+          (hover 시 노출). turbo:false 전체 이동이라 details 토글 side-effect는 무의미(페이지 전환). %>
+      <% if root %>
+        <%= link_to brand_path(node), title: "브랜드 팀 페이지", data: { turbo: false },
+              class: "shrink-0 rounded p-0.5 text-line/50 opacity-0 transition hover:bg-white hover:text-cooa group-hover/brand:opacity-100" do %>
+          <%= ui_icon "grid", size: 13 %>
+        <% end %>
+      <% end %>
     </summary>
     <div class="ml-3 border-l border-line-soft pl-1">
       <% node.children.each do |child| %>

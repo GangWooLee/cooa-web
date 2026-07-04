@@ -10,7 +10,7 @@ class ApplicationController < ActionController::Base
   include Authentication
 
   before_action :set_nav
-  helper_method :header_tabs, :pending_review_count, :visible_product_id_set
+  helper_method :header_tabs, :pending_review_count, :visible_product_id_set, :can_view_members?
 
   # Strict Pundit (ADR-002 §0 BOLA defense): every action must authorize (or explicitly skip_authorization).
   # verify_policy_scoped is enabled per-controller for index-like actions (DashboardController) — referencing
@@ -27,6 +27,18 @@ class ApplicationController < ActionController::Base
 
   # Pundit "user" = role-resolution context: the authenticated Account (roles via AssignmentResolver).
   def pundit_user = Authz::AccessContext.new(actor: Current.account)
+
+  def current_organization = Organization.find(Current.tenant_id)
+
+  # 멤버 로스터 진입권(사이드바 "멤버" 링크 가시성 · Stage 4 T3). tenant-wide list_tenant_accounts 보유자
+  # (읽기 — lee 등 ra/approver 무회귀) OR scoped brand_admin(자기 브랜드). scoped admin은 조직 레벨
+  # list_tenant_accounts?를 통과하지 못하므로(AdminScope 트랩) AdminScope 존재로 별도 판정. 요청당 메모이즈.
+  def can_view_members?
+    return @can_view_members if defined?(@can_view_members)
+
+    @can_view_members = !!Current.account &&
+                        (policy(current_organization).list_tenant_accounts? || !Authz::AdminScope.for(Current.account).nil?)
+  end
 
   # 도메인 액터(연결된 User) 없는 계정은 감사(allow)를 남기는 도메인 쓰기를 수행할 수 없다 — actor가 nil이면
   # AuditLog.record!가 fail-closed로 raise해 500이 된다. 그 전에 fail-closed 403으로 막는 공용 가드(E4 통일).
@@ -138,9 +150,24 @@ class ApplicationController < ActionController::Base
   # 가시 제품 전체를 프리로드와 함께 1회 로드 → tree_preorder가 parent_id 그룹핑으로 preorder를 만든다.
   # 하위 레벨의 children/연관(담당자·구성요소) 재쿼리 N+1이 제거되고(R5), 표시 루트 재루팅(부모 비가시)은
   # tree_preorder가 내포하므로 visible_roots를 거치지 않는다(:children 프리로드도 불요 — .children 미접근).
-  def load_dashboard_rows
+  # brand_root_id(T4 /brands/:id): 가시집합을 그 서브트리로 좁혀 브랜드 팀 페이지의 트리를 만든다(가시성과
+  # 교집합이라 스코프 계정도 안전). 반환값 = 필터 전 가시 배열(브랜드 가시성 판정용 — dashboard#index).
+  def load_dashboard_rows(brand_root_id: nil)
     visible = policy_scope(Product.includes(:parent, :owner, { product_members: :user },
-                                            { components: :component_versions }))
-    @rows = Product.tree_preorder(visible)
+                                            { components: :component_versions })).to_a
+    rows_source = visible
+    if brand_root_id
+      keep = Product.subtree_ids([ brand_root_id ]).to_set
+      rows_source = visible.select { |p| keep.include?(p.id) }
+    end
+    @rows = Product.tree_preorder(rows_source)
+    visible
+  end
+
+  # 브랜드 팀 페이지(T4)의 멤버 요약 = 그 브랜드 서브트리에 스코프 grant를 가진 계정(tenant-wide 제외 —
+  # 전역 멤버는 브랜드 소속이 아님). T3 로스터와 동일 쿼리(AdminScope.scoped_member_account_ids) 재사용.
+  def brand_member_accounts(brand)
+    ids = Authz::AdminScope.scoped_member_account_ids(Product.subtree_ids([ brand.id ]))
+    Account.includes(:user, role_assignments: [ :scope_product, :scope_component ]).where(id: ids).order(:created_at)
   end
 end

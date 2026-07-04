@@ -54,6 +54,8 @@ bin/dev
 | 송쿠아 | `song@cooa.dev` | PM | brand_admin | 담당자/제품 관리 O · 리뷰 요청/검토 확인 **X** |
 | 이쿠아 | `lee@cooa.dev` | RA | **ra_reviewer** + **approver** | 리뷰 요청 O · 검토 확인·claim O · 담당자관리 X (= 적격 리뷰어) |
 | 박쿠아 | `park@cooa.dev` | SCM | contributor | 리뷰 요청 O · 검토 확인/claim **X** · 담당자관리 **X** (최소권한) |
+| 정브랜 | `jung@cooa.dev` | PM | **brand_admin @ 비타민C**(product-scope) | **그 브랜드의 팀 admin**(scoped sub-admin) — 자기 브랜드만 로스터·초대·grant·가시. tenant-wide 아님(Stage 4 T3) |
+| 최디자 | `choi@partner.example` | 디자이너 | external_collaborator @ CO0200 | CO0200 서브트리만(스코프 격리 검증 신원) |
 
 > 검토 확인은 별도 코드 입력 없이 동작한다. 요청받은 담당자는 approve verb 없이도 확인 가능(소프트 게이트) — claim(미배정 자기배정)만 HARD approve verb를 요구.
 > 시드에 순수 viewer/assignee 페르소나는 없음 — viewer 권한은 모든 페르소나의 기준선으로만 체감.
@@ -423,6 +425,22 @@ RoleAssignment.create!(account: acc, tenant_id: acc.tenant_id,
 owner는 스코프 부여 불가(모델 검증 `owner grants must be tenant-wide`) · 부여 대상 제품/구성요소 삭제 시
 grant는 FK cascade로 자동 정리된다.
 
+### ☐ 5.5 브랜드-스코프 관리(정브랜) — scoped sub-admin `[브라우저]` — Stage 4 T3/T4
+`brand_admin`을 **브랜드 루트 product-scope**로 부여하면 그 브랜드의 **팀 admin**이 된다(teams 테이블 없음 —
+기존 트리+스코프 기구 재사용). 시드 신원 **정브랜(jung@cooa.dev — 비타민C 브랜드)** 로 콘솔 0으로 시작.
+- 계정 픽커에서 **정브랜** 로그인 → 사이드바에 **비타민C 브랜드만**(CO0100) + **"멤버"** 링크 노출
+  (scoped admin은 조직 레벨 verb를 통과 못 하지만 `can_view_members?`로 자기 브랜드 관리자로 노출).
+- **멤버 페이지**: 로스터에 **자기 브랜드 스코프 인원만**(tenant-wide 계정·타 브랜드 external 미표시).
+  초대 폼의 "범위"에 **"전체 조직" 옵션 없음** — 자기 브랜드 제품만.
+- **초대/grant 매트릭스**(서버측 강제): 자기 브랜드(CO0100) 발급 성공 · 타 브랜드(CO0200) 또는 전체 조직
+  발급 시도는 **403**. 회수도 자기 브랜드 grant만. tenant-wide admin(김·송)은 전 기능 그대로.
+- **브랜드 팀 페이지** `/brands/:id`: 사이드바 루트(브랜드) 노드 호버 시 나오는 격자 아이콘 → 그 브랜드
+  **서브트리만** + 헤더 브랜드명 + **스코프 멤버 요약 배지**(예: 시카 → 최디자, 비타민C → 정브랜) +
+  (관리 권한 시)"멤버 관리" 링크. 스코프 계정이 비가시 브랜드 URL 진입 → 루트 redirect(콘텐츠 미노출).
+
+> 정직 노트: 리뷰어 후보·권한은 **role_assignment 평면**(브랜드 팀), 드로어 **"담당자(표시용 · 권한과 무관)"**
+> 는 자유 역할 표시 명부다 — 둘은 분리(Stage 4 T2). grant 없는 표시-멤버·미브리지 User는 리뷰 후보에서 제외.
+
 ---
 
 ## 8. 엣지케이스 시나리오 카탈로그 (E/S-트랙 강건화 매핑)
@@ -480,6 +498,17 @@ grant는 FK cascade로 자동 정리된다.
 - 업로드→피드백→미배정요청→claim→피드백/해소→확인→새버전(current 전환)→비교→신버전 피드백 `[자동:full_journey_test.rb]`
 - 4개 화면 데모 흐름 `[자동:test/integration/demo_flows_test.rb]`
 - 왕복 정합(사이드바 배지 == Segment A) 제출→claim→confirm `[자동:v15_edge_test.rb]`
+
+### (j) 권한 평면 경계 — 두 평면 통합 + 브랜드-스코프 관리 (Stage 4)
+- 리뷰어 후보 = 권한 평면(role_assignment) 기준(브랜드 루트 서브트리 스코프 + tenant-wide) — 표시 명부(product_member)와 분리 `[자동:test/services/review_candidates_test.rb]`
+- 후보 인원 동일성(레티놀 브랜드 신·구 4인 일치) `[자동:review_candidates_test.rb]`
+- external_collaborator뿐인 계정(choi)은 리뷰어 후보/지정 불가 — 자기 스코프 체인(CO0200)에서도(REF 시나리오 ③: external은 업로드·피드백만, 리뷰 확인 표면 없음). 단 로스터·멤버 요약(표시 평면)엔 그대로 표시. external+다른 역할 병존 시엔 그 역할 근거로 후보 포함 `[자동:review_candidates_test.rb]`
+- 후보 풀 밖 id는 서버 화이트리스트에서 strip(임의 지정 방어 · external 자기 스코프 체인 포함) `[자동:test/integration/approval_workflow_test.rb]`
+- scoped brand_admin 로스터 경계(자기 브랜드만·tenant-wide 계정 미표시·타 브랜드 external 미표시) `[자동:test/integration/brand_admin_scope_test.rb]`
+- scoped admin 초대/grant 발급·회수 매트릭스(자기 브랜드 O · 타 브랜드 403 · tenant-wide 발급 403) `[자동:brand_admin_scope_test.rb]`
+- external은 부여된 모든 브랜드의 admin에 가시(체인 grant) `[자동:brand_admin_scope_test.rb]`
+- /brands/:id 팀 페이지 — 서브트리만·멤버 요약·비가시 브랜드 redirect/404 `[자동:test/integration/brands_page_test.rb]`
+- 정브랜 픽커→멤버 로스터→스코프 초대 브라우저 저니 `[자동:test/system/brand_scope_test.rb]`
 
 ### 자동화 부적합 / 잔여 공백 (정직 표기)
 - JS 실패 폴백(turbo:fetch-request-error 공용 토스트 · E5) — importmap 컴파일 + smoke 부팅으로만 검증, 실패 토스트 실브라우저 발화는 `[공백]`
