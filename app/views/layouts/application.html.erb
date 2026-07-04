@@ -21,7 +21,21 @@
       <%= render "shared/topbar" %>
       <div class="flex min-h-0 flex-1">
         <%= render "shared/sidebar" %>
-        <main class="min-w-0 flex-1 overflow-auto"><%= yield %></main>
+        <main class="min-w-0 flex-1 overflow-auto">
+          <%# 일반 flash(notice/alert) — grant UI·claim 등 모든 리다이렉트 메시지의 유일한 렌더 지점. invite_link는
+              members가 전용 블록에서 렌더하므로 여기서 제외. auth 레이아웃은 sessions/new이 자체 렌더라 미포함. %>
+          <% if flash[:notice].present? || flash[:alert].present? %>
+            <div class="space-y-2 px-6 pt-6">
+              <% if flash[:notice].present? %>
+                <div role="status" class="rounded-xl border border-line-soft bg-tint px-4 py-3 text-[13px] text-ink"><%= flash[:notice] %></div>
+              <% end %>
+              <% if flash[:alert].present? %>
+                <div role="alert" class="rounded-xl border border-warn bg-tint px-4 py-3 text-[13px] font-medium text-ink"><%= flash[:alert] %></div>
+              <% end %>
+            </div>
+          <% end %>
+          <%= yield %>
+        </main>
       </div>
     </div>
   </body>

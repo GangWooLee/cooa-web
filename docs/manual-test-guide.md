@@ -1,9 +1,9 @@
 # COOA 권한 시스템 — 손에 잡히는 수동 테스트 체크리스트
 
-> ## ⚠️ [2026-07-01 v0.4 리프레임 — 아래 §1-1·④·일부 ③ 보정]
+> ## ⚠️ [2026-07-01 v0.4 리프레임 — §1-1·일부 ③ 보정 · ④ step-up 삭제]
 > 규제 전자서명(step-up TOTP)이 **제거**되고 승인이 **경량 "버전 리뷰"**로 바뀌었습니다. 따라서:
-> - **실행**: `COOA_DEMO_STEP_UP_OFF=1`·`bin/dev` 두 모드 구분 없음 → 그냥 **`bin/dev`** 하나. 페르소나 TOTP 등록·`/step-up`·인증앱 불필요.
-> - **④ step-up 섹션 전체 무효**(해당 기능 삭제).
+> - **실행**: 모드 구분 없이 그냥 **`bin/dev`** 하나. 페르소나 TOTP 등록·`/step-up`·인증앱 불필요.
+> - **④ step-up 섹션은 삭제됨**(TOTP 전자서명 기능 제거 — 이 문서 관련 절 정리 완료·Stage 3).
 > - **③ 승인 흐름 → "버전 리뷰" 흐름**으로 보정: 리뷰 UI는 **스크리닝 화면이 아니라 버전 뷰**(`/versions/:id`)의 "버전 리뷰" 패널. 흐름 = **리뷰 요청**(`POST /approval_requests`) → 다른 신원(이쿠아 리뷰어)으로 **검토 확인**(`POST /approval_requests/:id/confirm`, 코드 입력 없음) / **변경 요청**(`/request_changes`). 상태 `pending→reviewed/changes_requested`. SoD(요청자≠확인자)·stale 가드(요청 후 콘텐츠 변경 시 확인 차단)·감사는 동일. M1은 하드 차단 대신 "리뷰어 미배정" 소프트 안내.
 > - **추가(Point 4)**: 단일 버전 뷰(`/versions/:id`)에서도 아트워크 Shift+드래그로 **피드백** 남기고, 리뷰어가 annotation을 **반영 확인(resolve)** 가능.
 > - 격리·인증·세션·매트릭스·감사(①②⑤⑥⑦)는 그대로 유효.
@@ -21,18 +21,15 @@
 COOA_DB_USER=$USER bin/rails db:prepare      # db:seed 자동 → 데모 org/계정/규제데이터
 COOA_DB_USER=$USER bin/rails rls:grant_app   # structure.sql가 GRANT를 strip → cooa_app 권한 재적용(필수)
 
-# 실행 — 둘 중 하나
-bin/dev                          # ★ step-up 강제: 승인 시 TOTP 6자리 요구 (서명 재인증 ON)
-COOA_DEMO_STEP_UP_OFF=1 bin/dev  # ★ frictionless: 승인 무마찰 (re_auth_factor=demo_bypass)
+# 실행 (단일 모드 — step-up TOTP 제거됨, v0.4)
+bin/dev
 ```
 
 브라우저 → http://localhost:3000 → 미인증이면 `/session/new`(계정 피커, 비밀번호 없음)로 리다이렉트.
 
-- **메커니즘**: `config/application.rb` `config.x.step_up_required = true`(전 환경 기본 ON). `development.rb`가 `COOA_DEMO_STEP_UP_OFF=1`일 때만 `false`로 단락. 이 opt-out 코드는 `development.rb`에만 존재 → prod에선 파일이 로드조차 안 됨 = **구조적으로 prod에서 끌 수 없음**. `production.rb`는 무조건 `true` 재설정.
-
 ### 1-2. 페르소나 표 (db/seeds.rb 실측)
 
-로그인은 `Account`(신원), 권한은 `RoleAssignment`(tenant-wide, scope_id=nil). 로그인 카드 순서 = `Account.id` 오름차순.
+로그인은 `Account`(신원), 권한은 `RoleAssignment`(tenant-wide = 타입 스코프 미설정 · 제품 한정은 §5). 로그인 카드 순서 = `Account.id` 오름차순.
 
 | 표시명 | 이메일 | 도메인역할 | 부여 role_key | 핵심 능력 |
 |---|---|---|---|---|
@@ -41,7 +38,7 @@ COOA_DEMO_STEP_UP_OFF=1 bin/dev  # ★ frictionless: 승인 무마찰 (re_auth_f
 | 이쿠아 | `lee@cooa.dev` | RA | **ra_reviewer** + **approver** | 상신 O · 승인/반려 O · 담당자관리 X (= 결재자) |
 | 박쿠아 | `park@cooa.dev` | SCM | contributor | 상신 O · 승인 **X** · 담당자관리 **X** (최소권한) |
 
-> 모든 계정은 시드에서 `acc.provision_totp!`로 **TOTP 이미 등록됨** → approve가 out-of-the-box 작동.
+> approve/reject·검토 확인은 코드 입력 없이 동작(step-up TOTP는 v0.4에서 제거).
 > 시드에 순수 viewer/assignee 페르소나는 없음 — viewer 권한은 모든 페르소나의 기준선으로만 체감.
 
 **역할→verb 매트릭스 핵심** (`app/policies/authz/permission_matrix.rb`, MATRIX_VERSION=1):
@@ -58,7 +55,7 @@ COOA_DEMO_STEP_UP_OFF=1 bin/dev  # ★ frictionless: 승인 무마찰 (re_auth_f
 
 데모 테넌트 id 상수: `TenantConfig::DEMO_TENANT_ID` (= `Organization.find_by(name: "COOA Demo").id`).
 
-### 1-4. 결재 화면 도달 경로 (③④에서 반복 사용)
+### 1-4. 결재 화면 도달 경로 (③에서 반복 사용)
 
 대시보드(`/`) → `레티놀 3% 세럼` → `일본(CO0001)` → 구성요소 `단상자(outer_box)` → 버전 **v5** → 우상단 **"인허가 스크리닝"**(`versions/:id/screening`). 시드가 이 v5(JP)에 스크리닝을 미리 실행해 둠 → 우측 **결재 패널**이 이미 보임.
 
@@ -120,7 +117,7 @@ COOA_DEMO_STEP_UP_OFF=1 bin/dev  # ★ frictionless: 승인 무마찰 (re_auth_f
 
 ### ☐ 2.1 페르소나별 버튼 가시성 `[UI · 전환]`
 - **무엇** — 같은 화면이라도 로그인 역할에 따라 액션 버튼이 조건부로 나타난다(SoD를 화면에서 체감).
-- **방법** — `COOA_DEMO_STEP_UP_OFF=1 bin/dev` → 1-4의 스크리닝 화면 진입 → 우측 결재 패널의 **"결재 상신"** 버튼을 각 페르소나로 관찰:
+- **방법** — `bin/dev` → 1-4의 스크리닝 화면 진입 → 우측 결재 패널의 **"결재 상신"** 버튼을 각 페르소나로 관찰:
 
   | 페르소나 | "결재 상신" |
   |---|---|
@@ -223,34 +220,12 @@ COOA_DEMO_STEP_UP_OFF=1 bin/dev  # ★ frictionless: 승인 무마찰 (re_auth_f
 |---|---|
 | 상신 전 + 상신권한 O | 그라데이션 **"결재 상신"** |
 | 상신 전 + 권한 X | 회색 **"상신 권한이 없습니다."** |
-| pending + 승인가능 | **"결재 대기/상신됨"** + 승인/반려 폼 (step-up시 TOTP칸) |
+| pending + 승인가능 | **"결재 대기/상신됨"** + 승인/반려 폼 |
 | pending + 상신본인 | **"본인이 상신한 결재는 승인할 수 없습니다 (SoD)."** |
 | pending + 무자격 타인 | **"승인 권한이 있는 결재자를 대기 중입니다."** |
 | blocked_no_approver | 빨강 **"승인 불가 — …"** |
 | approved | 초록 **"✓ 승인 완료"** |
 | rejected | 빨강 **"✗ 반려됨"** |
-
----
-
-## ④ step-up (서명 재인증)
-
-### ☐ 4.1 등록 + 6자리 서명 재인증 `[UI]`
-- **무엇** — 승인(전자서명) 순간 TOTP 6자리 재인증 요구(21 CFR Part 11 / NIST AAL2). 비거나 틀리면 거부.
-- **방법** — **plain `bin/dev`**(step-up 강제). 송쿠아로 상신 → 이쿠아로 로그인 → 스크리닝 화면 "결재 대기" 패널에 **인증 코드 6자리** 칸 + **승인** 버튼. 패널 하단 **"인증 앱 등록"**(`/step-up`)에서 표시된 키(`@secret`)/otpauth URI를 Authenticator에 추가 → 6자리 입력 후 승인.
-- **확인** — 정상 코드 → "승인되었습니다." + ✓ 승인 완료. 빈/오류 코드 → "인증 코드가 올바르지 않습니다. 다시 시도하세요."(deny 감사 `step_up_failed`).
-- **메커니즘** — `approve` 컨트롤러의 `step_up_enforced?`가 true면 `current_account.verify_totp(params[:totp_code])`(ROTP, ±30s drift). 실패 → `audit_step_up_deny`. `totp_secret`은 `Account`에서 `encrypts`.
-
-### ☐ 4.2 데모 단락(frictionless) 비교 `[UI 비교]`+`[콘솔]`
-- **무엇** — 데모 한정 step-up off → 코드칸 사라지고 one-click 승인. prod는 불가.
-- **방법** — `COOA_DEMO_STEP_UP_OFF=1 bin/dev` 재기동 → 같은 "결재 대기" 패널에 **코드칸·"인증 앱 등록" 링크가 사라짐** → 즉시 승인. 콘솔로 재인증 사유 확인:
-  ```ruby
-  TenantContext.with_tenant(TenantConfig::DEMO_TENANT_ID) do
-    step = ApprovalRequest.last.approval_steps.find_by(decision: "approved")
-    [step.re_auth_factor, step.re_auth_at]
-  end
-  ```
-- **확인** — UI: 코드칸 없음(plain `bin/dev`와 시각 대비). 콘솔: 단락 승인이면 `["demo_bypass", nil]`, 강제 모드 승인이면 `["totp", <시각>]`.
-- **메커니즘** — `step_up_enforced? = config.x.step_up_required || production?` → **prod 항상 강제**. 뷰는 `if Rails.configuration.x.step_up_required`로 코드칸 조건부 렌더. `approve!`가 `re_auth_factor=="demo_bypass"`면 `re_auth_at`을 nil로 기록. 통과 시 `signed_c1_digest`(검토튜플 SHA256)에 서명 바인딩.
 
 ---
 
@@ -264,12 +239,12 @@ COOA_DEMO_STEP_UP_OFF=1 bin/dev  # ★ frictionless: 승인 무마찰 (re_auth_f
   kim = Account.find_by(email: "kim@cooa.dev")
   kim.update!(status: "suspended")   # ① 정지
   kim.destroy!                       # ② 삭제
-  kim.role_assignments.active.find_by(role_key: "owner", scope_id: nil).destroy!  # ③ 강등
+  kim.role_assignments.active.tenant_wide.find_by(role_key: "owner").destroy!  # ③ 강등
   ```
   대조: 송쿠아에게 owner 부여 후 ①을 다시 하면 **성공**(다른 active owner 존재).
   ```ruby
   RoleAssignment.create!(account: Account.find_by(email: "song@cooa.dev"),
-    tenant_id: Current.tenant_id, role_key: "owner", scope_type: "tenant", scope_id: nil)
+    tenant_id: Current.tenant_id, role_key: "owner", scope_type: "tenant")
   ```
 - **확인** — ①②③ 모두 `LastOwnerGuard::Error: 마지막 owner는 정지·강등·제거할 수 없습니다 (테넌트에 active owner가 최소 1명 남아야 합니다).` 대조 실험에선 ①이 성공.
 - **메커니즘** — 단일 진입점이 없어 **모델 인바리언트**로 구현: `Account`의 `before_update :guard_last_owner_on_deactivate`/`before_destroy`, `RoleAssignment`의 `before_destroy :guard_last_owner`/`before_update :guard_last_owner_on_expire`가 모두 `LastOwnerGuard.ensure_owner_remains!` 호출. 내부에서 `pg_advisory_xact_lock`(NS `0x4C4F`)로 동시 강등 직렬화 후 `other_active_owners?` 없으면 raise.
@@ -328,7 +303,7 @@ COOA_DEMO_STEP_UP_OFF=1 bin/dev  # ★ frictionless: 승인 무마찰 (re_auth_f
   a.prev_chain_hash == prev.chain_hash      # => true (앞 행과 연결)
   a.chain_hash == a.expected_chain_hash     # => true (본문 재계산 일치)
   ```
-- **확인** — `audit:verify OK — N row(s)… chains intact.`(갭/변조 시 `FAILED`로 abort). `detect_bola OK — no actor exceeded 10 denies in 5m.` (②③④에서 deny를 여러 번 만들면 잡힘). 해시 비교 두 줄 모두 `true`.
+- **확인** — `audit:verify OK — N row(s)… chains intact.`(갭/변조 시 `FAILED`로 abort). `detect_bola OK — no actor exceeded 10 denies in 5m.` (②③에서 deny를 여러 번 만들면 잡힘). 해시 비교 두 줄 모두 `true`.
 - **메커니즘** — `AuditLog`의 `before_create :assign_chain`이 `pg_advisory_xact_lock`(NS `0x4155`) 아래 `tenant_seq` 증가 · `prev_chain_hash = 직전 chain_hash` · `chain_hash = AuditLogHash.compute(...)` 채움. `audit:verify`는 행마다 seq gap·prev 끊김·재계산 불일치 검사, 소유자 역할로 RLS 우회해 전 테넌트 순회.
 
 ---
@@ -341,13 +316,13 @@ COOA_DEMO_STEP_UP_OFF=1 bin/dev  # ★ frictionless: 승인 무마찰 (re_auth_f
 | **인증 (AuthN)** | ① 1.1~1.4 | account-picker + 매 요청 token_version/idle 폐기, 픽세이션 방어 |
 | **인가 (AuthZ)** | ② 2.1, 2.2 / ③ 3.6 / 1-2매트릭스 | role→verb 매트릭스 교집합, 뷰 숨김 + 서버 403(verify_authorized) |
 | **직무분리 (SoD)** | ③ 3.3 (M2) / ② 2.1 | 상신자 ≠ 승인자 강제, owner 예외 없음 |
-| **서명 (Signature/Non-repudiation)** | ④ 4.1, 4.2 / ③ 3.4 (C1) | 승인 시 TOTP 재인증 + signed_c1_digest, stale 검토튜플 차단 |
+| **스코프 격리 (Scoping)** | §4.6 / §5.1~5.4 | 제품-한정 grant·초대 — 서브트리만 가시·조상 브랜드명 무유출, 타 제품 fail-closed |
 | **가용성 (Availability)** | ⑤ 5.1 / ③ 3.2 (M1) | last-owner 가드, 적격 승인자 0이면 blocked_no_approver |
 | **감사 (Audit/Integrity)** | ⑦ 7.1, 7.2 / ② 2.2 | append-only 트리거 + 해시체인 verify + BOLA 탐지 |
 
 ### 추천 진행 순서
-1. `COOA_DEMO_STEP_UP_OFF=1 bin/dev` → ① 로그인/전환 → ② 버튼 가시성 → ③ 박 상신·이/김 승인·SoD·C1 stale·reject.
-2. `bin/dev` 재기동 → ④ step-up 6자리 vs 단락 비교.
+1. `bin/dev` → ① 로그인/전환 → ② 버튼 가시성 → ③ 박 상신·이/김 검토 확인·SoD·stale·변경 요청.
+2. §4 Google 초대(제품-스코프 §4.6 포함) · §5 스코프 격리(최디자) 브라우저 검증.
 3. `COOA_DB_USER=$USER bin/rails console` → ⑤ owner 가드 3종 → ⑥ 격리 3-라이너 → ⑦ audit UPDATE/DELETE 거부.
 4. `COOA_DB_USER=$USER bin/rails rls:audit` & `audit:verify` & `audit:detect_bola`.
 
@@ -384,17 +359,27 @@ COOA_DEMO_STEP_UP_OFF=1 bin/dev  # ★ frictionless: 승인 무마찰 (re_auth_f
 ### ☐ 4.5 초대 취소 `[브라우저]`
 초대 생성 → 취소 → 링크 열면 무효 · audit_logs에 invitation.create/revoke 기록(`AuditLog.where("action LIKE 'invitation%'")`).
 
+### ☐ 4.6 제품-스코프 초대 → 제한된 멤버 `[브라우저 2개]` — Stage 3
+김쿠아(owner)로 멤버 페이지 → 초대 폼에서 이메일·역할(`external_collaborator`)·**범위=제품 하나**(예: CO0100)
+선택 → 초대 생성 → **링크 복사** → 시크릿 창에서 열기 → 랜딩에 "**<제품명>** 제품에 한정 참여합니다" 표시 →
+Google로 수락 → 대시보드에 **그 제품만** 보이고(조상 브랜드명 무유출·§5.1과 동일) 타 제품 진입 차단(§5.2).
+멤버 로스터에 해당 계정이 **`external_collaborator @ <제품명>` 스코프 배지**로 등재 · 배지 옆 **×**로 회수 ·
+행 인라인 **"+ 스코프"**로 두 번째 제품 추가 → 재로그인 없이 즉시 가시. audit_logs에 `invitation.create`(scope
+포함)·`invitation.accept`·`role_assignment.grant`/`revoke` 기록.
+
 ## 5. 스코프 grant (제품 한정 접근) 검증 — Stage 2 `[브라우저]`
 
 역할 부여가 **테넌트 전역이 아니라 제품 하나에만** 묶였을 때(external_collaborator), 그 신원이 해당 제품
 서브트리만 보고 그 밖은 접근조차 못 하는지 확인한다. 시드에 검증용 신원 **최디자(choi@partner.example —
 CO0200 제품 한정)** 가 이미 있으므로 콘솔 0으로 시작 가능.
 
-> ⚠️ **Stage 3 전 외부 협력자 초대 금지.** 현재 초대 수락 경로(§4.2)는 무조건 **tenant-wide** grant를
-> 만든다(scope 초대 미구현). 외부 협력자를 초대하면 전 테넌트(모든 브랜드)가 노출된다. 외부 협력자는
-> Stage 3의 scope 초대가 들어오기 전까지 **콘솔에서 product-scope grant로만** 생성하라(아래 레시피).
+> ✅ **Stage 3 반영.** 외부 협력자를 **제품-스코프 초대**로 직접 온보딩할 수 있다(§4.6). 초대 폼의 "범위"에서
+> 제품을 고르면 수락 시 그 제품 서브트리 한정 `external_collaborator` grant가 생성된다(**tenant-wide 아님** —
+> 전 테넌트 유출 없음). `scope_product_id`/`scope_component_id`는 **테넌트 소속 검증**(RLS로 교차-테넌트·미존재는
+> 불가시 → 거부)을 초대·직접 grant 양 경로가 공유한다.
 >
-> 📌 **Stage 3 구현 각주:** 스코프 초대 경로는 `scope_product_id`/`scope_component_id`의 **테넌트 소속 검증 필수**(FK는 존재만 확인 — 교차-테넌트 정합은 앱 검증 책임).
+> 📌 **이메일당 pending 초대는 1건**(부분 유니크). 한 계정을 **여러 제품**에 스코프하려면 초대 수락 후
+> **직접 grant**로 추가한다 — 멤버 로스터의 행 인라인 **"+ 스코프"** 폼(제품 선택) 또는 §5.4 콘솔 레시피.
 
 ### ☐ 5.1 스코프 신원 로그인 → 제한된 트리 `[브라우저]`
 계정 픽커에서 **최디자**로 로그인 → 대시보드/사이드바에 **CO0200(미국·시카 수딩 크림 SKU)만** 보임.

@@ -2,7 +2,7 @@ class Product < ApplicationRecord
   include TenantScoped
   # 자기참조 트리(노션형) — 루트=상위 개념, 자식=변형(국가·용량 등)
   # inverse_of: 트리를 루트→children로 렌더하면 각 child의 parent가 메모리에서 역참조된다 →
-  # path_label/self_and_ancestors의 조상 walk가 쿼리 0건(사이드바가 매 페이지 렌더하는 N+1 제거).
+  # self_and_ancestors의 조상 walk가 쿼리 0건(사이드바가 매 페이지 렌더하는 N+1 제거).
   belongs_to :parent, class_name: "Product", optional: true, inverse_of: :children
   belongs_to :owner, class_name: "User", optional: true
   has_many :children, -> { order(:position, :id) }, class_name: "Product",
@@ -24,10 +24,6 @@ class Product < ApplicationRecord
 
   def country_label = ApplicationRecord.country_label(country)
   def member_for(role) = product_members.find_by(role: role)&.user
-
-  # 전체 경로(루트 › … › self) — 구조적 전체 체인(액터 무관). 화면 표시는 가시성 인지 헬퍼
-  # UiHelper#node_path_label을 쓴다(스코프 계정에 권한 없는 상위 브랜드명 비노출·Stage 2 D3).
-  def path_label = self_and_ancestors.map(&:name).join(" › ")
 
   # 폴더/항목은 kind로 구분(구조 무관) — 빈 폴더도 폴더로 동작
   def folder? = kind == "folder"

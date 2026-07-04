@@ -32,6 +32,14 @@
           <% end %>
         </select>
       </div>
+      <div>
+        <%# 스코프(D4): "전체 조직"=tenant-wide · 제품 선택=그 제품 서브트리 한정(외부 에이전시). 컨트롤러가 scope_type 도출. %>
+        <label class="block text-[11px] font-bold text-line">범위</label>
+        <select name="scope_product_id" class="mt-1 rounded-lg border border-line-soft px-2 py-2 text-[13px]">
+          <option value="">전체 조직</option>
+          <%= options_for_select(scope_product_options(@scope_products)) %>
+        </select>
+      </div>
       <button type="submit" class="cursor-pointer rounded-lg bg-cooa-gradient px-4 py-2 text-[13px] font-bold text-white">초대 만들기</button>
     <% end %>
   <% end %>
@@ -55,21 +63,57 @@
     </div>
   <% end %>
 
-  <%# 멤버 로스터 %>
+  <%# 멤버 로스터 — tenant-wide 역할 배지 + 제품-스코프 grant 배지(회수·인라인 추가) %>
   <div class="mb-2 text-[13px] font-bold text-ink">멤버 (<%= @accounts.size %>)</div>
   <div class="divide-y divide-line-soft rounded-xl border border-line">
     <% @accounts.each do |acc| %>
-      <div class="flex items-center gap-3 px-3 py-2.5 text-[13px]">
-        <%= avatar(acc.user, size: 26, ring: false) %>
-        <span class="min-w-0 flex-1 truncate">
-          <span class="font-medium text-ink"><%= acc.name || acc.email %></span>
-          <span class="ml-1 text-[12px] text-line"><%= acc.email %></span>
-        </span>
-        <% acc.role_assignments.select { |ra| ra.active? }.map(&:role_key).uniq.each do |rk| %>
-          <span class="rounded bg-tint px-1.5 py-0.5 text-[11px] text-line"><%= rk %></span>
+      <% active_ras = acc.role_assignments.select(&:active?) %>
+      <div class="px-3 py-2.5 text-[13px]">
+        <div class="flex items-center gap-3">
+          <%= avatar(acc.user, size: 26, ring: false) %>
+          <span class="min-w-0 flex-1 truncate">
+            <span class="font-medium text-ink"><%= acc.name || acc.email %></span>
+            <span class="ml-1 text-[12px] text-line"><%= acc.email %></span>
+          </span>
+          <%# tenant-wide 역할(전 조직 적용) %>
+          <% active_ras.select(&:tenant_wide?).map(&:role_key).uniq.each do |rk| %>
+            <span class="rounded bg-tint px-1.5 py-0.5 text-[11px] text-line"><%= rk %></span>
+          <% end %>
+          <span class="rounded-full px-2 py-0.5 text-[11px] font-bold <%= acc.active? ? "text-white" : "text-line bg-tint" %>"
+                <%= 'style=background:#5f8f2e'.html_safe if acc.active? %>><%= acc.status %></span>
+        </div>
+
+        <%# 제품-한정 grant(스코프 배지) + @can_manage면 회수·추가 %>
+        <% scoped = active_ras.reject(&:tenant_wide?) %>
+        <% if scoped.any? || @can_manage %>
+          <div class="mt-2 flex flex-wrap items-center gap-1.5 pl-9">
+            <% scoped.each do |ra| %>
+              <span class="inline-flex items-center gap-1 rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium text-cooa">
+                <%= ra.role_key %> @ <%= ra.scope_product&.name || ra.scope_component&.display_name %>
+                <% if @can_manage %>
+                  <%= button_to "×", role_assignment_path(ra), method: :delete,
+                        form: { class: "inline-block leading-none", data: { turbo_confirm: "#{ra.scope_product&.name} 스코프 권한을 회수할까요?" } },
+                        class: "cursor-pointer px-0.5 leading-none text-cooa/60 hover:text-cooa" %>
+                <% end %>
+              </span>
+            <% end %>
+            <% if @can_manage %>
+              <%# 인라인 스코프 권한 추가(초대 우회 — 기존 계정을 특정 제품에 재-스코프) %>
+              <%= form_with url: role_assignments_path, method: :post, class: "inline-flex items-center gap-1" do %>
+                <%= hidden_field_tag :account_id, acc.id %>
+                <select name="role_key" class="rounded border border-line-soft px-1 py-1 text-[11px]">
+                  <% Invitation::INVITABLE_ROLE_KEYS.each do |rk| %>
+                    <option value="<%= rk %>" <%= "selected" if rk == "external_collaborator" %>><%= rk %></option>
+                  <% end %>
+                </select>
+                <select name="scope_product_id" class="rounded border border-line-soft px-1 py-1 text-[11px]">
+                  <%= options_for_select(scope_product_options(@scope_products)) %>
+                </select>
+                <button type="submit" class="cursor-pointer rounded bg-tint px-2 py-1 text-[11px] font-bold text-cooa hover:bg-accent">+ 스코프</button>
+              <% end %>
+            <% end %>
+          </div>
         <% end %>
-        <span class="rounded-full px-2 py-0.5 text-[11px] font-bold <%= acc.active? ? "text-white" : "text-line bg-tint" %>"
-              <%= 'style=background:#5f8f2e'.html_safe if acc.active? %>><%= acc.status %></span>
       </div>
     <% end %>
   </div>

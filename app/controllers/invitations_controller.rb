@@ -3,13 +3,18 @@
 class InvitationsController < ApplicationController
   def create
     authorize current_organization, :manage_members?
+    # 스코프 초대(D4): scope_product_id가 있으면 product 스코프, 없으면 tenant-wide(하위호환). 모델 검증이 게이트
+    # (교차테넌트/미존재 제품·역할 정합은 Invitation 검증에서 거부 → 아래 RecordInvalid rescue로 안내).
+    scope_product_id = params[:scope_product_id].presence
     invitation, raw = Invitation.generate!(
       email: params[:email], role_key: params[:role_key],
-      invited_by_account_id: current_account.id
+      invited_by_account_id: current_account.id,
+      scope_type: (scope_product_id ? "product" : "tenant"), scope_product_id: scope_product_id
     )
     AuditLog.record!(action: "invitation.create", resource_type: "Invitation",
                      resource_id: nil, outcome: "allow", # bigint 도메인 공간 — uuid는 after로
-                     after: { invitation_id: invitation.id, email: invitation.email, role_key: invitation.role_key },
+                     after: { invitation_id: invitation.id, email: invitation.email, role_key: invitation.role_key,
+                              scope_type: invitation.scope_type, scope_product_id: invitation.scope_product_id },
                      request_id: request.request_id, source_ip: request.remote_ip,
                      user_agent: request.user_agent)
     # 메일 자동발송 확장점: raw가 존재하는 유일한 시점이 여기다.

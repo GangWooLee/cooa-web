@@ -12,11 +12,16 @@ class RoleAssignment < ApplicationRecord
 
   belongs_to :account
   belongs_to :organization, foreign_key: :tenant_id, inverse_of: :role_assignments
+  # Typed scope targets (both NULL for a tenant-wide grant). optional — only set for a scoped grant.
+  # Loaded for display (member roster "role@제품" badge — includes(:scope_product) avoids N+1).
+  belongs_to :scope_product,   class_name: "Product",   optional: true
+  belongs_to :scope_component, class_name: "Component", optional: true
 
   validates :role_key, inclusion: { in: ROLE_KEYS }
   validates :scope_type, inclusion: { in: SCOPE_TYPES }
   validates :market, inclusion: { in: MARKETS }, allow_nil: true
   validate :scope_columns_match_type
+  validate :scope_target_in_tenant
   validate :owner_must_be_tenant_wide
 
   before_destroy :guard_last_owner          # P6 #3: removing the last owner grant is refused
@@ -45,6 +50,20 @@ class RoleAssignment < ApplicationRecord
     when "component"
       errors.add(:scope_component_id, "is required for a component-scoped grant") if scope_component_id.blank?
       errors.add(:scope_product_id, "must be blank for a component-scoped grant") if scope_product_id.present?
+    end
+  end
+
+  # A scoped grant must target a row in THIS tenant. Primary defense = an EXPLICIT tenant_id match against the
+  # record's own tenant_id — this holds even on the owner connection that bypasses RLS, so it is verifiable in
+  # tests and on any privileged path (not silently reliant on RLS invisibility). RLS invisibility remains a
+  # 2nd-line backstop on app connections. Shared by BOTH grant paths (invitation acceptance pass-through + the
+  # direct-grant controller), so neither can attach a grant to another tenant's product.
+  def scope_target_in_tenant
+    if scope_product_id.present? && !Product.where(id: scope_product_id, tenant_id: tenant_id).exists?
+      errors.add(:scope_product_id, "must reference a product in this tenant")
+    end
+    if scope_component_id.present? && !Component.where(id: scope_component_id, tenant_id: tenant_id).exists?
+      errors.add(:scope_component_id, "must reference a component in this tenant")
     end
   end
 

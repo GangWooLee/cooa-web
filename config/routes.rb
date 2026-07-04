@@ -67,6 +67,8 @@ Rails.application.routes.draw do
   resources :members, only: [ :index ]
   resources :invitations, only: [ :create, :destroy ]
   get "/invite/:token", to: "invitation_acceptances#show", as: :invite
+  # 스코프 grant 직접 부여/회수(Stage 3 D5) — 기존 계정을 특정 제품에 재-스코프(초대 우회)
+  resources :role_assignments, only: [ :create, :destroy ]
 
   # 상단 히스토리 탭 닫기(세션)
   delete "/tabs/:id", to: "tabs#destroy", as: :tab

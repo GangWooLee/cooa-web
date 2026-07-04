@@ -75,6 +75,17 @@ class InvitationSignupTest < ActionDispatch::IntegrationTest
     assert_nil Account.find_by(email: "thief@evil.test")
   end
 
+  test "scoped 초대도 동일 게이트: 이메일 불일치(토큰 탈취) → reject·미소비·grant 미생성" do
+    co0100 = Product.find_by!(code: "CO0100")
+    inv, raw = Invitation.generate!(email: "victim@partner.dev", role_key: "external_collaborator",
+                                    invited_by_account_id: @kim.id,
+                                    scope_type: "product", scope_product_id: co0100.id)
+    visit_invite_then_login(raw, uid: "g-thief-scoped", email: "thief@evil.test")
+    assert_redirected_to new_session_path
+    assert inv.reload.pending?, "스코프 초대도 이메일 불일치면 소비되면 안 됨(동일 게이트)"
+    assert_nil Account.find_by(email: "thief@evil.test")
+  end
+
   test "만료 티켓 → 랜딩부터 무효 + 콜백도 reject" do
     inv, raw = invite!
     inv.update!(expires_at: 1.minute.ago)

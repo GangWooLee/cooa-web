@@ -641,7 +641,7 @@ columns:
     default_function:
     collation:
     comment:
-  - &44 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &47 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -664,7 +664,7 @@ columns:
     default_function:
     collation:
     comment:
-  - &45 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &48 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -676,7 +676,7 @@ columns:
     default_function:
     collation:
     comment:
-  - &46 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &49 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -688,7 +688,7 @@ columns:
     default_function:
     collation:
     comment:
-  - &47 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &50 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -1720,6 +1720,42 @@ columns:
     default_function:
     collation:
     comment:
+  - &44 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: scope_component_id
+    cast_type: *7
+    sql_type_metadata: *8
+    'null': true
+    default:
+    default_function:
+    collation:
+    comment:
+  - &45 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: scope_product_id
+    cast_type: *7
+    sql_type_metadata: *8
+    'null': true
+    default:
+    default_function:
+    collation:
+    comment:
+  - &46 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: scope_type
+    cast_type: *3
+    sql_type_metadata: *4
+    'null': false
+    default: tenant
+    default_function:
+    collation:
+    comment:
   - *16
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
@@ -2160,42 +2196,9 @@ columns:
     collation:
     comment:
   - *43
-  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
-    serial:
-    identity:
-    generated: ''
-    name: scope_component_id
-    cast_type: *7
-    sql_type_metadata: *8
-    'null': true
-    default:
-    default_function:
-    collation:
-    comment:
-  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
-    serial:
-    identity:
-    generated: ''
-    name: scope_product_id
-    cast_type: *7
-    sql_type_metadata: *8
-    'null': true
-    default:
-    default_function:
-    collation:
-    comment:
-  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
-    serial:
-    identity:
-    generated: ''
-    name: scope_type
-    cast_type: *3
-    sql_type_metadata: *4
-    'null': false
-    default: tenant
-    default_function:
-    collation:
-    comment:
+  - *44
+  - *45
+  - *46
   - *16
   - *13
   schema_migrations:
@@ -2212,10 +2215,10 @@ columns:
     collation:
     comment:
   screening_findings:
-  - *44
-  - *45
-  - *46
   - *47
+  - *48
+  - *49
+  - *50
   - *30
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
@@ -2230,7 +2233,7 @@ columns:
     collation:
     comment:
   - *9
-  - &48 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &51 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -2345,7 +2348,7 @@ columns:
   - *34
   - *31
   - *9
-  - *48
+  - *51
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial: true
     identity:
@@ -3697,4 +3700,4 @@ indexes:
     comment:
     valid: true
   users: []
-version: 20260704000004
+version: 20260704000005

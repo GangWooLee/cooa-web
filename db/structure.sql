@@ -636,7 +636,11 @@ CREATE TABLE public.invitations (
     accepted_at timestamp(6) without time zone,
     revoked_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    scope_type character varying DEFAULT 'tenant'::character varying NOT NULL,
+    scope_product_id bigint,
+    scope_component_id bigint,
+    CONSTRAINT inv_scope_coherence CHECK (((((scope_type)::text = 'tenant'::text) AND (scope_product_id IS NULL) AND (scope_component_id IS NULL)) OR (((scope_type)::text = 'product'::text) AND (scope_product_id IS NOT NULL) AND (scope_component_id IS NULL)) OR (((scope_type)::text = 'component'::text) AND (scope_product_id IS NULL) AND (scope_component_id IS NOT NULL))))
 );
 
 ALTER TABLE ONLY public.invitations FORCE ROW LEVEL SECURITY;
@@ -2047,6 +2051,14 @@ ALTER TABLE ONLY public.active_storage_variant_records
 
 
 --
+-- Name: invitations fk_rails_a35f83f43c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invitations
+    ADD CONSTRAINT fk_rails_a35f83f43c FOREIGN KEY (scope_product_id) REFERENCES public.products(id) ON DELETE CASCADE;
+
+
+--
 -- Name: accounts fk_rails_b1e30bebc8; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2108,6 +2120,14 @@ ALTER TABLE ONLY public.role_assignments
 
 ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT fk_rails_ec5cb9c3f9 FOREIGN KEY (tenant_id) REFERENCES public.organizations(id);
+
+
+--
+-- Name: invitations fk_rails_f10119a075; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invitations
+    ADD CONSTRAINT fk_rails_f10119a075 FOREIGN KEY (scope_component_id) REFERENCES public.components(id) ON DELETE CASCADE;
 
 
 --
@@ -2428,6 +2448,7 @@ CREATE POLICY tenant_isolation ON public.screening_runs USING ((tenant_id = (NUL
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260704000005'),
 ('20260704000004'),
 ('20260704000003'),
 ('20260704000002'),

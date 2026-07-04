@@ -85,7 +85,8 @@ class ProductsControllerTest < ActionDispatch::IntegrationTest
     leaf = Product.find_by(code: "CO0001")
     get product_path(leaf)
     assert_response :success
-    assert_includes @response.body, leaf.path_label
+    # tenant-wide 기본 계정(kim)엔 가시 조상 = 전체 조상 → node_path_label이 전체 경로를 렌더.
+    assert_includes @response.body, leaf.self_and_ancestors.map(&:name).join(" › ")
   end
 
   test "국가 자유입력 정규화 — 한글/코드는 코드 저장" do

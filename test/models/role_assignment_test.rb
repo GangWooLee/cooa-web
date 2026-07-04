@@ -40,6 +40,33 @@ class RoleAssignmentTest < ActiveSupport::TestCase
     assert build(role_key: "owner", scope_type: "tenant").valid?
   end
 
+  # Stage 3 (D3): both grant paths (invitation acceptance + direct grant) share this backstop — a scoped
+  # grant must target a row VISIBLE in this tenant. RLS makes a cross-tenant / non-existent id invisible →
+  # exists? is false → fail-closed. (The DB FK still rejects a truly absent id; this gives a clean model
+  # error and closes the cross-tenant window before the insert.)
+  test "product-scoped grant must reference a product visible in this tenant" do
+    ra = build(scope_type: "product", scope_product_id: 999_999_999)
+    refute ra.valid?
+    assert ra.errors[:scope_product_id].present?
+  end
+
+  test "component-scoped grant must reference a component visible in this tenant" do
+    ra = build(scope_type: "component", scope_component_id: 999_999_999)
+    refute ra.valid?
+    assert ra.errors[:scope_component_id].present?
+  end
+
+  # Cross-tenant defense must be VERIFIABLE on the owner connection (test env bypasses RLS): the explicit
+  # tenant_id match rejects a REAL product that lives in ANOTHER tenant — not merely a non-existent id. Under
+  # the old `where(id:).exists?` this passed (owner sees all tenants) → the defense was untestable.
+  test "product-scoped grant in another tenant is rejected (explicit tenant_id match, owner-connection verifiable)" do
+    other_org = Organization.create!(name: "Other Tenant", region: "US")
+    other_product = Product.create!(tenant_id: other_org.id, name: "OtherP", kind: "folder")
+    ra = build(scope_type: "product", scope_product_id: other_product.id)
+    refute ra.valid?
+    assert ra.errors[:scope_product_id].present?
+  end
+
   test "tenant_wide scope selects only unscoped grants" do
     tw = RoleAssignment.create!(account: @account, tenant_id: @org_id, role_key: "viewer", scope_type: "tenant")
     scoped = RoleAssignment.create!(account: @account, tenant_id: @org_id, role_key: "external_collaborator",
