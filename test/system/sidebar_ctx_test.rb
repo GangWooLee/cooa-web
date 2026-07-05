@@ -1,6 +1,7 @@
 require "application_system_test_case"
 
-# 사이드바 우클릭 컨텍스트 메뉴(req5) + 스크리닝 스캔·순차 reveal(req1·2)
+# 사이드바 우클릭 컨텍스트 메뉴(req5) + 스크리닝 스캔·순차 reveal(req1·2).
+# W2 이후 사이드바 트리는 작업실 진입 후 컨텍스트 트리로 렌더된다 → 우클릭 대상 노드가 있는 작업실로 진입.
 class SidebarCtxTest < ApplicationSystemTestCase
   def hero_version
     Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box").component_versions.detect(&:current)
@@ -8,8 +9,9 @@ class SidebarCtxTest < ApplicationSystemTestCase
 
   test "사이드바 우클릭 → 컨텍스트 메뉴 + 삭제" do
     page.current_window.resize_to(1440, 900)
-    leaf = Product.find_by(code: "CO0100")
-    visit root_path
+    leaf = Product.find_by(code: "CO0100")            # 비타민C › 중국
+    vitc = Product.find_by(name: "비타민C 브라이트닝 앰플")
+    visit workspace_path(vitc.derived_workspace)                            # 그 작업실 진입 → 컨텍스트 트리에 CO0100
     # 합성 contextmenu 디스패치(좌표 우클릭은 불안정) — 노드는 닫힌 details 안일 수 있어 visible: :all
     node = find("aside [data-node-id='#{leaf.id}']", visible: :all)
     node.execute_script("this.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:120,clientY:220}))")

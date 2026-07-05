@@ -1,0 +1,99 @@
+<%# 작업실 멤버 관리(W3) — manage_members 보유자만(_brand_header에서 게이트). 전사 관리로 이탈하지 않고
+    이 작업실에서 초대·추가·회수·pending을 다룬다. 스코프는 hidden으로 이 작업실(@workspace)에 고정되고 서버가
+    authorize_member_write!로 재확인한다(범위 선택 노출 없음). 발급 직후 링크는 아래 배너로 이 페이지에 노출. %>
+<%= render "shared/invite_link_banner" %>
+
+<details class="mt-3 rounded-xl border border-line bg-white" <%= "open" if flash[:invite_link].present? %>>
+  <summary class="cursor-pointer list-none px-3 py-2 text-[13px] font-bold text-cooa">＋ 멤버 초대·관리</summary>
+  <div class="space-y-4 border-t border-line-soft p-3">
+    <%# ① 이 작업실에 초대 — email + 역할만(범위 선택 없음, 컨트롤러가 이 작업실로 스코프) %>
+    <div>
+      <div class="mb-1.5 text-[12px] font-bold text-ink">이 작업실에 초대</div>
+      <%= form_with url: invitations_path, method: :post, class: "flex flex-wrap items-end gap-2" do %>
+        <%= hidden_field_tag :scope_workspace_id, @workspace.id %>
+        <%= hidden_field_tag :return_to_workspace, @workspace.id %>
+        <div class="min-w-0 flex-1">
+          <label class="block text-[11px] font-bold text-line">이메일</label>
+          <input type="email" name="email" required placeholder="teammate@company.com"
+                 class="mt-1 w-full rounded-lg border border-line-soft px-3 py-2 text-[13px] focus:border-cooa focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-line">역할</label>
+          <select name="role_key" class="mt-1 rounded-lg border border-line-soft px-2 py-2 text-[13px]">
+            <%= role_option_tags(Authz::RoleLabels::WORKSPACE_ROLE_KEYS, selected: "contributor") %>
+          </select>
+        </div>
+        <button type="submit" class="cursor-pointer rounded-lg bg-cooa-gradient px-4 py-2 text-[13px] font-bold text-white">초대 만들기</button>
+      <% end %>
+    </div>
+
+    <%# ② 기존 멤버를 이 작업실에 추가(초대 우회 — 계정 select + 역할, 스코프는 이 작업실 고정) %>
+    <% if @workspace_addable.any? %>
+      <div>
+        <div class="mb-1.5 text-[12px] font-bold text-ink">기존 멤버 추가</div>
+        <%= form_with url: role_assignments_path, method: :post, class: "flex flex-wrap items-end gap-2" do %>
+          <%= hidden_field_tag :scope_workspace_id, @workspace.id %>
+          <%= hidden_field_tag :return_to_workspace, @workspace.id %>
+          <div class="min-w-0 flex-1">
+            <label class="block text-[11px] font-bold text-line">멤버</label>
+            <select name="account_id" class="mt-1 w-full rounded-lg border border-line-soft px-2 py-2 text-[13px]">
+              <% @workspace_addable.each do |acc| %>
+                <option value="<%= acc.id %>"><%= acc.name || acc.email %></option>
+              <% end %>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-line">역할</label>
+            <select name="role_key" class="mt-1 rounded-lg border border-line-soft px-2 py-2 text-[13px]">
+              <%= role_option_tags(Authz::RoleLabels::WORKSPACE_ROLE_KEYS, selected: "external_collaborator") %>
+            </select>
+          </div>
+          <button type="submit" class="cursor-pointer rounded-lg bg-tint px-4 py-2 text-[13px] font-bold text-cooa transition hover:bg-accent">작업실에 추가</button>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%# ④ 이 작업실의 대기 중 초대(서브트리 스코프 필터) %>
+    <% if @workspace_pending.any? %>
+      <div>
+        <div class="mb-1.5 text-[12px] font-bold text-ink">대기 중인 초대 (<%= @workspace_pending.size %>)</div>
+        <div class="divide-y divide-line-soft rounded-lg border border-line-soft">
+          <% @workspace_pending.each do |inv| %>
+            <div class="flex items-center gap-2 px-3 py-2 text-[12px]">
+              <span class="min-w-0 flex-1 truncate font-medium text-ink"><%= inv.email %></span>
+              <span class="rounded bg-tint px-1.5 py-0.5 text-[11px] text-line" title="<%= role_description(inv.role_key) %>"><%= role_label(inv.role_key) %></span>
+              <span class="text-[11px] text-line"><%= inv.expires_at.strftime("%m.%d") %>까지</span>
+              <%= button_to "취소", invitation_path(inv), method: :delete, params: { return_to_workspace: @workspace.id },
+                    form: { data: { turbo_confirm: "#{inv.email} 초대를 취소할까요?" } },
+                    class: "cursor-pointer rounded px-2 py-1 text-[11px] text-line transition hover:bg-tint hover:text-cooa" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# ③ 현재 멤버 + 회수(이 작업실 스코프 RA만 — 각 배지 옆 ×) %>
+    <% if @workspace_members.any? %>
+      <div>
+        <div class="mb-1.5 text-[12px] font-bold text-ink">현재 멤버 (<%= @workspace_members.size %>)</div>
+        <div class="divide-y divide-line-soft rounded-lg border border-line-soft">
+          <% @workspace_members.each do |acc| %>
+            <% ras = acc.role_assignments.select { |ra| ra.active? && !ra.tenant_wide? && (ra.scope_workspace_id == @workspace.id || @workspace_subtree_ids.include?(ra.scope_product_id || ra.scope_component&.product_id)) } %>
+            <div class="flex items-center gap-2 px-3 py-2 text-[12px]">
+              <%= avatar(acc.user, size: 22, ring: false) %>
+              <span class="min-w-0 flex-1 truncate font-medium text-ink"><%= acc.name || acc.email %></span>
+              <% ras.each do |ra| %>
+                <span class="inline-flex items-center gap-1 rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium text-cooa" title="<%= role_description(ra.role_key) %>">
+                  <%= role_label(ra.role_key) %>
+                  <%= button_to "×", role_assignment_path(ra), method: :delete, params: { return_to_workspace: @workspace.id },
+                        form: { class: "inline-block leading-none", data: { turbo_confirm: "#{acc.name || acc.email}님을 #{@workspace.name} 작업실에서 제외할까요?" } },
+                        class: "cursor-pointer px-0.5 leading-none text-cooa/60 transition hover:text-cooa" %>
+                </span>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</details>

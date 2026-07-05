@@ -9,7 +9,7 @@ class BrandsPageTest < ActionDispatch::IntegrationTest
   def vitc    = Product.find_by!(name: "비타민C 브라이트닝 앰플")
 
   test "브랜드 페이지는 그 서브트리만 렌더 · 타 브랜드 노드 부재" do
-    get brand_path(id: retinol.id)
+    get workspace_path(id: retinol.workspace_id)
     assert_response :success
     # 메인 트리(테이블) 행 id — 사이드바(전체 브랜드 트리)와 구분해 dashboard @rows만 검증.
     table_ids = css_select("table tbody tr[data-node-id]").map { |tr| tr["data-node-id"] }
@@ -21,40 +21,41 @@ class BrandsPageTest < ActionDispatch::IntegrationTest
   end
 
   test "멤버 요약: 스코프 grant 보유자 배지(시카=최디자) · 스코프 없는 브랜드는 안내문" do
-    get brand_path(id: sica.id) # 시카 서브트리엔 choi(external @ CO0200)
+    get workspace_path(id: sica.workspace_id) # 시카 서브트리엔 choi(external @ CO0200)
     assert_response :success
-    assert_match "브랜드 팀", response.body
+    assert_match "작업실", response.body
     assert_match "최디자", response.body, "그 브랜드 체인 스코프 멤버는 요약에 표시"
 
-    get brand_path(id: retinol.id) # 레티놀엔 스코프 grant 없음
+    get workspace_path(id: retinol.workspace_id) # 레티놀엔 스코프 grant 없음
     assert_response :success
-    assert_match "지정된 스코프 멤버가 없습니다", response.body
+    assert_match "지정된 멤버가 없습니다", response.body
   end
 
   test "비타민C 브랜드 페이지 멤버 요약에 정브랜(brand_admin scoped)" do
-    get brand_path(id: vitc.id)
+    get workspace_path(id: vitc.workspace_id)
     assert_response :success
     assert_match "정브랜", response.body
   end
 
-  test "관리 권한자(kim owner)는 멤버 관리 링크 노출" do
-    get brand_path(id: retinol.id) # 기본 로그인 = kim(owner)
-    assert_match "멤버 관리", response.body
+  test "관리 권한자(kim owner)는 작업실 인라인 멤버 관리 패널 노출" do
+    get workspace_path(id: retinol.workspace_id) # 기본 로그인 = kim(owner)
+    # 구 "멤버 관리" 이탈 링크 → 작업실 페이지 인라인 패널(_workspace_members). 초대 폼 헤딩으로 단언.
+    assert_match "이 작업실에 초대", response.body
   end
 
   test "비가시 브랜드(스코프 계정의 타 브랜드) 접근 → root redirect(콘텐츠 미노출)" do
     sign_in_as(Account.find_by!(email: "choi@partner.example")) # CO0200만 스코프 — 레티놀 비가시
-    get brand_path(id: retinol.id)
+    get workspace_path(id: retinol.workspace_id)
     assert_redirected_to root_path
   end
 
   test "미존재 브랜드 id → 404" do
-    get brand_path(id: 999_999)
+    get workspace_path(id: 999_999)
     assert_response :not_found
   end
 
   test "브랜드 페이지 렌더는 N+1 없음(critical path)" do
-    assert_no_n_plus_one { get brand_path(id: retinol.id) }
+    assert_no_n_plus_one { get workspace_path(id: retinol.workspace_id) }
     assert_response :success
   end
 end

@@ -1,30 +1,31 @@
-<%# 브랜드 팀 페이지 헤더(T4) — /brands/:id에서만 렌더(@brand). 브랜드명 + 스코프 멤버 요약 배지 +
-    (관리 권한 시) 멤버 관리 링크. 멤버 요약 = 그 브랜드 서브트리에 스코프 grant를 가진 계정(전역 역할 제외). %>
+<%# 작업실 페이지 헤더 + 멤버 관리(W3) — /workspaces/:id에서만 렌더(@workspace). 작업실명 + 멤버 요약 배지 +
+    (manage_members 시) 인라인 멤버 관리 패널. 멤버 요약 = 그 작업실에 스코프 grant를 가진 계정(전역 역할 제외).
+    이전의 "멤버 관리" 이탈 링크는 인라인 패널(_workspace_members)로 대체 — 컨텍스트 유지. %>
 <div class="border-b border-line-soft bg-tint/40 px-6 py-3">
   <div class="flex flex-wrap items-center justify-between gap-2">
     <div class="flex min-w-0 items-center gap-2">
       <%= ui_icon "layers", size: 18, klass: "shrink-0 text-cooa" %>
-      <span class="truncate text-[16px] font-bold text-ink"><%= @brand.name %></span>
-      <span class="shrink-0 rounded-full bg-white px-2 py-0.5 text-[11px] text-line">브랜드 팀</span>
+      <span class="truncate text-[16px] font-bold text-ink"><%= current_workspace_label %></span>
+      <span class="shrink-0 rounded-full bg-white px-2 py-0.5 text-[11px] text-line">작업실</span>
     </div>
-    <% if policy(@brand).manage_members? %>
-      <%= link_to "멤버 관리", members_path, data: { turbo: false },
-            class: "shrink-0 rounded-lg border border-cooa/40 bg-white px-3 py-1.5 text-[12px] font-bold text-cooa transition hover:bg-accent" %>
-    <% end %>
   </div>
   <div class="mt-2 flex flex-wrap items-center gap-2">
-    <% if @brand_members.any? %>
-      <% @brand_members.each do |acc| %>
+    <% if @workspace_members.any? %>
+      <% @workspace_members.each do |acc| %>
         <span class="inline-flex items-center gap-1.5 rounded-full bg-white px-2 py-1 text-[12px]">
           <%= avatar(acc.user, size: 20, ring: false) %>
           <span class="font-medium text-ink"><%= acc.name || acc.email %></span>
           <% acc.role_assignments.select { |ra| ra.active? && !ra.tenant_wide? }.map(&:role_key).uniq.each do |rk| %>
-            <span class="rounded bg-accent px-1 text-[10px] font-bold text-cooa"><%= rk %></span>
+            <span class="rounded bg-accent px-1 text-[10px] font-bold text-cooa" title="<%= role_description(rk) %>"><%= role_label(rk) %></span>
           <% end %>
         </span>
       <% end %>
     <% else %>
-      <span class="text-[12px] text-line">이 브랜드에 지정된 스코프 멤버가 없습니다 — 전 조직 역할 멤버가 관리합니다.</span>
+      <span class="text-[12px] text-line">이 작업실에 지정된 멤버가 없습니다 — 전 조직 역할 멤버가 관리합니다.</span>
     <% end %>
   </div>
+
+  <% if @can_manage_workspace %>
+    <%= render "dashboard/workspace_members" %>
+  <% end %>
 </div>

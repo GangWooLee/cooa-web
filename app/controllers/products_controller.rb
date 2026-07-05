@@ -17,13 +17,13 @@ class ProductsController < ApplicationController
   def create
     @product = Product.new(product_params)
     apply_creation_context(@product) # parent_id(선택 기준) + position(형제 맨 아래)
+    assign_creation_workspace(@product) # 루트면 작업실 귀속(현재 작업실 주입 · 없으면 모델이 새 작업실 생성)
     @product.name = default_name(@product) if @product.name.blank?
     authorize @product, :manage_product?
     authorize @product, :manage_members? if params[:members].present?
     if @product.save
       sync_members(@product) if @product.leaf? # 항목 생성 시 담당자(있으면)
-      # 사이드바(+)에서 만들면 사이드바에서, 그 외(대시보드 상단 아이콘)는 대시보드에서 인라인 명명
-      redirect_to root_path(params[:origin] == "side" ? { rename_side: @product.id } : { rename: @product.id })
+      redirect_to creation_redirect(@product)
     else
       redirect_back fallback_location: root_path,
                     alert: @product.errors.full_messages.to_sentence.presence || "항목을 만들지 못했습니다."
@@ -38,7 +38,8 @@ class ProductsController < ApplicationController
     authorize @product, :manage_members? if params[:members].present?
     if @product.update(product_params)
       sync_members(@product) if @product.leaf?
-      redirect_to(params[:return] == "tree" ? root_path : product_path(@product))
+      # 트리 인라인 rename → 그 노드의 작업실로 복귀(focus로 조상 펼침·노드 가시). 그 외 → 드로어.
+      redirect_to(params[:return] == "tree" ? root_path(focus: @product.id) : product_path(@product))
     else
       redirect_back fallback_location: product_path(@product),
                     alert: @product.errors.full_messages.to_sentence.presence || "변경 사항을 저장하지 못했습니다."
@@ -48,8 +49,10 @@ class ProductsController < ApplicationController
   def destroy
     product = Product.find(params[:id])
     authorize product, :manage_product?
+    workspace = workspace_of_node(product) # 삭제 전 작업실(Workspace 엔티티) 포착
     product.destroy # children·components·versions·annotations 연쇄 삭제
-    redirect_to root_path
+    # 작업실에 아직 (다른) 루트가 남아 있으면 그 작업실 트리로 복귀, 마지막 루트를 지웠으면 홈(작업실 카드)으로.
+    redirect_to(workspace&.products&.exists? ? workspace_path(workspace) : root_path)
   end
 
   # 드래그앤드롭 트리 이동 — parent_id(빈값=루트) + before_id/after_id(형제 기준).
@@ -74,6 +77,24 @@ class ProductsController < ApplicationController
   end
 
   private
+
+  # 생성 직후 리다이렉트(origin별):
+  #  · side  → 사이드바 컨텍스트 트리에서 인라인 명명(rename_side). root_path의 rename_side 파라미터가 그 노드의
+  #            작업실을 컨텍스트로 잡아 사이드바 트리를 렌더한다(무회귀).
+  #  · 그 외 → 작업실 트리 테이블에서 인라인 명명(rename).
+  # 홈 "새 작업실"은 products#create가 아니라 workspaces#create로 은퇴(D3) — origin=workspace 분기 제거.
+  def creation_redirect(product)
+    params[:origin] == "side" ? root_path(rename_side: product.id) : root_path(rename: product.id)
+  end
+
+  # 루트 생성 시 작업실 귀속: 명시 workspace_id(사이드바 "새 폴더" = 현재 작업실)면 그 작업실에 넣고, 없으면
+  # 모델의 heal 콜백이 동명 새 작업실을 만든다(홈 "새 작업실"). 자식 생성은 workspace_id를 무시(brand_root로 도출).
+  def assign_creation_workspace(product)
+    return if product.parent_id.present?
+    return unless (wid = params[:workspace_id].presence)
+
+    product.workspace = Workspace.find_by(id: wid) # RLS 동일테넌트만 조회 · nil이면 heal이 새 작업실 생성(안전 폴백)
+  end
 
   # before_id면 그 앞, after_id면 그 뒤, 둘 다 없으면 맨 끝(=폴더 안으로 떨굼 append)
   def sibling_index(siblings)

@@ -31,9 +31,9 @@ class DrawerSidebarTest < ApplicationSystemTestCase
     assert_text "버전 비교", wait: 6
   end
 
-  test "Fix2: 사이드바 '+' 새 폴더 → 사이드바에서 인라인 입력 등장·포커스" do
+  test "Fix2: 작업실 사이드바 '+' 새 폴더 → 사이드바에서 인라인 입력 등장·포커스" do
     page.current_window.resize_to(1440, 900)
-    visit root_path
+    visit workspace_path(Product.find_by!(name: "레티놀 3% 세럼").derived_workspace) # 작업실 진입 → 컨텍스트 사이드바(+ 버튼)
     within("#app-sidebar") { find("button[title='새 폴더']").click }
     assert_selector "aside form input[name='product[name]']", wait: 6
     focused = page.evaluate_script("document.activeElement && document.activeElement.getAttribute('name')")

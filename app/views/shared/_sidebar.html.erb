@@ -1,4 +1,7 @@
-<%# 공통 좌측 사이드바: 사용자 · 아트워크 찾기(트리 필터) · 제품 디렉터리 트리(노션형) %>
+<%# 공통 좌측 사이드바 (컨텍스트 전환형, W2):
+     · 사용자 · 내 리뷰 인박스(배지) · 전사 관리 — 항상(불변).
+     · 작업실 안(current_workspace) → 작업실 헤더 + "← 모든 작업실" + 그 작업실 서브트리 트리 + 검색 + 새 폴더.
+     · 작업실 밖(홈·인박스·전사관리) → 작업실 목록(이름만·클릭=진입). 트리·검색 미렌더. %>
 <aside id="app-sidebar" class="hidden w-[281px] min-w-0 shrink-0 flex-col border-r border-line bg-white lg:flex">
   <%# 사용자 (접기/펼치기는 상단바 토글로 통일) %>
   <div class="flex min-w-0 items-center gap-2 px-3 pb-3 pt-4">
@@ -11,7 +14,7 @@
     </span>
   </div>
 
-  <%# 내게 요청된 리뷰 수신함(내가 지정 리뷰어인 pending 요청) %>
+  <%# 내게 요청된 리뷰 수신함(내가 지정 리뷰어인 pending 요청) — 배지 정책 불변 %>
   <%= link_to reviews_path, data: { turbo: false },
         class: "mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium text-ink transition hover:bg-tint #{'bg-tint' if current_page?(reviews_path)}" do %>
     <%= ui_icon "bell", size: 16, klass: "text-line" %>
@@ -28,55 +31,88 @@
     <% end %>
   <% end %>
 
-  <%# 멤버(조직 로스터·초대, Phase 3) — 로스터 열람권자에게만 노출. tenant-wide 읽기권자 OR scoped
+  <%# 전사 관리(조직 로스터·초대, Phase 3) — 로스터 열람권자에게만 노출. tenant-wide 읽기권자 OR scoped
       brand_admin(자기 브랜드) — scoped admin은 조직 verb를 통과 못 하므로 can_view_members?로 판정(T3). %>
   <% if can_view_members? %>
     <%= link_to members_path, data: { turbo: false },
           class: "mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium text-ink transition hover:bg-tint #{'bg-tint' if current_page?(members_path)}" do %>
       <%= ui_icon "user", size: 16, klass: "text-line" %>
-      <span>멤버</span>
+      <span>전사 관리</span>
     <% end %>
   <% end %>
 
-  <%# 제품 디렉터리 트리 + 아트워크 찾기(클라이언트 필터) %>
-  <nav class="mt-1 flex min-w-0 flex-1 flex-col overflow-hidden px-2 pb-6" data-controller="tree-filter tree-ctx">
-    <%# 검색(트리 필터 — 서버 왕복 0). 매치 카운트 + ✕/Esc 클리어는 tree_filter_controller가 토글. %>
-    <div class="px-[15px] pb-3">
-      <div class="relative">
-        <input data-tree-filter-target="input" data-action="input->tree-filter#filter keydown->tree-filter#keydown"
-               placeholder="아트워크 찾기 (품목코드, 품목명)" class="w-full rounded-lg bg-tint px-3 py-2 pr-16 text-[15px] outline-none">
-        <div class="pointer-events-none absolute inset-y-0 right-2 flex items-center gap-1">
-          <span data-tree-filter-target="count" class="hidden rounded bg-tint-2 px-1.5 py-0.5 text-[11px] font-medium text-line"></span>
-          <button type="button" data-tree-filter-target="clear" data-action="tree-filter#clear" title="검색 지우기" aria-label="검색 지우기"
-                  class="pointer-events-auto hidden rounded p-0.5 text-line transition hover:text-cooa"><%= ui_icon "x", size: 14 %></button>
+  <% if current_workspace %>
+    <%# ── 작업실 컨텍스트 ── 작업실 헤더 + "← 모든 작업실" %>
+    <div class="mx-2 mb-1 mt-2 border-t border-line-soft pt-3">
+      <%= link_to root_path, data: { turbo: false },
+            class: "mb-1 flex items-center gap-1 px-1 text-[11px] font-medium text-line transition hover:text-cooa" do %>
+        <span aria-hidden="true">←</span><span>모든 작업실</span>
+      <% end %>
+      <div class="flex min-w-0 items-center gap-1.5 px-1">
+        <%= ui_icon "layers", size: 16, klass: "shrink-0 text-cooa" %>
+        <span class="truncate text-[15px] font-bold text-ink"><%= current_workspace_label %></span>
+      </div>
+    </div>
+
+    <%# 작업실 서브트리 트리 + 아트워크 찾기(클라이언트 필터) %>
+    <nav class="mt-1 flex min-w-0 flex-1 flex-col overflow-hidden px-2 pb-6" data-controller="tree-filter tree-ctx">
+      <div class="px-[15px] pb-3">
+        <div class="relative">
+          <input data-tree-filter-target="input" data-action="input->tree-filter#filter keydown->tree-filter#keydown"
+                 placeholder="아트워크 찾기 (품목코드, 품목명)" class="w-full rounded-lg bg-tint px-3 py-2 pr-16 text-[15px] outline-none">
+          <div class="pointer-events-none absolute inset-y-0 right-2 flex items-center gap-1">
+            <span data-tree-filter-target="count" class="hidden rounded bg-tint-2 px-1.5 py-0.5 text-[11px] font-medium text-line"></span>
+            <button type="button" data-tree-filter-target="clear" data-action="tree-filter#clear" title="검색 지우기" aria-label="검색 지우기"
+                    class="pointer-events-auto hidden rounded p-0.5 text-line transition hover:text-cooa"><%= ui_icon "x", size: 14 %></button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="flex-1 overflow-auto">
-      <div class="mb-1 flex items-center justify-between px-2">
-        <span class="text-[12px] font-bold text-line">제품</span>
-        <%# origin=side → create가 rename_side로 리다이렉트(사이드바에서 인라인 명명) %>
-        <%= button_to products_path, params: { product: { kind: "folder" }, origin: "side" }, title: "새 폴더",
-              form: { class: "inline" },
-              class: "rounded p-0.5 text-line transition hover:bg-tint hover:text-cooa" do %><%= ui_icon "plus", size: 14 %><% end %>
+      <div class="flex-1 overflow-auto">
+        <div class="mb-1 flex items-center justify-between px-2">
+          <span class="text-[12px] font-bold text-line">제품</span>
+          <%# origin=side → create가 rename_side로 리다이렉트(사이드바에서 인라인 명명). workspace_id=현재 작업실
+              → 새 폴더(트리)는 이 작업실에 귀속되는 새 루트로 생성(컨텍스트 유지). %>
+          <%= button_to products_path, params: { product: { kind: "folder" }, origin: "side", workspace_id: current_workspace.id },
+                title: "새 폴더", form: { class: "inline" },
+                class: "rounded p-0.5 text-line transition hover:bg-tint hover:text-cooa" do %><%= ui_icon "plus", size: 14 %><% end %>
+        </div>
+        <% active_ids = (@product&.self_and_ancestors&.map(&:id) || []) %>
+        <%# rename 대상의 조상 <details>를 열어 인라인 입력칸이 보이게 %>
+        <% if (rid = params[:rename_side]).present? && (rnode = Product.find_by(id: rid)) %>
+          <% active_ids |= rnode.self_and_ancestors.map(&:id) %>
+        <% end %>
+        <%# 브레드크럼 폴더 클릭(focus) → 해당 폴더 + 조상 펼침 %>
+        <% if (fid = params[:focus]).present? && (fnode = Product.find_by(id: fid)) %>
+          <% active_ids |= fnode.self_and_ancestors.map(&:id) %>
+        <% end %>
+        <% context_tree_roots.each do |node| %>
+          <%= render "shared/tree_node", node: node, active_ids: active_ids, current_id: @product&.id, root: true, context: true %>
+        <% end %>
+        <%# 검색 무매치 시 tree_filter가 노출(그 외엔 hidden). %>
+        <p data-tree-filter-target="empty" class="hidden px-3 py-6 text-center text-[13px] text-line">일치하는 항목 없음</p>
       </div>
-      <% active_ids = (@product&.self_and_ancestors&.map(&:id) || []) %>
-      <%# rename 대상의 조상 <details>를 열어 인라인 입력칸이 보이게 %>
-      <% if (rid = params[:rename_side]).present? && (rnode = Product.find_by(id: rid)) %>
-        <% active_ids |= rnode.self_and_ancestors.map(&:id) %>
-      <% end %>
-      <%# 브레드크럼 폴더 클릭(focus) → 해당 폴더 + 조상 펼침 %>
-      <% if (fid = params[:focus]).present? && (fnode = Product.find_by(id: fid)) %>
-        <% active_ids |= fnode.self_and_ancestors.map(&:id) %>
-      <% end %>
-      <% (@tree_roots || []).each do |node| %>
-        <%= render "shared/tree_node", node: node, active_ids: active_ids, current_id: @product&.id, root: true %>
-      <% end %>
-      <%# 검색 무매치 시 tree_filter가 노출(그 외엔 hidden). %>
-      <p data-tree-filter-target="empty" class="hidden px-3 py-6 text-center text-[13px] text-line">일치하는 항목 없음</p>
-    </div>
 
-    <%= render "shared/tree_context_menu" %>
-  </nav>
+      <%= render "shared/tree_context_menu" %>
+    </nav>
+  <% else %>
+    <%# ── 작업실 밖 ── 작업실 목록(이름만·클릭=진입) %>
+    <nav class="mt-2 flex min-w-0 flex-1 flex-col overflow-hidden px-2 pb-6">
+      <div class="mb-1 px-2">
+        <span class="text-[12px] font-bold text-line">작업실</span>
+      </div>
+      <div class="flex-1 overflow-auto">
+        <% visible_workspaces.each do |ws| %>
+          <%= link_to workspace_path(ws), data: { turbo: false, "workspace-id": ws.id },
+                class: "flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-[14px] text-ink transition hover:bg-tint" do %>
+            <%= ui_icon "layers", size: 15, klass: "shrink-0 text-cooa" %>
+            <span class="min-w-0 flex-1 truncate font-semibold"><%= workspace_label(ws) %></span>
+          <% end %>
+        <% end %>
+        <% if visible_workspaces.empty? %>
+          <p class="px-3 py-6 text-center text-[13px] text-line">접근 가능한 작업실이 없습니다</p>
+        <% end %>
+      </div>
+    </nav>
+  <% end %>
 </aside>

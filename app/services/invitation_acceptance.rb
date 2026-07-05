@@ -26,7 +26,7 @@ class InvitationAcceptance
       # validations (scope coherence + tenant-membership) + the DB CHECK are the backstops.
       RoleAssignment.create!(
         account: account, tenant_id: Current.tenant_id, role_key: invitation.role_key,
-        scope_type: invitation.scope_type,
+        scope_type: invitation.scope_type, scope_workspace_id: invitation.scope_workspace_id,
         scope_product_id: invitation.scope_product_id, scope_component_id: invitation.scope_component_id,
         granted_by: invitation.invited_by_account_id, granted_at: Time.current
       )
@@ -38,8 +38,8 @@ class InvitationAcceptance
       AuditLog.record!(action: "invitation.accept", resource_type: "Invitation",
                        resource_id: nil, outcome: "allow",
                        after: { invitation_id: invitation.id, email: invitation.email, role_key: invitation.role_key,
-                                scope_type: invitation.scope_type, scope_product_id: invitation.scope_product_id,
-                                scope_component_id: invitation.scope_component_id })
+                                scope_type: invitation.scope_type, scope_workspace_id: invitation.scope_workspace_id,
+                                scope_product_id: invitation.scope_product_id, scope_component_id: invitation.scope_component_id })
       account
     end
     result || nil

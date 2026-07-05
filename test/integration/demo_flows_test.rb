@@ -7,13 +7,18 @@ class DemoFlowsTest < ActionDispatch::IntegrationTest
            .component_versions.find_by(version_number: n)
   end
 
-  test "① 대시보드 렌더 (제품 트리)" do
+  test "① 대시보드 렌더 (작업실 목록 → 진입 시 제품 트리)" do
+    # 홈 = 작업실 카드 목록(W1). 레티놀 작업실이 카드로 보인다(제품 트리는 진입 후).
     get root_path
     assert_response :success
     assert_match "데이터 관리", response.body
     assert_match "레티놀 3% 세럼", response.body
-    assert_match "CO0001", response.body
     assert_no_match(/BRAND/, response.body)
+
+    # 작업실 진입 → 그 안의 제품 트리(CO0001)가 렌더.
+    get workspace_path(id: Product.find_by!(name: "레티놀 3% 세럼").workspace_id)
+    assert_response :success
+    assert_match "CO0001", response.body
   end
 
   test "② 제품 상세 허브 렌더" do

@@ -16,9 +16,13 @@ require "test_helper"
 # 프리로드되지 않아 노드마다 재쿼리. 현 구현(flat 1회 로드 + parent_id 그룹핑 + parent 타깃 in-memory 배선)으로
 # 원복하면 GREEN. 스코프 계정(choi·얕은 트리) 경로는 scoped_access_test가 별도 게이트(구현엔 잠복 미검출이던 축).
 class DashboardTreeTest < ActionDispatch::IntegrationTest
-  test "tenant-wide 대시보드(멀티레벨·멀티루트 전 트리) 렌더는 N+1을 내지 않음" do
+  # W1 이후 홈은 작업실 카드라 전 트리를 렌더하지 않는다. tree_preorder + load_dashboard_rows(무필터 =
+  # 멀티루트·멀티레벨 전 트리)를 렌더하는 지점 = 제품 상세 풀요청(dashboard 셸 + 드로어). 여기에 게이트를
+  # 옮긴다(단일 브랜드 서브트리의 멀티레벨 N+1은 brands_page_test가 별도로 잠금 — 여기는 멀티루트 축).
+  test "tenant-wide 전 트리(멀티레벨·멀티루트) 렌더는 N+1을 내지 않음" do
     sign_in_as(Account.find_by!(email: "kim@cooa.dev")) # 전 제품 가시 → 재루팅 없이 실제 3레벨 트리를 walk
-    assert_no_n_plus_one { get root_path }
+    leaf = Product.find_by!(code: "CO0000")             # 레티놀 › 미국(폴더) › 30ml — 폴더깊이 2 하위 리프
+    assert_no_n_plus_one { get product_path(leaf) }
     assert_response :success
 
     # 게이트가 얕은 트리로 위장되지 않도록 멀티레벨·멀티루트가 실제 렌더됐음을 확인(load-bearing).

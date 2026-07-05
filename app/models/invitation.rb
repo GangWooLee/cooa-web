@@ -10,8 +10,9 @@ class Invitation < ApplicationRecord
   TTL = 7.days
 
   belongs_to :organization, foreign_key: :tenant_id, inverse_of: false
-  # Typed scope targets (both NULL for a tenant-wide invite). optional — only set for a scoped invite.
-  # Loaded for display (roster/landing "제품 X 초대") and for the acceptance pass-through.
+  # Typed scope targets (all NULL for a tenant-wide invite). optional — only set for a scoped invite.
+  # Loaded for display (roster/landing "작업실/제품 X 초대") and for the acceptance pass-through.
+  belongs_to :scope_workspace, class_name: "Workspace", optional: true
   belongs_to :scope_product,   class_name: "Product",   optional: true
   belongs_to :scope_component, class_name: "Component", optional: true
 
@@ -32,10 +33,10 @@ class Invitation < ApplicationRecord
   # 생성 + raw 토큰 1회 반환(256bit). digest만 저장하므로 이 반환값이 링크를 만들 유일한 기회.
   # scope_* 는 기본 tenant-wide(하위호환) — 스코프 초대는 컨트롤러가 명시 전달, 모델 검증이 게이트.
   def self.generate!(email:, role_key:, invited_by_account_id:,
-                     scope_type: "tenant", scope_product_id: nil, scope_component_id: nil)
+                     scope_type: "tenant", scope_workspace_id: nil, scope_product_id: nil, scope_component_id: nil)
     raw = SecureRandom.urlsafe_base64(32)
     invitation = create!(email:, role_key:, invited_by_account_id:,
-                         scope_type:, scope_product_id:, scope_component_id:,
+                         scope_type:, scope_workspace_id:, scope_product_id:, scope_component_id:,
                          token_digest: digest(raw), expires_at: TTL.from_now)
     [ invitation, raw ]
   end
@@ -65,14 +66,20 @@ class Invitation < ApplicationRecord
   def scope_columns_match_type
     case scope_type
     when "tenant"
-      if scope_product_id.present? || scope_component_id.present?
-        errors.add(:scope_type, "tenant invite must not set a product/component scope")
+      if scope_workspace_id.present? || scope_product_id.present? || scope_component_id.present?
+        errors.add(:scope_type, "tenant invite must not set a workspace/product/component scope")
       end
+    when "workspace"
+      errors.add(:scope_workspace_id, "is required for a workspace-scoped invite") if scope_workspace_id.blank?
+      errors.add(:scope_product_id, "must be blank for a workspace-scoped invite") if scope_product_id.present?
+      errors.add(:scope_component_id, "must be blank for a workspace-scoped invite") if scope_component_id.present?
     when "product"
       errors.add(:scope_product_id, "is required for a product-scoped invite") if scope_product_id.blank?
+      errors.add(:scope_workspace_id, "must be blank for a product-scoped invite") if scope_workspace_id.present?
       errors.add(:scope_component_id, "must be blank for a product-scoped invite") if scope_component_id.present?
     when "component"
       errors.add(:scope_component_id, "is required for a component-scoped invite") if scope_component_id.blank?
+      errors.add(:scope_workspace_id, "must be blank for a component-scoped invite") if scope_workspace_id.present?
       errors.add(:scope_product_id, "must be blank for a component-scoped invite") if scope_product_id.present?
     end
   end
@@ -83,6 +90,9 @@ class Invitation < ApplicationRecord
   # 2nd-line backstop on app connections. Defends the owner console path (an admin cannot scope an invite to
   # another tenant's product); the acceptance re-checks the same on the created role_assignment.
   def scope_target_in_tenant
+    if scope_workspace_id.present? && !Workspace.where(id: scope_workspace_id, tenant_id: tenant_id).exists?
+      errors.add(:scope_workspace_id, "must reference a workspace in this tenant")
+    end
     if scope_product_id.present? && !Product.where(id: scope_product_id, tenant_id: tenant_id).exists?
       errors.add(:scope_product_id, "must reference a product in this tenant")
     end

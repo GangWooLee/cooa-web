@@ -14,14 +14,14 @@ class ScopedAccessTest < ActionDispatch::IntegrationTest
     get root_path
     assert_response :success
     body = response.body
-    assert_match(/data-node-id="#{co0200.id}"/, body, "CO0200이 노드로 보여야 함")
-    assert_match "CO0200", body
+    # choi의 홈 = 작업실 카드. 리프 스코프라 카드 라벨 = 볼 수 있는 표시 루트명(미국=CO0200). 카드는 그 작업실로
+    # 진입하는 링크(workspace_path) — 비가시 조상 작업실명은 라벨/속성에서 클립.
+    assert_match "미국", body, "부여 제품(CO0200=미국)이 카드로 보여야 함"
+    assert_match(/data-workspace-id="#{co0200.derived_workspace_id}"/, body, "그 작업실 진입 카드가 있어야 함")
     # 다른 브랜드(부여 무관)는 완전 부재
     assert_no_match "레티놀 3% 세럼", body
     assert_no_match "비타민C 브라이트닝 앰플", body
-    # 조상 브랜드(CO0200의 부모 cica)는 트리 노드로 렌더되지 않음 = 재루팅으로 브랜드명 유출 차단
-    assert_no_match(/data-node-id="#{cica.id}"/, body, "비가시 조상은 노드로 렌더되면 안 됨")
-    # 조상 브랜드명 문자열 자체가 응답에 없어야 함(data-node-path 속성 등 어디에도) = D3 브랜드명 유출 차단.
+    # 조상 브랜드명 문자열 자체가 응답에 없어야 함(카드 라벨·data 속성 등 어디에도) = D3 브랜드명 유출 차단.
     assert_no_match cica.name, body, "권한 없는 상위 브랜드명이 텍스트/속성 어디에도 노출되면 안 됨"
   end
 

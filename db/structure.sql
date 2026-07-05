@@ -641,7 +641,8 @@ CREATE TABLE public.invitations (
     scope_type character varying DEFAULT 'tenant'::character varying NOT NULL,
     scope_product_id bigint,
     scope_component_id bigint,
-    CONSTRAINT inv_scope_coherence CHECK (((((scope_type)::text = 'tenant'::text) AND (scope_product_id IS NULL) AND (scope_component_id IS NULL)) OR (((scope_type)::text = 'product'::text) AND (scope_product_id IS NOT NULL) AND (scope_component_id IS NULL)) OR (((scope_type)::text = 'component'::text) AND (scope_product_id IS NULL) AND (scope_component_id IS NOT NULL))))
+    scope_workspace_id bigint,
+    CONSTRAINT inv_scope_coherence CHECK (((((scope_type)::text = 'tenant'::text) AND (scope_workspace_id IS NULL) AND (scope_product_id IS NULL) AND (scope_component_id IS NULL)) OR (((scope_type)::text = 'workspace'::text) AND (scope_workspace_id IS NOT NULL) AND (scope_product_id IS NULL) AND (scope_component_id IS NULL)) OR (((scope_type)::text = 'product'::text) AND (scope_workspace_id IS NULL) AND (scope_product_id IS NOT NULL) AND (scope_component_id IS NULL)) OR (((scope_type)::text = 'component'::text) AND (scope_workspace_id IS NULL) AND (scope_product_id IS NULL) AND (scope_component_id IS NOT NULL))))
 );
 
 ALTER TABLE ONLY public.invitations FORCE ROW LEVEL SECURITY;
@@ -835,7 +836,8 @@ CREATE TABLE public.products (
     "position" integer DEFAULT 0,
     product_type character varying DEFAULT '기획'::character varying,
     updated_at timestamp(6) without time zone NOT NULL,
-    tenant_id uuid NOT NULL
+    tenant_id uuid NOT NULL,
+    workspace_id bigint
 );
 
 ALTER TABLE ONLY public.products FORCE ROW LEVEL SECURITY;
@@ -878,10 +880,11 @@ CREATE TABLE public.role_assignments (
     updated_at timestamp(6) without time zone NOT NULL,
     scope_product_id bigint,
     scope_component_id bigint,
-    CONSTRAINT ra_owner_tenant_wide CHECK ((((role_key)::text <> 'owner'::text) OR ((scope_product_id IS NULL) AND (scope_component_id IS NULL)))),
-    CONSTRAINT ra_scope_coherence CHECK (((((scope_type)::text = 'tenant'::text) AND (scope_product_id IS NULL) AND (scope_component_id IS NULL)) OR (((scope_type)::text = 'product'::text) AND (scope_product_id IS NOT NULL) AND (scope_component_id IS NULL)) OR (((scope_type)::text = 'component'::text) AND (scope_product_id IS NULL) AND (scope_component_id IS NOT NULL)))),
+    scope_workspace_id bigint,
+    CONSTRAINT ra_owner_tenant_wide CHECK ((((role_key)::text <> 'owner'::text) OR ((scope_workspace_id IS NULL) AND (scope_product_id IS NULL) AND (scope_component_id IS NULL)))),
+    CONSTRAINT ra_scope_coherence CHECK (((((scope_type)::text = 'tenant'::text) AND (scope_workspace_id IS NULL) AND (scope_product_id IS NULL) AND (scope_component_id IS NULL)) OR (((scope_type)::text = 'workspace'::text) AND (scope_workspace_id IS NOT NULL) AND (scope_product_id IS NULL) AND (scope_component_id IS NULL)) OR (((scope_type)::text = 'product'::text) AND (scope_workspace_id IS NULL) AND (scope_product_id IS NOT NULL) AND (scope_component_id IS NULL)) OR (((scope_type)::text = 'component'::text) AND (scope_workspace_id IS NULL) AND (scope_product_id IS NULL) AND (scope_component_id IS NOT NULL)))),
     CONSTRAINT role_assignments_role_key_check CHECK (((role_key)::text = ANY ((ARRAY['owner'::character varying, 'brand_admin'::character varying, 'ra_reviewer'::character varying, 'approver'::character varying, 'assignee'::character varying, 'contributor'::character varying, 'viewer'::character varying, 'external_collaborator'::character varying])::text[]))),
-    CONSTRAINT role_assignments_scope_type_check CHECK (((scope_type)::text = ANY ((ARRAY['tenant'::character varying, 'product'::character varying, 'component'::character varying])::text[])))
+    CONSTRAINT role_assignments_scope_type_check CHECK (((scope_type)::text = ANY (ARRAY['tenant'::text, 'workspace'::text, 'product'::text, 'component'::text])))
 );
 
 ALTER TABLE ONLY public.role_assignments FORCE ROW LEVEL SECURITY;
@@ -1015,6 +1018,41 @@ CREATE SEQUENCE public.users_id_seq
 --
 
 ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+
+
+--
+-- Name: workspaces; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.workspaces (
+    id bigint NOT NULL,
+    tenant_id uuid NOT NULL,
+    name character varying NOT NULL,
+    "position" integer DEFAULT 0,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.workspaces FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: workspaces_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.workspaces_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: workspaces_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.workspaces_id_seq OWNED BY public.workspaces.id;
 
 
 --
@@ -1169,6 +1207,13 @@ ALTER TABLE ONLY public.screening_runs ALTER COLUMN id SET DEFAULT nextval('publ
 --
 
 ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+
+
+--
+-- Name: workspaces id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workspaces ALTER COLUMN id SET DEFAULT nextval('public.workspaces_id_seq'::regclass);
 
 
 --
@@ -1452,6 +1497,22 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: workspaces workspaces_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workspaces
+    ADD CONSTRAINT workspaces_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: workspaces workspaces_tenant_id_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workspaces
+    ADD CONSTRAINT workspaces_tenant_id_id_key UNIQUE (tenant_id, id);
+
+
+--
 -- Name: accounts_tenant_provider_subject_key; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1480,10 +1541,10 @@ CREATE INDEX idx_on_tenant_id_resource_type_resource_id_ts_0d52db2ecc ON public.
 
 
 --
--- Name: idx_ra_eligible_approver_v2; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_ra_eligible_approver_v3; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_ra_eligible_approver_v2 ON public.role_assignments USING btree (tenant_id, role_key) WHERE ((scope_product_id IS NULL) AND (scope_component_id IS NULL));
+CREATE INDEX idx_ra_eligible_approver_v3 ON public.role_assignments USING btree (tenant_id, role_key) WHERE ((scope_workspace_id IS NULL) AND (scope_product_id IS NULL) AND (scope_component_id IS NULL));
 
 
 --
@@ -1830,6 +1891,13 @@ CREATE INDEX index_products_on_tenant_id ON public.products USING btree (tenant_
 
 
 --
+-- Name: index_products_on_workspace_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_products_on_workspace_id ON public.products USING btree (workspace_id);
+
+
+--
 -- Name: index_role_assignments_on_tenant_id_and_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1872,6 +1940,13 @@ CREATE INDEX index_screening_runs_on_tenant_id ON public.screening_runs USING bt
 
 
 --
+-- Name: index_workspaces_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_workspaces_on_tenant_id ON public.workspaces USING btree (tenant_id);
+
+
+--
 -- Name: invitations_tenant_list_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1886,10 +1961,10 @@ CREATE UNIQUE INDEX invitations_tenant_open_email_key ON public.invitations USIN
 
 
 --
--- Name: uniq_role_assignment_v2; Type: INDEX; Schema: public; Owner: -
+-- Name: uniq_role_assignment_v3; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX uniq_role_assignment_v2 ON public.role_assignments USING btree (tenant_id, account_id, role_key, scope_product_id, scope_component_id, market) NULLS NOT DISTINCT;
+CREATE UNIQUE INDEX uniq_role_assignment_v3 ON public.role_assignments USING btree (tenant_id, account_id, role_key, scope_workspace_id, scope_product_id, scope_component_id, market) NULLS NOT DISTINCT;
 
 
 --
@@ -1969,6 +2044,14 @@ ALTER TABLE ONLY public.component_versions
 
 ALTER TABLE ONLY public.components
     ADD CONSTRAINT components_product_tenant_fkey FOREIGN KEY (tenant_id, product_id) REFERENCES public.products(tenant_id, id);
+
+
+--
+-- Name: products fk_products_workspace; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.products
+    ADD CONSTRAINT fk_products_workspace FOREIGN KEY (tenant_id, workspace_id) REFERENCES public.workspaces(tenant_id, id) ON DELETE RESTRICT;
 
 
 --
@@ -2060,6 +2143,14 @@ ALTER TABLE ONLY public.invitations
 
 
 --
+-- Name: invitations fk_rails_a3fa16e2ba; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invitations
+    ADD CONSTRAINT fk_rails_a3fa16e2ba FOREIGN KEY (scope_workspace_id) REFERENCES public.workspaces(id) ON DELETE CASCADE;
+
+
+--
 -- Name: accounts fk_rails_b1e30bebc8; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2097,6 +2188,14 @@ ALTER TABLE ONLY public.screening_runs
 
 ALTER TABLE ONLY public.component_versions
     ADD CONSTRAINT fk_rails_e10560f404 FOREIGN KEY (created_by_id) REFERENCES public.users(id);
+
+
+--
+-- Name: role_assignments fk_rails_e315702a7c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.role_assignments
+    ADD CONSTRAINT fk_rails_e315702a7c FOREIGN KEY (scope_workspace_id) REFERENCES public.workspaces(id) ON DELETE CASCADE;
 
 
 --
@@ -2443,12 +2542,31 @@ CREATE POLICY tenant_isolation ON public.screening_runs USING ((tenant_id = (NUL
 
 
 --
+-- Name: workspaces tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.workspaces USING ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid)) WITH CHECK ((tenant_id = (NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid));
+
+
+--
+-- Name: workspaces; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.workspaces ENABLE ROW LEVEL SECURITY;
+
+--
 -- PostgreSQL database dump complete
 --
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260705000007'),
+('20260705000006'),
+('20260705000005'),
+('20260705000004'),
+('20260705000003'),
+('20260705000002'),
 ('20260705000001'),
 ('20260704000005'),
 ('20260704000004'),

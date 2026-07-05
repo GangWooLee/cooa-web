@@ -1,5 +1,5 @@
 <%# 대시보드 트리 리스트 (헤더+툴바+테이블) — index / 상세 셸 공용. @rows 사용 %>
-<div data-controller="tree tree-ctx" data-tree-create-url-value="<%= products_path %>" data-tree-ctx-rename-param-value="rename" class="flex h-full min-w-0 flex-col bg-white">
+<div data-controller="tree tree-ctx" data-tree-create-url-value="<%= products_path %>" data-tree-workspace-id-value="<%= current_workspace&.id %>" data-tree-ctx-rename-param-value="rename" class="flex h-full min-w-0 flex-col bg-white">
   <%# 헤더 %>
   <div class="border-b border-line-soft px-6 pt-4">
     <div class="flex min-w-0 items-center justify-between">
@@ -15,8 +15,8 @@
     </nav>
   </div>
 
-  <%# 브랜드 팀 페이지 헤더(T4) — /brands/:id에서만 %>
-  <% if @brand %><%= render "dashboard/brand_header" %><% end %>
+  <%# 작업실 페이지 헤더 — /workspaces/:id에서만 %>
+  <% if @workspace %><%= render "dashboard/brand_header" %><% end %>
 
   <%# 액션 툴바 — 새로 만들기(폴더/항목) + 미구현은 비활성 %>
   <div class="flex min-w-0 flex-wrap items-center gap-2 px-6 py-3">
@@ -54,6 +54,18 @@
           </tr>
         </thead>
         <tbody>
+          <%# 빈 작업실(방금 만든 작업실) — 첫 폴더/항목 유도(D3). 위 툴바의 "새 폴더/새 파일"이 이 작업실에 귀속. %>
+          <% if @workspace && @rows.empty? %>
+            <tr>
+              <td colspan="7" class="px-3 py-16 text-center">
+                <div class="flex flex-col items-center gap-2">
+                  <%= ui_icon "folder", size: 32, klass: "text-line" %>
+                  <p class="text-[14px] font-medium text-ink">아직 폴더나 항목이 없습니다</p>
+                  <p class="text-[13px] text-line">위의 <b>새 폴더</b>·<b>새 파일</b>로 이 작업실의 첫 항목을 만들어 보세요<% if @can_manage_workspace %> — 위 헤더의 <b>＋ 멤버 초대·관리</b>에서 멤버도 초대할 수 있습니다<% end %>.</p>
+                </div>
+              </td>
+            </tr>
+          <% end %>
           <% @rows.each do |node, depth| %>
             <%= render "dashboard/row", node: node, depth: depth %>
           <% end %>

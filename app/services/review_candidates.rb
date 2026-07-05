@@ -19,6 +19,8 @@ module ReviewCandidates
     rel = base.tenant_wide
               .or(base.where(scope_product_id: product_ids))
               .or(base.where(scope_component_id: Component.where(product_id: product_ids).select(:id)))
+    # 작업실 멤버(ws grant) — 이 브랜드 루트가 속한 작업실에 grant를 가진 계정도 후보 풀에 포함(WS-track).
+    rel = rel.or(base.where(scope_workspace_id: root.workspace_id)) if root.workspace_id
     # external_collaborator는 후보 풀에서 뺀다(REF 시나리오 ③: external은 업로드·피드백만 — approve/reject 없음,
     # 리뷰 확인 표면 Segment B 자체가 안 뜸). 후보(=지정 가능)로 두면 지정=소프트그랜트(requested_reviewer ∨
     # can?(:approve))로 confirm까지 열려 그 설계를 우회 → 규제 검토 확인 무결성 희석. 그래서 이 서브트리에 매칭된

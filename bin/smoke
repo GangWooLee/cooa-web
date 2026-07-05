@@ -57,14 +57,24 @@ else
   fails << "로그인 → HTTP #{home}" unless ok
 end
 
-# 1) 대시보드 (+ 제품 링크 스크레이프 — PK는 bigint)
+# 1) 대시보드 (홈=작업실 카드, W1) → 작업실 진입 후 제품 링크 스크레이프. PK는 bigint.
+#    홈('/')은 이제 작업실 카드(/workspaces/:id) 목록이라 제품 링크(/products/:id)를 직접 담지 않는다.
+#    작업실 하나에 진입(트리 테이블 렌더)해 거기서 제품 링크를 얻는다. 홈에 직접 제품 링크가 있으면(회귀) 그대로 사용.
 dash         = check(sess, fails, "대시보드", "/")
 product_path = dash[%r{/products/\d+}]
+tree_body    = dash # 버전 링크 폴백 소스 — 작업실 진입 후엔 그 트리 테이블 본문으로 교체
+unless product_path
+  workspace_entry = dash[%r{/workspaces/\d+}]
+  if workspace_entry
+    tree_body    = check(sess, fails, "작업실 진입", workspace_entry)
+    product_path = tree_body[%r{/products/\d+}]
+  end
+end
 
-# 2) 제품 트리 (+ 버전 링크 스크레이프). 버전 링크가 트리에 없으면(지연 렌더) 대시보드에서 폴백.
+# 2) 제품 트리 (+ 버전 링크 스크레이프). 버전 링크가 상세에 없으면(지연 렌더) 작업실 트리 본문에서 폴백.
 if product_path
   tree         = check(sess, fails, "제품 트리", product_path)
-  version_path = tree[%r{/versions/\d+}] || dash[%r{/versions/\d+}]
+  version_path = tree[%r{/versions/\d+}] || tree_body[%r{/versions/\d+}]
 else
   puts "  · 제품 링크 없음 — 제품/버전 경로 건너뜀 (dev DB에 제품 없음)"
   version_path = nil

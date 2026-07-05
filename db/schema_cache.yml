@@ -641,7 +641,7 @@ columns:
     default_function:
     collation:
     comment:
-  - &47 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &48 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -664,7 +664,7 @@ columns:
     default_function:
     collation:
     comment:
-  - &48 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &49 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -676,7 +676,7 @@ columns:
     default_function:
     collation:
     comment:
-  - &49 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &50 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -688,7 +688,7 @@ columns:
     default_function:
     collation:
     comment:
-  - &50 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &51 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -1780,6 +1780,18 @@ columns:
     default_function:
     collation:
     comment:
+  - &47 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: scope_workspace_id
+    cast_type: *7
+    sql_type_metadata: *8
+    'null': true
+    default:
+    default_function:
+    collation:
+    comment:
   - *16
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
@@ -2156,6 +2168,18 @@ columns:
     comment:
   - *16
   - *13
+  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: workspace_id
+    cast_type: *7
+    sql_type_metadata: *8
+    'null': true
+    default:
+    default_function:
+    collation:
+    comment:
   role_assignments:
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
@@ -2223,6 +2247,7 @@ columns:
   - *44
   - *45
   - *46
+  - *47
   - *16
   - *13
   schema_migrations:
@@ -2239,10 +2264,10 @@ columns:
     collation:
     comment:
   screening_findings:
-  - *47
   - *48
   - *49
   - *50
+  - *51
   - *30
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
@@ -2257,7 +2282,7 @@ columns:
     collation:
     comment:
   - *9
-  - &51 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+  - &52 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
     generated: ''
@@ -2372,7 +2397,7 @@ columns:
   - *34
   - *31
   - *9
-  - *51
+  - *52
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial: true
     identity:
@@ -2475,6 +2500,24 @@ columns:
     collation:
     comment:
   - *13
+  workspaces:
+  - *9
+  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial: true
+    identity:
+    generated: ''
+    name: id
+    cast_type: *7
+    sql_type_metadata: *8
+    'null': false
+    default:
+    default_function: nextval('workspaces_id_seq'::regclass)
+    collation:
+    comment:
+  - *38
+  - *28
+  - *16
+  - *13
 primary_keys:
   accounts: id
   active_storage_attachments: id
@@ -2504,6 +2547,7 @@ primary_keys:
   screening_findings: id
   screening_runs: id
   users: id
+  workspaces: id
 data_sources:
   accounts: true
   active_storage_attachments: true
@@ -2533,6 +2577,7 @@ data_sources:
   screening_findings: true
   screening_runs: true
   users: true
+  workspaces: true
 indexes:
   accounts:
   - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
@@ -3552,6 +3597,22 @@ indexes:
     valid: true
   - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
     table: products
+    name: index_products_on_workspace_id
+    unique: false
+    columns:
+    - workspace_id
+    lengths: {}
+    orders: {}
+    opclasses: {}
+    where:
+    type:
+    using: :btree
+    include:
+    nulls_not_distinct: false
+    comment:
+    valid: true
+  - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
+    table: products
     name: products_tenant_id_id_key
     unique: true
     columns:
@@ -3570,7 +3631,7 @@ indexes:
   role_assignments:
   - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
     table: role_assignments
-    name: idx_ra_eligible_approver_v2
+    name: idx_ra_eligible_approver_v3
     unique: false
     columns:
     - tenant_id
@@ -3578,7 +3639,8 @@ indexes:
     lengths: {}
     orders: {}
     opclasses: {}
-    where: "((scope_product_id IS NULL) AND (scope_component_id IS NULL))"
+    where: "((scope_workspace_id IS NULL) AND (scope_product_id IS NULL) AND (scope_component_id
+      IS NULL))"
     type:
     using: :btree
     include:
@@ -3604,12 +3666,13 @@ indexes:
     valid: true
   - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
     table: role_assignments
-    name: uniq_role_assignment_v2
+    name: uniq_role_assignment_v3
     unique: true
     columns:
     - tenant_id
     - account_id
     - role_key
+    - scope_workspace_id
     - scope_product_id
     - scope_component_id
     - market
@@ -3724,4 +3787,38 @@ indexes:
     comment:
     valid: true
   users: []
-version: 20260705000001
+  workspaces:
+  - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
+    table: workspaces
+    name: index_workspaces_on_tenant_id
+    unique: false
+    columns:
+    - tenant_id
+    lengths: {}
+    orders: {}
+    opclasses: {}
+    where:
+    type:
+    using: :btree
+    include:
+    nulls_not_distinct: false
+    comment:
+    valid: true
+  - !ruby/object:ActiveRecord::ConnectionAdapters::IndexDefinition
+    table: workspaces
+    name: workspaces_tenant_id_id_key
+    unique: true
+    columns:
+    - tenant_id
+    - id
+    lengths: {}
+    orders: {}
+    opclasses: {}
+    where:
+    type:
+    using: :btree
+    include:
+    nulls_not_distinct: false
+    comment:
+    valid: true
+version: 20260705000007

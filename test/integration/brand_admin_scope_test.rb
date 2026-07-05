@@ -78,6 +78,40 @@ class BrandAdminScopeTest < ActionDispatch::IntegrationTest
     assert RoleAssignment.exists?(other.id)
   end
 
+  # ── (b') 위조 방어: 복귀 경로(return_to_workspace)를 자기 작업실로 위장해도 경계는 scope_product_id ──
+  # 작업실 페이지 초대 폼은 scope_product_id를 hidden으로 실어 보낸다. scoped admin이 그 hidden을 타 작업실로
+  # 위조하고 return_to_workspace만 자기 작업실로 맞춰도, authorize_member_write!(scope_product_id)가 먼저 403.
+  test "(b') 위조된 hidden scope_product_id(타 작업실)는 return_to_workspace와 무관하게 403·미생성" do
+    sign_in_as(@jung)
+    assert_no_difference "Invitation.count" do
+      post invitations_path, params: {
+        email: "forge@x.dev", role_key: "external_collaborator",
+        scope_product_id: @co0200.id,  # 타 브랜드(시카) — 위조된 스코프(경계)
+        return_to_workspace: @vitc.id  # 자기 작업실로 복귀하는 척(표시용 — 경계 아님)
+      }
+    end
+    assert_response :forbidden
+  end
+
+  # ── (b'') 위조 방어(작업실 스코프 벡터): scope_workspace_id를 타 작업실(시카)로 위조 ──
+  # resolve_member_scope는 scope_workspace_id를 scope_product_id보다 우선 해석해 그 작업실 대표 루트(시카 루트)로
+  # authorize_member_write! → 정브랜은 그 루트에 roles_on=∅ → Pundit deny(비-GET이므로 403). 초대·grant 두 발급
+  # 경로 모두 미생성. scope_product_id 위조((b)·(c)·(b'))와 상보 — 우선순위 분기가 별개 벡터라 회귀로 고정한다.
+  test "(b'') 위조된 scope_workspace_id(타 작업실)는 초대·grant 두 발급 경로 모두 403·미생성" do
+    sign_in_as(@jung)
+    sica_ws = Product.find_by!(name: "시카 수딩 크림").workspace_id # 시카 작업실(정브랜 관할 밖)
+
+    assert_no_difference "Invitation.count" do
+      post invitations_path, params: { email: "ws-forge@x.dev", role_key: "external_collaborator", scope_workspace_id: sica_ws }
+    end
+    assert_response :forbidden
+
+    assert_no_difference "RoleAssignment.count" do
+      post role_assignments_path, params: { account_id: @kim.id, role_key: "external_collaborator", scope_workspace_id: sica_ws }
+    end
+    assert_response :forbidden
+  end
+
   # ── (d) external은 부여된 모든 브랜드의 admin에 가시(체인 grant 기준) ──
   test "(d) external(choi)을 비타민C에도 grant → 정브랜·시카admin 두 admin 모두에 가시" do
     # choi를 CO0100(비타민C)에도 grant → 이제 시카(seed) + 비타민C 두 브랜드에 스코프.
@@ -116,13 +150,19 @@ class BrandAdminScopeTest < ActionDispatch::IntegrationTest
   # ── (f) 정브랜의 일반 화면은 tenant-wide 역할 없음 → 자기 브랜드 스코프만(기존 Scope 동작) ──
   test "(f) scoped admin 대시보드/트리는 자기 브랜드만 · 타 브랜드 부재" do
     sign_in_as(@jung)
+    # 홈 카드: 자기 작업실(비타민C)만 · 타 브랜드 카드 부재.
     get root_path
     assert_response :success
-    body = response.body
-    assert_match "비타민C 브라이트닝 앰플", body
-    assert_match "CO0100", body
-    assert_no_match "레티놀 3% 세럼", body
-    assert_no_match "시카 수딩 크림", body
+    assert_match "비타민C 브라이트닝 앰플", response.body
+    assert_no_match "레티놀 3% 세럼", response.body
+    assert_no_match "시카 수딩 크림", response.body
+
+    # 작업실 진입 → 자기 브랜드 트리(CO0100)만 · 타 브랜드 노드 부재.
+    get workspace_path(id: @vitc.workspace_id)
+    assert_response :success
+    assert_match "CO0100", response.body
+    assert_no_match "레티놀 3% 세럼", response.body
+    assert_no_match "시카 수딩 크림", response.body
   end
 
   # ── scoped 로스터 렌더 N+1 게이트(스코프 배지 프리로드) ──

@@ -5,6 +5,9 @@ class Product < ApplicationRecord
   # self_and_ancestors의 조상 walk가 쿼리 0건(사이드바가 매 페이지 렌더하는 N+1 제거).
   belongs_to :parent, class_name: "Product", optional: true, inverse_of: :children
   belongs_to :owner, class_name: "User", optional: true
+  # 작업실 귀속(WS-track): 루트만 workspace_id를 싣는다(자식은 NULL — brand_root로 도출). optional이지만
+  # workspace_matches_root_status가 "루트⇔필수·자식⇔금지"를 강제한다.
+  belongs_to :workspace, optional: true, inverse_of: :products
   has_many :children, -> { order(:position, :id) }, class_name: "Product",
            foreign_key: :parent_id, inverse_of: :parent, dependent: :destroy
   has_many :components, -> { order(:position, :id) }, dependent: :destroy
@@ -23,6 +26,10 @@ class Product < ApplicationRecord
                    length: { maximum: 200, message: "— 200자를 넘을 수 없습니다" }
   validates :code, uniqueness: { allow_blank: true }
   validate :parent_not_self_or_descendant
+  validate :workspace_matches_root_status
+  # 루트 정합 자가치유: 자식이면 workspace_id 제거, 루트인데 작업실이 없으면 동명 작업실을 새로 만든다.
+  # 컨트롤러가 명시적으로 workspace를 주입하면(사이드바 "새 폴더" = 현재 작업실) 그것을 존중(덮지 않음).
+  before_validation :heal_workspace_by_root_status
 
   def country_label = ApplicationRecord.country_label(country)
   def member_for(role) = product_members.find_by(role: role)&.user
@@ -69,6 +76,11 @@ class Product < ApplicationRecord
   # self_and_ancestors[0]가 곧 루트(체인 head). 단일 노드 해석용 — 목록 렌더는 ReviewInboxPresenter의
   # in-memory 맵 walk가 별도(그쪽은 프리로드 맵으로 N+1 0건, 여기는 .parent walk라 리스트에 부적합).
   def brand_root = self_and_ancestors.first
+
+  # 이 제품이 속한 작업실 = 루트면 자신의 workspace, 자식이면 brand_root의 workspace. 자식은 workspace_id가
+  # NULL이라 반드시 조상 walk로 도출(N+1 주의 — 목록 렌더는 컨트롤러가 루트만 배치 매핑). 단일 노드 해석용.
+  def derived_workspace = parent_id.nil? ? workspace : brand_root.workspace
+  def derived_workspace_id = parent_id.nil? ? workspace_id : brand_root.workspace_id
 
   # 씨앗 제품 id들의 self+자손 id 집합 — (id, parent_id) 1회 로드 후 in-memory 확장(노드별 children
   # 재귀 없음 → N+1 0건). 테넌트 RLS 컨텍스트 내에서 동작. 스코프 서브트리 계산 단일 출처:
@@ -123,6 +135,30 @@ class Product < ApplicationRecord
       errors.add(:parent_id, "자기 자신이나 하위 폴더로 옮길 수 없습니다")
     elsif parent && !parent.folder?
       errors.add(:parent_id, "폴더만 상위가 될 수 있습니다")
+    end
+  end
+
+  # DB CHECK 없이 모델에서만 강제하는 루트-작업실 정합(스키마는 workspace_id nullable). 루트⇔작업실 필수·자식⇔금지.
+  def workspace_matches_root_status
+    if parent_id.nil?
+      errors.add(:workspace_id, "— 루트 제품은 작업실이 필요합니다") if workspace_id.blank? && workspace.blank?
+    elsif workspace_id.present? || workspace.present?
+      errors.add(:workspace_id, "— 자식 제품은 작업실을 가질 수 없습니다")
+    end
+  end
+
+  # 자식이면 workspace 해제(트리 이동으로 루트→자식 전환 시 정합), 루트인데 작업실 미지정이면 동명 작업실 생성
+  # (루트=작업실 1:1 기본 — 홈 "새 작업실"·트리 이동 루트화·시드가 모두 이 경로로 유효해진다). belongs_to 오토세이브가
+  # 새 workspace를 제품 저장 시 함께 저장한다. 명시 workspace(사이드바 새 폴더=현재 작업실)는 존중.
+  def heal_workspace_by_root_status
+    if parent_id.present?
+      self.workspace_id = nil
+      self.workspace = nil
+    elsif workspace_id.blank? && workspace.blank?
+      # tenant_id는 이 제품의 것으로 못박는다(복합 FK products(tenant_id,workspace_id)→workspaces(tenant_id,id)).
+      # TenantScoped(assign_current_tenant)가 먼저 돌아 tenant_id는 이미 세팅됨(명시값 우선). Current로 스탬프하면
+      # 교차테넌트 인라인 생성(RLS 테스트)에서 workspace.tenant_id≠product.tenant_id로 FK 위반이 난다.
+      self.workspace = Workspace.new(name: name.presence || "새 작업실", position: position, tenant_id: tenant_id)
     end
   end
 end

@@ -64,10 +64,10 @@ class ProductsControllerTest < ActionDispatch::IntegrationTest
     assert_equal kim, item.member_for("디자인")
   end
 
-  test "트리 인라인 rename(return=tree)은 트리로, 그 외는 드로어로 리다이렉트" do
+  test "트리 인라인 rename(return=tree)은 그 작업실(focus)로, 그 외는 드로어로 리다이렉트" do
     item = Product.find_by(code: "CO0001")
     patch product_path(item), params: { product: { name: "트리명" }, inline: 1, return: "tree" }
-    assert_redirected_to root_path
+    assert_redirected_to root_path(focus: item.id) # 그 노드의 작업실 트리 + 조상 펼침(focus)
     patch product_path(item), params: { product: { name: "드로어명" }, inline: 1 }
     assert_redirected_to product_path(item)
   end

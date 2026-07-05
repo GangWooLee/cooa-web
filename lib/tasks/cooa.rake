@@ -56,7 +56,7 @@ namespace :rls do
   # 업로드가 PG::InsufficientPrivilege 500. 테넌트 격리는 record 측 RLS가 담당, blob은 인프라).
   RLS_TABLES = %w[
     organizations accounts role_assignments
-    products components component_versions annotations annotation_comments
+    workspaces products components component_versions annotations annotation_comments
     ingredients label_texts screening_runs screening_findings product_members product_properties
     approval_requests approval_steps approval_request_reviewers
     invitations

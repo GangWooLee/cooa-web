@@ -8,46 +8,51 @@ class InvitationsController < ApplicationController
   before_action :require_domain_actor, only: %i[create destroy]
 
   def create
-    # 스코프 초대(D4): scope_product_id가 있으면 product 스코프, 없으면 tenant-wide(하위호환). 2단 인가(T3):
-    # scoped brand_admin은 "대상 제품" 레코드로 authorize → 타 브랜드/tenant-wide 발급은 자연 deny(403·감사).
-    scope_product_id = params[:scope_product_id].presence
-    authorize_member_write!(scope_product_id)
-    # 모델 검증이 백스톱(교차테넌트/미존재 제품·역할 정합은 Invitation 검증에서 거부 → RecordInvalid rescue로 안내).
+    # 스코프 초대: scope_workspace_id(작업실) > scope_product_id(제품) > tenant-wide. 2단 인가(T3): scoped
+    # brand_admin은 "대상 레코드"로 authorize → 관할 밖/tenant-wide 발급은 자연 deny(403·감사).
+    scope = resolve_member_scope
+    authorize_member_write!(scope[:target])
+    # D4: 작업실/제품 스코프 초대는 팀 역할 4종만 — 전사 전용 역할 위조 발급 차단(R9 flash+redirect).
+    unless scoped_role_permitted?(scope, params[:role_key].to_s)
+      return redirect_to member_admin_redirect, alert: "이 역할은 작업실에 초대할 수 없습니다 — 관리자·멤버·뷰어·외부 협력 중에서 선택하세요."
+    end
+    # 모델 검증이 백스톱(교차테넌트/미존재·역할 정합은 Invitation 검증에서 거부 → RecordInvalid rescue로 안내).
     invitation, raw = Invitation.generate!(
       email: params[:email], role_key: params[:role_key],
       invited_by_account_id: current_account.id,
-      scope_type: (scope_product_id ? "product" : "tenant"), scope_product_id: scope_product_id
+      scope_type: scope[:type], scope_workspace_id: scope[:workspace_id], scope_product_id: scope[:product_id]
     )
     AuditLog.record!(action: "invitation.create", resource_type: "Invitation",
                      resource_id: nil, outcome: "allow", # bigint 도메인 공간 — uuid는 after로
                      after: { invitation_id: invitation.id, email: invitation.email, role_key: invitation.role_key,
-                              scope_type: invitation.scope_type, scope_product_id: invitation.scope_product_id },
+                              scope_type: invitation.scope_type, scope_workspace_id: invitation.scope_workspace_id,
+                              scope_product_id: invitation.scope_product_id },
                      request_id: request.request_id, source_ip: request.remote_ip,
                      user_agent: request.user_agent)
     # 메일 자동발송 확장점: raw가 존재하는 유일한 시점이 여기다.
     # InvitationMailer.with(invitation:, raw_token: raw).invite.deliver_later
     flash[:invite_link] = invite_url(raw)
-    redirect_to members_path, notice: "초대를 만들었습니다 — 링크를 복사해 전달하세요."
+    redirect_to member_admin_redirect, notice: "초대를 만들었습니다 — 링크를 복사해 전달하세요."
   rescue ActiveRecord::RecordInvalid => e
-    redirect_to members_path, alert: e.record.errors.full_messages.to_sentence
+    redirect_to member_admin_redirect, alert: e.record.errors.full_messages.to_sentence
   rescue ActiveRecord::RecordNotUnique
     Rails.logger.info("[idempotent] duplicate pending invitation ignored tenant=#{Current.tenant_id} role=#{params[:role_key]}")
-    redirect_to members_path, alert: "이 이메일로 대기 중인 초대가 이미 있습니다 — 기존 초대를 취소 후 재발급하세요."
+    redirect_to member_admin_redirect, alert: "이 이메일로 대기 중인 초대가 이미 있습니다 — 기존 초대를 취소 후 재발급하세요."
   end
 
   def destroy
     invitation = Invitation.find(params[:id])
-    # 2단 인가(T3): scoped admin은 자기 브랜드 스코프 초대만 회수(대상 제품 레코드로 authorize).
-    authorize_member_write!(invitation.scope_product_id)
+    # 2단 인가(T3): scoped admin은 자기 관할 스코프 초대만 회수(스코프 대표 레코드로 authorize).
+    authorize_member_write!(scope_authorize_target(invitation))
     if invitation.accepted_at.present?
-      redirect_to members_path, alert: "이미 수락된 초대는 취소할 수 없습니다."
+      redirect_to member_admin_redirect, alert: "이미 수락된 초대는 취소할 수 없습니다."
     else
       invitation.revoke!
       AuditLog.record!(action: "invitation.revoke", resource_type: "Invitation",
                        resource_id: nil, outcome: "allow", after: { invitation_id: invitation.id },
                        request_id: request.request_id, source_ip: request.remote_ip,
                        user_agent: request.user_agent)
-      redirect_to members_path, notice: "초대를 취소했습니다."
+      redirect_to member_admin_redirect, notice: "초대를 취소했습니다."
     end
   end
 end

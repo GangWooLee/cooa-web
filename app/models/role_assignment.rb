@@ -7,13 +7,15 @@
 # ra_scope_coherence is the hard backstop; scope_columns_match_type mirrors it at the model.
 class RoleAssignment < ApplicationRecord
   ROLE_KEYS = %w[owner brand_admin ra_reviewer approver assignee contributor viewer external_collaborator].freeze
-  SCOPE_TYPES = %w[tenant product component].freeze
+  SCOPE_TYPES = %w[tenant workspace product component].freeze
   MARKETS = %w[JP CN US].freeze
 
   belongs_to :account
   belongs_to :organization, foreign_key: :tenant_id, inverse_of: :role_assignments
-  # Typed scope targets (both NULL for a tenant-wide grant). optional — only set for a scoped grant.
-  # Loaded for display (member roster "role@제품" badge — includes(:scope_product) avoids N+1).
+  # Typed scope targets (all NULL for a tenant-wide grant). optional — only set for a scoped grant.
+  # Loaded for display (member roster "role@작업실/제품" badge — includes avoids N+1). WS-track adds the
+  # workspace axis: a workspace grant applies to every root subtree in that workspace.
+  belongs_to :scope_workspace, class_name: "Workspace", optional: true
   belongs_to :scope_product,   class_name: "Product",   optional: true
   belongs_to :scope_component, class_name: "Component", optional: true
 
@@ -28,11 +30,11 @@ class RoleAssignment < ApplicationRecord
   before_update :guard_last_owner_on_expire # …as is expiring it
 
   scope :active, -> { where("expires_at IS NULL OR expires_at > ?", Time.current) } # SQL expiry (P4) — SQL twin of active?
-  # Tenant-wide = no typed scope set (the grant applies across the whole tenant). Replaces `scope_id: nil`.
-  scope :tenant_wide, -> { where(scope_product_id: nil, scope_component_id: nil) }
+  # Tenant-wide = no typed scope set (the grant applies across the whole tenant). All three axes NULL.
+  scope :tenant_wide, -> { where(scope_workspace_id: nil, scope_product_id: nil, scope_component_id: nil) }
 
   def active? = expires_at.nil? || expires_at.future?
-  def tenant_wide? = scope_product_id.nil? && scope_component_id.nil?
+  def tenant_wide? = scope_workspace_id.nil? && scope_product_id.nil? && scope_component_id.nil?
 
   private
 
@@ -41,14 +43,20 @@ class RoleAssignment < ApplicationRecord
   def scope_columns_match_type
     case scope_type
     when "tenant"
-      if scope_product_id.present? || scope_component_id.present?
-        errors.add(:scope_type, "tenant grant must not set a product/component scope")
+      if scope_workspace_id.present? || scope_product_id.present? || scope_component_id.present?
+        errors.add(:scope_type, "tenant grant must not set a workspace/product/component scope")
       end
+    when "workspace"
+      errors.add(:scope_workspace_id, "is required for a workspace-scoped grant") if scope_workspace_id.blank?
+      errors.add(:scope_product_id, "must be blank for a workspace-scoped grant") if scope_product_id.present?
+      errors.add(:scope_component_id, "must be blank for a workspace-scoped grant") if scope_component_id.present?
     when "product"
       errors.add(:scope_product_id, "is required for a product-scoped grant") if scope_product_id.blank?
+      errors.add(:scope_workspace_id, "must be blank for a product-scoped grant") if scope_workspace_id.present?
       errors.add(:scope_component_id, "must be blank for a product-scoped grant") if scope_component_id.present?
     when "component"
       errors.add(:scope_component_id, "is required for a component-scoped grant") if scope_component_id.blank?
+      errors.add(:scope_workspace_id, "must be blank for a component-scoped grant") if scope_workspace_id.present?
       errors.add(:scope_product_id, "must be blank for a component-scoped grant") if scope_product_id.present?
     end
   end
@@ -59,6 +67,9 @@ class RoleAssignment < ApplicationRecord
   # 2nd-line backstop on app connections. Shared by BOTH grant paths (invitation acceptance pass-through + the
   # direct-grant controller), so neither can attach a grant to another tenant's product.
   def scope_target_in_tenant
+    if scope_workspace_id.present? && !Workspace.where(id: scope_workspace_id, tenant_id: tenant_id).exists?
+      errors.add(:scope_workspace_id, "must reference a workspace in this tenant")
+    end
     if scope_product_id.present? && !Product.where(id: scope_product_id, tenant_id: tenant_id).exists?
       errors.add(:scope_product_id, "must reference a product in this tenant")
     end

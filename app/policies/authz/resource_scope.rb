@@ -21,6 +21,11 @@ module Authz
     # The product a product-scoped grant matches on (nil = record has no product context).
     def product_id_for(record) = product_for(record)&.id
 
+    # The workspace a workspace-scoped grant matches on = the record's brand_root workspace (nil = no product
+    # context). WS-track: a workspace grant applies to every root subtree in that workspace, so any record whose
+    # brand_root is in the workspace is reached. Single source for callers outside the resolver's own walk.
+    def workspace_id_for(record) = product_for(record)&.derived_workspace_id
+
     # The component a component-scoped grant matches on. A Component IS its own scope id (the Stage 1 bug:
     # try(:component_id) returned nil for a Component, so a component grant never matched the component
     # itself). A ComponentVersion carries component_id; deeper records have no direct component_id and are

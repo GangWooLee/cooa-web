@@ -30,7 +30,11 @@ class ScreensTest < ApplicationSystemTestCase
     assert_selector "header button[title='사이드바 접기/펼치기']"
     assert_selector "header nav > div", minimum: 1
     sleep 0.4
-    save_screenshot(dir.join("1_dashboard.png"))
+    save_screenshot(dir.join("1_dashboard.png")) # 홈 = 작업실 카드(W1)
+
+    # ── 작업실 진입 → 트리 테이블(마스터-디테일). W1 이후 트리 테이블은 작업실 페이지에 렌더 ──
+    visit workspace_path(Product.find_by!(name: "레티놀 3% 세럼").derived_workspace)
+    assert_selector "table", wait: 6
 
     # ── 마스터-디테일: 리프 행(셀) 클릭 → 우측 드로어 상세 ──
     within("table") { find("td", text: "CO0001").click }

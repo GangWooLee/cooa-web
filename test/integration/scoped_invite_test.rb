@@ -63,11 +63,11 @@ class ScopedInviteTest < ActionDispatch::IntegrationTest
     assert_equal [ "external_collaborator", "product", @co0100.id ], [ ra.role_key, ra.scope_type, ra.scope_product_id ]
     refute ra.tenant_wide?, "제품 초대가 tenant-wide grant를 만들면 전 테넌트 유출"
 
-    # 3) CO0100만 가시 · 조상 브랜드명 무유출 · 타 제품 차단
+    # 3) CO0100(중국)만 가시 · 조상 브랜드명 무유출 · 타 제품 차단. 홈 카드 = 볼 수 있는 표시 루트명(리프 스코프 → 중국).
     agency.get root_path
     agency.assert_response :success
-    assert_match "CO0100", agency.response.body
-    assert_no_match "비타민C 브라이트닝 앰플", agency.response.body # 비가시 조상 브랜드 루트
+    assert_match "중국", agency.response.body
+    assert_no_match "비타민C 브라이트닝 앰플", agency.response.body # 비가시 조상 브랜드 루트(작업실명 클립)
     assert_no_match "레티놀 3% 세럼", agency.response.body
     assert_no_match "시카 수딩 크림", agency.response.body
 
@@ -92,8 +92,8 @@ class ScopedInviteTest < ActionDispatch::IntegrationTest
     agency.get product_path(@co0200) # 재로그인 없이
     agency.assert_response :success
     agency.get root_path
-    assert_match "CO0100", agency.response.body
-    assert_match "CO0200", agency.response.body
+    assert_match "중국", agency.response.body # CO0100 카드(중국)
+    assert_match "미국", agency.response.body # CO0200 카드(미국)
 
     # 5) admin이 CO0200 grant 회수 → 다시 CO0100만
     co0200_ra = agency_acc.role_assignments.find_by!(scope_product_id: @co0200.id)
@@ -104,7 +104,36 @@ class ScopedInviteTest < ActionDispatch::IntegrationTest
     agency.get product_path(@co0200)
     agency.assert_redirected_to root_path
     agency.get root_path
-    assert_no_match "CO0200", agency.response.body
+    assert_no_match "미국", agency.response.body # CO0200(미국) 카드 소멸 — 다시 CO0100(중국)만
+  end
+
+  test "W3: 작업실 페이지 경로 초대(return_to_workspace) → 그 작업실로 복귀·링크 노출·작업실 스코프·수락 후 그 작업실만 가시" do
+    admin  = open_session
+    agency = open_session
+    sign_in(admin, @song) # manage_members
+    vitc = Product.find_by!(name: "비타민C 브라이트닝 앰플") # 작업실 루트
+    ws   = vitc.workspace
+
+    # 작업실 페이지 폼과 동일한 파라미터(hidden scope_workspace_id=작업실 + return_to_workspace=작업실).
+    admin.post invitations_path, params: {
+      email: "ws-invite@partner.dev", role_key: "external_collaborator",
+      scope_workspace_id: ws.id, return_to_workspace: ws.id
+    }
+    admin.assert_redirected_to workspace_path(ws) # 전사 관리가 아니라 이 작업실로 복귀(컨텍스트 유지)
+    admin.follow_redirect!
+    assert_match "지금 복사해 전달하세요", admin.response.body # 발급 링크가 이 페이지에 노출
+    raw = admin.response.body[%r{/invite/([A-Za-z0-9_\-]+)}, 1]
+    assert raw.present?, "작업실 페이지에 1회용 초대 링크가 노출되어야"
+
+    inv = Invitation.find_by!(email: "ws-invite@partner.dev")
+    assert_equal [ "workspace", ws.id ], [ inv.scope_type, inv.scope_workspace_id ] # 작업실 스코프
+
+    # 수락 → 그 작업실(비타민C = vitc 루트+서브트리)만 가시 · 타 브랜드 부재.
+    google_accept(agency, raw, uid: "g-ws", email: "ws-invite@partner.dev")
+    agency.get root_path
+    assert_match "비타민C 브라이트닝 앰플", agency.response.body
+    assert_no_match "시카 수딩 크림", agency.response.body
+    assert_no_match "레티놀 3% 세럼", agency.response.body
   end
 
   test "직접 grant 발급은 manage_members 전용 — contributor(park)는 403·미생성" do

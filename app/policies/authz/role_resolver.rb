@@ -87,9 +87,14 @@ module Authz
         base = RoleAssignment.active.where(account_id: @account.id)
         conds = []
         if pid
-          product_ids = product ? product.self_and_ancestors.map(&:id) : [ pid ]
+          ancestors = product&.self_and_ancestors
+          product_ids = ancestors ? ancestors.map(&:id) : [ pid ]
           conds << base.where(scope_product_id: product_ids)
           conds << base.where(scope_component_id: Component.where(product_id: pid).select(:id)) if cid.nil?
+          # WORKSPACE grant: 이 레코드의 brand_root가 속한 작업실(작업실 grant는 그 작업실의 모든 루트 서브트리에
+          # 적용 → 이 레코드도 포함). ws_id는 pid의 brand_root.workspace_id로 pid의 순수 함수 → [pid,cid] 메모 안전.
+          ws_id = ancestors ? ancestors.first.workspace_id : Product.where(id: pid).pick(:workspace_id)
+          conds << base.where(scope_workspace_id: ws_id) if ws_id
         end
         conds << base.where(scope_component_id: cid) if cid
         conds.reduce(:or).distinct.pluck(:role_key)

@@ -122,10 +122,10 @@ class V15EdgeTest < ActionDispatch::IntegrationTest
     sign_in(admin_sess, Account.find_by!(email: "song@cooa.dev")) # brand_admin → manage_members
     sign_in(choi_sess, choi_acc)
 
-    # 초기: choi는 CO0200만 가시.
+    # 초기: choi는 CO0200(미국)만 가시. 홈 카드 = 볼 수 있는 표시 루트명(리프 스코프 → 미국·조상 작업실명 클립).
     choi_sess.get root_path
     choi_sess.assert_response :success
-    assert_match "CO0200", choi_sess.response.body
+    assert_match "미국", choi_sess.response.body
 
     # 관리자가 choi의 유일 grant 회수(choi 라이브 세션은 유지).
     grant = choi_acc.role_assignments.find_by!(scope_product_id: co0200.id)
@@ -137,7 +137,7 @@ class V15EdgeTest < ActionDispatch::IntegrationTest
     # choi의 다음 요청: 재로그인 없이 즉시 반영 — 여전히 인증되나 가시 제품 0(fail-closed·요청 간 stale 역할 없음).
     choi_sess.get root_path
     choi_sess.assert_response :success                  # grant 회수 ≠ 세션 폐기 → 인증 유지
-    refute_match "CO0200", choi_sess.response.body      # 부여 제품 소멸
+    refute_match "미국", choi_sess.response.body         # 부여 제품(CO0200=미국) 소멸
     refute_match "레티놀 3% 세럼", choi_sess.response.body # 타 제품도 전무 = fail-closed
     refute_match "시카 수딩 크림", choi_sess.response.body
   end

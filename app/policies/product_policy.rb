@@ -35,6 +35,9 @@ class ProductPolicy < ApplicationPolicy
       seed = grants.where.not(scope_product_id: nil).pluck(:scope_product_id)
       comp_ids = grants.where.not(scope_component_id: nil).pluck(:scope_component_id)
       seed |= Component.where(id: comp_ids).pluck(:product_id) if comp_ids.any?
+      # WORKSPACE grant → 그 작업실의 모든 루트(그 후 서브트리로 확장). 루트만 workspace_id를 실으므로 루트 조회로 충분.
+      ws_ids = grants.where.not(scope_workspace_id: nil).pluck(:scope_workspace_id)
+      seed |= Product.roots.where(workspace_id: ws_ids).pluck(:id) if ws_ids.any?
       return [] if seed.empty?
 
       expand_descendants(seed.uniq)

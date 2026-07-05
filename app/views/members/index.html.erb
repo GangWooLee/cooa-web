@@ -1,48 +1,34 @@
-<% content_for :title, "멤버" %>
+<% content_for :title, "전사 관리" %>
 <div class="mx-auto w-full max-w-3xl p-6">
-  <div class="mb-1 text-[20px] font-bold text-ink">멤버</div>
-  <p class="mb-5 text-[13px] text-line">조직 멤버와 대기 중인 초대를 관리합니다. 초대를 수락한 멤버는 역할에 따라 조직의 모든 제품·버전에 접근합니다.</p>
+  <div class="mb-1 text-[20px] font-bold text-ink">전사 관리</div>
+  <p class="mb-5 text-[13px] text-line">조직 멤버와 대기 중인 초대를 한눈에 봅니다. 전사 멤버는 모든 작업실에 접근하고, 작업실 멤버는 소속 배지로 표시됩니다. <b>작업실 인원 추가·제외는 각 작업실 페이지</b>에서 하세요 — 여기서는 전사 초대와 계정 현황을 관리합니다.</p>
 
-  <%# 방금 만든 초대 링크(1회 노출 — digest만 저장되므로 이 화면을 벗어나면 재표시 불가) %>
-  <% if flash[:invite_link].present? %>
-    <div data-controller="clipboard" data-clipboard-source-value="<%= flash[:invite_link] %>"
-         class="mb-5 rounded-xl border border-cooa/40 bg-tint p-3">
-      <div class="mb-1 text-[12px] font-bold text-cooa">초대 링크 — 지금 복사해 전달하세요 (다시 표시되지 않습니다 · 7일 유효)</div>
-      <div class="flex items-center gap-2">
-        <code class="min-w-0 flex-1 truncate rounded bg-white px-2 py-1.5 text-[12px] text-ink"><%= flash[:invite_link] %></code>
-        <button type="button" data-clipboard-target="button" data-action="clipboard#copy"
-                class="shrink-0 cursor-pointer rounded-lg bg-cooa px-3 py-1.5 text-[12px] font-bold text-white">링크 복사</button>
-      </div>
-    </div>
-  <% end %>
+  <%= render "shared/invite_link_banner" %>
 
-  <%# 초대 폼 (manage_members 전용) %>
-  <% if @can_manage %>
-    <%= form_with url: invitations_path, method: :post, class: "mb-6 flex flex-wrap items-end gap-2 rounded-xl border border-line p-3" do %>
-      <div class="min-w-0 flex-1">
-        <label class="block text-[11px] font-bold text-line">이메일</label>
-        <input type="email" name="email" required placeholder="teammate@company.com"
-               class="mt-1 w-full rounded-lg border border-line-soft px-3 py-2 text-[13px] focus:border-cooa focus:outline-none">
+  <%# 전사 초대 폼 — tenant-wide admin 전용. email + 역할(모든 작업실 접근). 작업실 한정 초대는 각 작업실 페이지. %>
+  <% if @can_issue_tenant_wide %>
+    <%= form_with url: invitations_path, method: :post, class: "mb-6 rounded-xl border border-line p-3" do %>
+      <div class="mb-2 text-[12px] font-bold text-ink">전사 멤버 초대 <span class="font-normal text-line">— 모든 작업실에 접근합니다</span></div>
+      <div class="flex flex-wrap items-end gap-2">
+        <div class="min-w-0 flex-1">
+          <label class="block text-[11px] font-bold text-line">이메일</label>
+          <input type="email" name="email" required placeholder="teammate@company.com"
+                 class="mt-1 w-full rounded-lg border border-line-soft px-3 py-2 text-[13px] focus:border-cooa focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-line">역할</label>
+          <select name="role_key" class="mt-1 rounded-lg border border-line-soft px-2 py-2 text-[13px]">
+            <%= role_option_tags(Invitation::INVITABLE_ROLE_KEYS, selected: "contributor") %>
+          </select>
+        </div>
+        <button type="submit" class="cursor-pointer rounded-lg bg-cooa-gradient px-4 py-2 text-[13px] font-bold text-white">전사 초대 만들기</button>
       </div>
-      <div>
-        <label class="block text-[11px] font-bold text-line">역할</label>
-        <select name="role_key" class="mt-1 rounded-lg border border-line-soft px-2 py-2 text-[13px]">
-          <% Invitation::INVITABLE_ROLE_KEYS.each do |rk| %>
-            <option value="<%= rk %>" <%= "selected" if rk == "contributor" %>><%= rk %></option>
-          <% end %>
-        </select>
-      </div>
-      <div>
-        <%# 스코프(D4): "전체 조직"=tenant-wide · 제품 선택=그 제품 서브트리 한정(외부 에이전시). 컨트롤러가 scope_type 도출. %>
-        <label class="block text-[11px] font-bold text-line">범위</label>
-        <select name="scope_product_id" class="mt-1 rounded-lg border border-line-soft px-2 py-2 text-[13px]">
-          <%# scoped brand_admin은 tenant-wide 발급 불가(서버 강제) → "전체 조직" 옵션도 숨김(T3) %>
-          <% if @can_issue_tenant_wide %><option value="">전체 조직</option><% end %>
-          <%= options_for_select(scope_product_options(@scope_products)) %>
-        </select>
-      </div>
-      <button type="submit" class="cursor-pointer rounded-lg bg-cooa-gradient px-4 py-2 text-[13px] font-bold text-white">초대 만들기</button>
     <% end %>
+  <% elsif @can_manage %>
+    <%# scoped admin: 전사 초대 불가 — 작업실 단위 초대는 작업실 페이지에서. %>
+    <div class="mb-6 rounded-xl border border-line-soft bg-tint/40 p-3 text-[12px] text-line">
+      멤버 초대는 각 작업실 페이지에서 진행하세요 — 왼쪽 사이드바에서 작업실을 열어 "멤버 초대·관리"를 사용합니다.
+    </div>
   <% end %>
 
   <%# 대기 중 초대 %>
@@ -52,7 +38,7 @@
       <% @invitations.each do |inv| %>
         <div class="flex items-center gap-3 px-3 py-2.5 text-[13px]">
           <span class="min-w-0 flex-1 truncate font-medium text-ink"><%= inv.email %></span>
-          <span class="rounded bg-tint px-1.5 py-0.5 text-[11px] text-line"><%= inv.role_key %></span>
+          <span class="rounded bg-tint px-1.5 py-0.5 text-[11px] text-line" title="<%= role_description(inv.role_key) %>"><%= role_label(inv.role_key) %></span>
           <span class="text-[11px] text-line"><%= inv.expires_at.strftime("%m.%d") %>까지</span>
           <% if @can_manage %>
             <%= button_to "취소", invitation_path(inv), method: :delete,
@@ -64,7 +50,7 @@
     </div>
   <% end %>
 
-  <%# 멤버 로스터 — tenant-wide 역할 배지 + 제품-스코프 grant 배지(회수·인라인 추가) %>
+  <%# 멤버 로스터 — tenant-wide 역할 배지 + 소속 작업실 배지(회수·작업실 추가) %>
   <div class="mb-2 text-[13px] font-bold text-ink">멤버 (<%= @accounts.size %>)</div>
   <div class="divide-y divide-line-soft rounded-xl border border-line">
     <% @accounts.each do |acc| %>
@@ -78,40 +64,23 @@
           </span>
           <%# tenant-wide 역할(전 조직 적용) %>
           <% active_ras.select(&:tenant_wide?).map(&:role_key).uniq.each do |rk| %>
-            <span class="rounded bg-tint px-1.5 py-0.5 text-[11px] text-line"><%= rk %></span>
+            <span class="rounded bg-tint px-1.5 py-0.5 text-[11px] text-line" title="<%= role_description(rk) %>"><%= role_label(rk) %></span>
           <% end %>
           <span class="rounded-full px-2 py-0.5 text-[11px] font-bold <%= acc.active? ? "text-white" : "text-line bg-tint" %>"
                 <%= 'style=background:#5f8f2e'.html_safe if acc.active? %>><%= acc.status %></span>
         </div>
 
-        <%# 제품-한정 grant(스코프 배지) + @can_manage면 회수·추가 %>
+        <%# 소속 작업실 배지(스코프 grant) — 읽기전용 + 작업실 링크. 회수·추가는 각 작업실 페이지에서(D5). %>
         <% scoped = active_ras.reject(&:tenant_wide?) %>
-        <% if scoped.any? || @can_manage %>
+        <% if scoped.any? %>
           <div class="mt-2 flex flex-wrap items-center gap-1.5 pl-9">
             <% scoped.each do |ra| %>
-              <span class="inline-flex items-center gap-1 rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium text-cooa">
-                <%= ra.role_key %> @ <%= ra.scope_product&.name || ra.scope_component&.display_name %>
-                <% if @can_manage %>
-                  <%= button_to "×", role_assignment_path(ra), method: :delete,
-                        form: { class: "inline-block leading-none", data: { turbo_confirm: "#{ra.scope_product&.name} 스코프 권한을 회수할까요?" } },
-                        class: "cursor-pointer px-0.5 leading-none text-cooa/60 hover:text-cooa" %>
-                <% end %>
+              <% ws = workspace_for(ra, @workspace_by_id, @workspace_id_of) %>
+              <span class="inline-flex items-center gap-1 rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium text-cooa" title="<%= role_description(ra.role_key) %>">
+                <%= role_label(ra.role_key) %> ·
+                <% if ws %><%= link_to ws.name, workspace_path(ws), data: { turbo: false }, class: "underline decoration-cooa/30 underline-offset-2 transition hover:decoration-cooa" %>
+                <% else %><%= workspace_name_for(ra, @workspace_by_id, @workspace_id_of) %><% end %>
               </span>
-            <% end %>
-            <% if @can_manage %>
-              <%# 인라인 스코프 권한 추가(초대 우회 — 기존 계정을 특정 제품에 재-스코프) %>
-              <%= form_with url: role_assignments_path, method: :post, class: "inline-flex items-center gap-1" do %>
-                <%= hidden_field_tag :account_id, acc.id %>
-                <select name="role_key" class="rounded border border-line-soft px-1 py-1 text-[11px]">
-                  <% Invitation::INVITABLE_ROLE_KEYS.each do |rk| %>
-                    <option value="<%= rk %>" <%= "selected" if rk == "external_collaborator" %>><%= rk %></option>
-                  <% end %>
-                </select>
-                <select name="scope_product_id" class="rounded border border-line-soft px-1 py-1 text-[11px]">
-                  <%= options_for_select(scope_product_options(@scope_products)) %>
-                </select>
-                <button type="submit" class="cursor-pointer rounded bg-tint px-2 py-1 text-[11px] font-bold text-cooa hover:bg-accent">+ 스코프</button>
-              <% end %>
             <% end %>
           </div>
         <% end %>

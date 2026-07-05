@@ -9,8 +9,8 @@ class ApplicationController < ActionController::Base
   # Auth (ADR-003): resolve_account → set_current_tenant → scope_to_tenant(RLS tx) → verify_revocation.
   include Authentication
 
-  before_action :set_nav
-  helper_method :header_tabs, :pending_review_count, :overdue_review_count, :visible_product_id_set, :can_view_members?
+  helper_method :header_tabs, :pending_review_count, :overdue_review_count, :visible_product_id_set, :can_view_members?,
+                :current_workspace, :current_workspace_label, :workspace_label, :visible_workspaces, :context_tree_roots
 
   # Strict Pundit (ADR-002 §0 BOLA defense): every action must authorize (or explicitly skip_authorization).
   # verify_policy_scoped is enabled per-controller for index-like actions (DashboardController) — referencing
@@ -96,11 +96,124 @@ class ApplicationController < ActionController::Base
     Rails.logger.error("[audit] deny logging failed: #{e.class}: #{e.message}")
   end
 
-  # 모든 화면 공통 셸 데이터 (사이드바 트리). 히스토리 탭은 header_tabs(렌더 시점)로 분리.
-  def set_nav
-    return unless nav_ready? && Current.tenant_id
+  # ── 작업실(Workspace) 컨텍스트 (WS-track, 2026-07-05) ─────────────────────────
+  # 작업실 = Workspace 엔티티(복수 루트를 담는 상위 컨테이너). 사이드바가 매 페이지 렌더하므로 컨텍스트는
+  # **렌더 시점 lazy**로 도출한다(header_tabs와 동일 이유). 진실원천 1곳: 홈 카드(W1)·컨텍스트 사이드바(W2) 공용.
+  #
+  # current_workspace = (dashboard#index가 세팅한 @workspace) ?? (@product 등 리소스에서 도출한 가시 작업실)
+  #                  ?? (session[:workspace_id]가 가리키는 가시 작업실 — 비가시/삭제면 nil·세션 정화) ?? nil.
+  def current_workspace
+    return @current_workspace if defined?(@current_workspace)
 
-    @tree_roots = visible_roots(Product.includes(:children, :parent))
+    @current_workspace = resolve_current_workspace
+  end
+
+  def resolve_current_workspace
+    return nil unless nav_ready? && Current.tenant_id
+
+    # 1) dashboard#index가 세팅한 Workspace 엔티티 우선.
+    if defined?(@workspace) && @workspace
+      session[:workspace_id] = @workspace.id unless session[:workspace_id] == @workspace.id
+      return @workspace
+    end
+
+    # 2) 리소스 도출 — 상세/버전/스크리닝/비교가 세팅하는 @product의 가시 작업실.
+    if defined?(@product) && @product && (ws = workspace_of_node(@product))
+      session[:workspace_id] = ws.id unless session[:workspace_id] == ws.id # 컨텍스트 유지(인박스 등 폴백)
+      return ws
+    end
+
+    # 3) 세션 폴백 — 리소스 없는 화면(인박스 등)에서 마지막 작업실 유지. 비가시/삭제면 정화.
+    if (sid = session[:workspace_id])
+      ws = visible_workspace_by_id(sid)
+      return ws if ws
+
+      session.delete(:workspace_id)
+    end
+    nil
+  end
+
+  # 노드의 최상위 **가시** 조상 = 그 노드가 속한 (가시) 표시 루트 Product. 테넌트-와이드는 실제 트리 루트,
+  # 스코프 계정은 재루팅된 가시 루트(비가시 조상 브랜드명 유출 차단). 단일 노드라 N+1 무관.
+  def topmost_visible_ancestor(product)
+    return nil unless product
+
+    chain = product.self_and_ancestors # [루트 … self]
+    set = visible_product_id_set
+    visible_chain = set ? chain.select { |a| set.include?(a.id) } : chain
+    visible_chain.first
+  end
+
+  # 노드가 속한 가시 작업실(비가시면 nil). 가시 표시 루트를 얻고 그 작업실을 도출.
+  def workspace_of_node(product)
+    root = topmost_visible_ancestor(product)
+    root && workspace_of_root(root)
+  end
+
+  # 표시 루트 → 작업실. 실루트(부모 nil)면 자신의 workspace, 재루팅(부모 비가시)이면 brand_root의 workspace
+  # (같은 테넌트라 RLS로 조상 로드 가능 — 스코프 격리는 policy 레이어 담당). N+1은 컨트롤러가 루트만 배치.
+  def workspace_of_root(root)
+    root.parent_id.nil? ? root.workspace : root.brand_root.workspace
+  end
+
+  # 세션에 저장된 작업실 id를 가시 작업실로 정규화(가시 작업실 목록에 있을 때만 · 비가시/삭제면 nil).
+  def visible_workspace_by_id(id)
+    visible_workspaces.find { |w| w.id.to_s == id.to_s }
+  end
+
+  # 가시 표시 루트(가시 제품 중 부모가 비가시/nil) — 작업실 목록·라벨의 단일 소스(요청당 1회 로드).
+  def visible_display_roots
+    @visible_display_roots ||= visible_roots(Product.includes(:parent, :workspace))
+  end
+
+  # 컨텍스트 없음 사이드바 + 홈 카드의 작업실 목록 = 가시 표시 루트가 속한 작업실 ∪ 직접 가시한 작업실(빈 작업실
+  # 포함 — D3). 중복 제거(id)·position 순. 빈 작업실은 제품 파생 목록에 안 잡히므로 directly_visible_workspaces가 보완.
+  def visible_workspaces
+    @visible_workspaces ||= (visible_display_roots.filter_map { |r| workspace_of_root(r) } + directly_visible_workspaces)
+                            .uniq(&:id).sort_by { |w| [ w.position || 0, w.id ] }
+  end
+
+  # 제품과 무관하게 직접 가시한 작업실(빈 작업실도 포함). tenant-wide/데모는 전 작업실을, 스코프 계정은
+  # workspace-scope grant를 가진 작업실을 본다. 제품 파생 목록과 합쳐 갓 만든 빈 작업실이 홈 카드·사이드바·진입
+  # 판정(resolve_index_workspace)에서 보이게 한다. product-scope만 가진 계정은 빈 작업실 직접 가시 없음(무회귀).
+  def directly_visible_workspaces
+    if visible_product_id_set.nil?
+      Workspace.all.to_a # tenant-wide / 데모 User → 전 작업실
+    elsif Current.account
+      ws_ids = RoleAssignment.active.where(account_id: Current.account.id)
+                             .where.not(scope_workspace_id: nil).distinct.pluck(:scope_workspace_id)
+      ws_ids.any? ? Workspace.where(id: ws_ids).to_a : []
+    else
+      []
+    end
+  end
+
+  # 작업실 표시명 맵(D3 유출 차단): 이 계정이 작업실의 **실루트**(부모 nil)를 보면 작업실명, 재루팅만 보이면
+  # (리프 스코프) 볼 수 있는 표시 루트의 이름. 비가시 조상 작업실명이 새어나가지 않게 라벨을 클립한다
+  # (브레드크럼 조상 라벨 클리핑과 동일 원리 — visible_product_id_set). 요청당 1회.
+  def visible_workspace_labels
+    @visible_workspace_labels ||= visible_display_roots.group_by { |r| workspace_of_root(r) }
+                                                       .each_with_object({}) do |(ws, rs), h|
+      next unless ws
+
+      h[ws.id] = rs.any? { |r| r.parent_id.nil? } ? ws.name : rs.first.name
+    end
+  end
+
+  # 작업실 → 유출 차단 표시명(맵 미스 시 작업실명 폴백 — tenant-wide는 항상 작업실명).
+  def workspace_label(workspace) = workspace && (visible_workspace_labels[workspace.id] || workspace.name)
+
+  # 현재 작업실의 유출 차단 표시명(사이드바 헤더·작업실 페이지 헤더 공용).
+  def current_workspace_label = workspace_label(current_workspace)
+
+  # 컨텍스트 있음 사이드바의 트리 = **현재 작업실의 모든 가시 루트**(복수 루트 수용). 가시 전체를 :children
+  # 프리로드로 1회 로드(하위 children 프리로드 → _tree_node 재귀 N+1 0건) 그중 현재 작업실 소속 표시 루트만 렌더.
+  def context_tree_roots
+    ws = current_workspace
+    return [] unless ws
+
+    @context_tree_roots ||= visible_roots(Product.includes(:children, :parent, :workspace))
+                            .select { |r| workspace_of_root(r)&.id == ws.id }
   end
 
   # 표시 루트 = 가시 제품 중 부모가 비가시(또는 nil)인 노드 (Stage 2 D3). 테넌트-와이드 액터면 Product.roots와
@@ -166,24 +279,31 @@ class ApplicationController < ActionController::Base
   # 가시 제품 전체를 프리로드와 함께 1회 로드 → tree_preorder가 parent_id 그룹핑으로 preorder를 만든다.
   # 하위 레벨의 children/연관(담당자·구성요소) 재쿼리 N+1이 제거되고(R5), 표시 루트 재루팅(부모 비가시)은
   # tree_preorder가 내포하므로 visible_roots를 거치지 않는다(:children 프리로드도 불요 — .children 미접근).
-  # brand_root_id(T4 /brands/:id): 가시집합을 그 서브트리로 좁혀 브랜드 팀 페이지의 트리를 만든다(가시성과
-  # 교집합이라 스코프 계정도 안전). 반환값 = 필터 전 가시 배열(브랜드 가시성 판정용 — dashboard#index).
-  def load_dashboard_rows(brand_root_id: nil)
-    visible = policy_scope(Product.includes(:parent, :owner, { product_members: :user },
+  # workspace(WS-track /workspaces/:id): 가시집합을 그 작업실의 모든 루트 서브트리로 좁혀 작업실 페이지 트리를
+  # 만든다(가시성과 교집합이라 스코프 계정도 안전). 반환값 = 필터 전 가시 배열(작업실 가시성 판정용 — dashboard#index).
+  def load_dashboard_rows(workspace: nil)
+    visible = policy_scope(Product.includes(:parent, :owner, :workspace, { product_members: :user },
                                             { components: :component_versions })).to_a
     rows_source = visible
-    if brand_root_id
-      keep = Product.subtree_ids([ brand_root_id ]).to_set
+    if workspace
+      keep = workspace_subtree_ids(workspace).to_set
       rows_source = visible.select { |p| keep.include?(p.id) }
     end
     @rows = Product.tree_preorder(rows_source)
     visible
   end
 
-  # 브랜드 팀 페이지(T4)의 멤버 요약 = 그 브랜드 서브트리에 스코프 grant를 가진 계정(tenant-wide 제외 —
-  # 전역 멤버는 브랜드 소속이 아님). T3 로스터와 동일 쿼리(AdminScope.scoped_member_account_ids) 재사용.
-  def brand_member_accounts(brand)
-    ids = Authz::AdminScope.scoped_member_account_ids(Product.subtree_ids([ brand.id ]))
-    Account.includes(:user, role_assignments: [ :scope_product, :scope_component ]).where(id: ids).order(:created_at)
+  # 작업실의 모든 루트 서브트리 id(멤버 요약·pending·회수 필터 공용). workspace.products = 그 작업실 루트들.
+  def workspace_subtree_ids(workspace)
+    Product.subtree_ids(workspace.products.pluck(:id))
+  end
+
+  # 작업실 페이지의 멤버 요약 = 그 작업실에 스코프 grant를 가진 계정(tenant-wide 제외 — 전역 멤버는 작업실
+  # 소속이 아님). member_account_ids_for_workspace(작업실 grant + 서브트리 p/c grant)는 빈 작업실도 workspace grant
+  # 멤버를 표면화한다(제품 파생 scoped_member_account_ids의 빈-집합 조기반환 우회 — D3).
+  def workspace_member_accounts(workspace)
+    ids = Authz::AdminScope.member_account_ids_for_workspace(workspace)
+    Account.includes(:user, role_assignments: [ :scope_workspace, :scope_product, :scope_component ])
+           .where(id: ids).order(:created_at)
   end
 end

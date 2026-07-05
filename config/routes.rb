@@ -11,7 +11,12 @@ Rails.application.routes.draw do
 
   # ── COOA 데모 ──
   root "dashboard#index"
-  get "/brands/:id", to: "dashboard#index", as: :brand        # 브랜드별 대시보드
+  # 작업실 CRUD(D3) — 생성(홈 "새 작업실")·이름변경·삭제(빈 작업실만). show(GET)는 대시보드#index가 처리(복수
+  # 루트 트리). 헬퍼명 충돌 회피: as: :workspace는 GET에만 — patch/delete는 workspace_path URL을 method로 재사용.
+  resources :workspaces, only: [ :create ]
+  patch  "/workspaces/:id", to: "workspaces#update"
+  delete "/workspaces/:id", to: "workspaces#destroy"
+  get    "/workspaces/:id", to: "dashboard#index", as: :workspace
 
   # 로컬 account-picker 로그인 (dev/test; production은 Keycloak OIDC=Phase 2b). 비밀번호 없음.
   resource :session, only: [ :new, :create, :destroy ]

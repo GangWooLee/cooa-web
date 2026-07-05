@@ -1,7 +1,10 @@
 require "application_system_test_case"
 
-# 트리: 즉시 생성 → 트리에서 인라인 명명(Notion식, 드로어 안 띄움) · 자유 구성요소 · 연쇄삭제
+# 트리 CRUD(W1/W2): 작업실 진입 후 트리에서 즉시 생성 → 인라인 명명(Notion식) · 자유 구성요소 · DnD · 연쇄삭제.
+# + 홈 "새 작업실"로 루트(작업실) 생성(기존 사이드바 + 루트 생성 의도 이식). 트리 테이블은 작업실 진입 화면에 렌더.
 class TreeCrudTest < ApplicationSystemTestCase
+  def retinol = Product.find_by!(name: "레티놀 3% 세럼")
+
   # 호버 노출(opacity-0) 컨트롤은 좌표 클릭이 불안정 → JS 클릭으로 견고하게
   def js_click(css)
     find(css, visible: :all).execute_script("this.click()")
@@ -33,14 +36,15 @@ class TreeCrudTest < ApplicationSystemTestCase
     JS
   end
 
+  # 작업실 진입 후 툴바 폴더 아이콘(미선택 → 이 작업실에 루트 생성[복수 루트 수용·D3] → 인라인 명명 리다이렉트).
   def create_folder_via_toolbar
     page.current_window.resize_to(1440, 900)
-    visit root_path
+    visit workspace_path(retinol.derived_workspace) # 작업실 진입 → 트리 테이블 + 툴바
     find("button.bg-cooa-gradient[title='새 폴더']").click # 툴바 폴더 아이콘(사이드바와 구분)
     new_node # 대기 + 폴더 반환
   end
 
-  test "즉시 생성 → 트리 인라인 명명 · 구성요소 · 연쇄삭제" do
+  test "작업실 진입 후 즉시 생성 → 인라인 명명 · 구성요소 · 연쇄삭제 + 홈 새 작업실(빈 작업실) 생성" do
     folder = create_folder_via_toolbar
     assert folder.folder?, "kind=folder 즉시 생성"
     assert_no_selector "#detail #product_name" # 드로어 안 띄움
@@ -65,19 +69,23 @@ class TreeCrudTest < ApplicationSystemTestCase
     assert_equal 1, item.components.reload.count
     assert_equal "제목 없음 구성요소", item.components.first.name, "자유 이름 기본값"
 
-    # ── 사이드바 "+" 즉시 루트 폴더 생성 → 사이드바에서 인라인 명명(대시보드 아님) ──
-    visit root_path
-    roots_before = Product.roots.count
-    js_click("aside button[title='새 폴더']")
-    assert_selector "aside form input[name='product[name]']", wait: 5 # 행동한 사이드바에서 입력칸 등장
-    assert_equal roots_before + 1, Product.roots.count, "사이드바 + → 루트 폴더"
+    # ── 홈 "새 작업실" → 모달 폼(이름) → 빈 작업실 생성·진입(빈 상태 유도) ──
+    visit root_path # 홈 = 작업실 카드
+    ws_before = Workspace.count
+    click_button "새 작업실" # 모달 열기
+    within "dialog[open]" do
+      fill_in "name", with: "신규 작업실"
+      click_button "작업실 만들기"
+    end
+    assert_text "아직 폴더나 항목이 없습니다", wait: 5 # 빈 작업실로 진입 = 빈 상태
+    assert_equal ws_before + 1, Workspace.count, "홈 새 작업실 → 빈 작업실 생성(제품 0)"
 
-    # ── 폴더 삭제(연쇄: 하위 항목·구성요소까지) ──
+    # ── 폴더 삭제(연쇄: 하위 항목·구성요소까지) — 그 작업실 트리에서(브랜드A는 레티놀 작업실의 2번째 루트) ──
     iid = item.id
     cids = item.components.pluck(:id)
-    visit root_path
+    visit workspace_path(folder.derived_workspace) # 레티놀 작업실(브랜드A 포함)
     accept_confirm { js_click("tr[data-node-id='#{folder.id}'] button[title='삭제']") }
-    assert_no_selector "td", text: "브랜드A", wait: 5
+    assert_no_text "브랜드A", wait: 5 # 삭제 후 그 작업실 트리 복귀(브랜드A 부재) = 완료 대기(레이스 방지)
     assert_not Product.exists?(folder.id), "폴더 삭제"
     assert_not Product.exists?(iid), "하위 항목 연쇄삭제"
     assert_empty Component.where(id: cids), "구성요소 연쇄삭제"
@@ -100,22 +108,23 @@ class TreeCrudTest < ApplicationSystemTestCase
 
   test "선택 기준 생성: 폴더 선택 → 상단 폴더 아이콘 = 자식" do
     page.current_window.resize_to(1440, 900)
-    retinol = Product.find_by(name: "레티놀 3% 세럼")
-    visit root_path
-    before = retinol.children.count
-    find("tr[data-node-id='#{retinol.id}']").click # 폴더 선택
+    r = retinol
+    visit workspace_path(r.derived_workspace) # 작업실 진입
+    before = r.children.count
+    find("tr[data-node-id='#{r.id}']").click # 작업실 루트 폴더 선택
     find("button.bg-cooa-gradient[title='새 폴더']").click
     child = new_node
     assert child.folder?
-    assert_equal retinol.id, child.parent_id, "폴더 선택 → 자식"
-    assert_equal before + 1, retinol.children.reload.count
+    assert_equal r.id, child.parent_id, "폴더 선택 → 자식"
+    assert_equal before + 1, r.children.reload.count
   end
 
-  test "드래그앤드롭: 리프를 다른 폴더 안으로 이동(재배치)" do
+  test "드래그앤드롭: 리프를 같은 작업실 다른 폴더 안으로 이동(재배치)" do
     page.current_window.resize_to(1440, 900)
-    leaf = Product.find_by(code: "CO0001") # 레티놀 하위
-    dest = Product.find_by(name: "비타민C 브라이트닝 앰플") # 다른 루트 폴더
-    visit root_path
+    r = retinol
+    leaf = Product.find_by!(code: "CO0001")      # 레티놀 › 일본(리프)
+    dest = r.children.find_by!(name: "미국")      # 레티놀 › 미국(폴더) — 같은 작업실
+    visit workspace_path(r.derived_workspace)
     drag_row_onto(leaf.id, dest.id, where: :middle) # 폴더 가운데 = 안으로
     assert_selector "tr[data-node-id='#{leaf.id}'][data-parent-id='#{dest.id}']", wait: 5 # 재렌더 후
     assert_equal dest.id, leaf.reload.parent_id

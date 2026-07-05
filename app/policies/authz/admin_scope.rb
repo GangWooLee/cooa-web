@@ -17,13 +17,18 @@ module Authz
     def for(account)
       return nil unless account
 
-      tw_roles = RoleAssignment.active.where(account_id: account.id).tenant_wide.pluck(:role_key)
-      return :all if tw_roles.any? { |rk| PermissionMatrix.allows?(rk, "manage_members") }
+      active = RoleAssignment.active.where(account_id: account.id)
+      return :all if active.tenant_wide.pluck(:role_key).any? { |rk| PermissionMatrix.allows?(rk, "manage_members") }
 
-      products = RoleAssignment.active.where(account_id: account.id, role_key: "brand_admin")
-                               .where.not(scope_product_id: nil).includes(:scope_product)
-                               .filter_map(&:scope_product).uniq
-      products.presence
+      # 계약(판단): Workspace가 아니라 그 작업실의 **루트 제품들**을 반환한다 — 하류(authorize scope.first ·
+      # subtree_ids(scope))가 이미 Product 계약이라 WorkspacePolicy 신설·전 소비처 재작성 없이 workspace 스코프를
+      # 수용한다(minimalism). workspace-scope brand_admin(백필된 jung) → 그 작업실 루트들 · 루트 대상 product-scope
+      # brand_admin(하위호환) → 그 제품. record-dependent 리졸버가 스코프를 자연 제한하므로 매트릭스는 무변경.
+      admin = active.where(role_key: "brand_admin")
+      ws_ids = admin.where.not(scope_workspace_id: nil).distinct.pluck(:scope_workspace_id)
+      products = Product.roots.where(workspace_id: ws_ids).to_a
+      products |= admin.where.not(scope_product_id: nil).includes(:scope_product).filter_map(&:scope_product)
+      products.uniq.presence
     end
 
     # 서브트리 product_ids에 스코프 grant를 가진 계정 id들 — 단, tenant-wide grant 보유 계정은 제외
@@ -32,14 +37,37 @@ module Authz
       product_ids = Array(product_ids)
       return [] if product_ids.empty?
 
+      # product_ids는 관례상 서브트리(루트 포함) → 루트의 workspace_id로 관련 작업실 도출. 그 작업실에 workspace
+      # grant를 가진 계정도 "스코프 멤버"에 포함(WS-track). 루트만 workspace_id를 실으므로 이 조회로 충분.
+      ws_ids = Product.where(id: product_ids).where.not(workspace_id: nil).distinct.pluck(:workspace_id)
       base = RoleAssignment.active
       scoped = base.where(scope_product_id: product_ids)
                    .or(base.where(scope_component_id: Component.where(product_id: product_ids).select(:id)))
-                   .distinct.pluck(:account_id)
+      scoped = scoped.or(base.where(scope_workspace_id: ws_ids)) if ws_ids.any?
+      scoped = scoped.distinct.pluck(:account_id)
       return [] if scoped.empty?
 
       tenant_wide = RoleAssignment.active.tenant_wide.where(account_id: scoped).distinct.pluck(:account_id)
       scoped - tenant_wide
+    end
+
+    # 작업실 멤버 계정 ids = 그 작업실 workspace-scope grant ∪ 서브트리 product/component-scope grant, tenant-wide
+    # 제외. 빈 작업실(서브트리 0)도 workspace grant 멤버를 표면화한다 — 제품 파생 scoped_member_account_ids는
+    # product_ids가 비면 조기반환([])이라 workspace grant를 놓치므로, 작업실을 직접 받는 이 진입점이 W3 멤버 요약·
+    # 패널 멤버셋(빈 작업실 포함)의 단일 출처. N+1 없음(배치 쿼리).
+    def member_account_ids_for_workspace(workspace)
+      subtree_ids = Product.subtree_ids(workspace.products.pluck(:id))
+      base = RoleAssignment.active
+      scoped = base.where(scope_workspace_id: workspace.id)
+      if subtree_ids.any?
+        scoped = scoped.or(base.where(scope_product_id: subtree_ids))
+                       .or(base.where(scope_component_id: Component.where(product_id: subtree_ids).select(:id)))
+      end
+      account_ids = scoped.distinct.pluck(:account_id)
+      return [] if account_ids.empty?
+
+      tenant_wide = RoleAssignment.active.tenant_wide.where(account_id: account_ids).distinct.pluck(:account_id)
+      account_ids - tenant_wide
     end
   end
 end

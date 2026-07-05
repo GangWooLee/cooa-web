@@ -16,7 +16,7 @@
 module CommittedStateCleanup
   # cooa_app DML targets (RLS-protected) + read-only refs (global KB / users). structure.sql strips GRANTs
   # (pg_dump -x), so each suite (re)applies them as the owner in setup — this is the one definition.
-  RLS_TABLES = "organizations, accounts, role_assignments, products, components, component_versions, " \
+  RLS_TABLES = "organizations, accounts, role_assignments, workspaces, products, components, component_versions, " \
                "annotations, annotation_comments, ingredients, label_texts, screening_runs, " \
                "screening_findings, product_members, product_properties".freeze
   READ_ONLY = "users, ingredient_limits, label_requirements, ad_risk_expressions".freeze
@@ -31,6 +31,7 @@ module CommittedStateCleanup
 
     isolate("products")         { Product.where(tenant_id: ids).delete_all }
     isolate("role_assignments") { RoleAssignment.where(tenant_id: ids).delete_all }
+    isolate("workspaces")       { Workspace.where(tenant_id: ids).delete_all }
     isolate("accounts")         { Account.where(tenant_id: ids).delete_all }
     ids.each { |oid| isolate("organization #{oid}") { Organization.where(id: oid).destroy_all } }
   end
