@@ -25,6 +25,11 @@
         <% else %>
           <p class="text-[11px] text-line">지정할 리뷰어가 없습니다 — 요청 시 자격 리뷰어 누구나 확인할 수 있습니다.</p>
         <% end %>
+        <%# 선택적 마감일(기록·표시 전용 — 과거도 허용, 검증 없음). 인박스에서 ~M.D로 표시, 초과 시 warn 강조. %>
+        <div>
+          <div class="mb-1 text-[11px] font-bold text-line">마감일 (선택)</div>
+          <%= date_field_tag :due_at, nil, class: "w-full rounded-md border border-line-soft px-2 py-1.5 text-[12px] text-ink outline-none focus:border-cooa" %>
+        </div>
         <%= f.submit "리뷰 요청", class: "w-full cursor-pointer rounded-lg bg-cooa-gradient px-4 py-2.5 text-[13px] font-bold text-white" %>
       <% end %>
     <% else %>

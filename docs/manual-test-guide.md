@@ -510,6 +510,19 @@ grant는 FK cascade로 자동 정리된다.
 - /brands/:id 팀 페이지 — 서브트리만·멤버 요약·비가시 브랜드 redirect/404 `[자동:test/integration/brands_page_test.rb]`
 - 정브랜 픽커→멤버 로스터→스코프 초대 브라우저 저니 `[자동:test/system/brand_scope_test.rb]`
 
+### (k) 마감일 · overdue (Stage 5 P2)
+- `overdue?` 경계 — nil·미래·경계(`==now`)는 false, 과거만 true(엄격 `<`·status 무관 순수 술어) `[자동:test/models/approval_request_test.rb]`
+- 리뷰 요청 폼 due_at 관통 저장(빈값=마감 없음 · 과거 허용·검증 없음) · terminal 재제출은 no-op(불변) `[자동:test/models/approval_request_test.rb · test/integration/due_overdue_test.rb]`
+- 배지 정책 — pending(Segment A) 카운트 불변 + overdue만 **별도 warn 배지 병기**(내 배정분·bounded) `[자동:due_overdue_test.rb]`
+- Segment B는 완전 미배지 — overdue 행만 warn 토큰 강조(행 강조만·future 행 무강조) `[자동:due_overdue_test.rb]`
+- 정렬 불변 — requested_at ASC(due_at은 표시/강조 전용, 정렬 재편 없음) `[자동:v15_edge_test.rb·reviews_inbox_test.rb 간접]`
+
+### (l) 사이드바 트리 검색 (Stage 5 P1 · 서버 왕복 0)
+- 접힌 폴더 속 leaf 검색 → 조상 <details> 자동 펼침으로 노출(갭 해소) `[자동:test/system/tree_search_test.rb]`
+- 폴더명도 매치 대상(이전엔 leaf만) · 매치 카운트("N건") · ✕ 버튼/Esc 클리어 · 빈 결과 "일치하는 항목 없음" 1줄 `[자동:tree_search_test.rb]`
+- 클리어 시 원래 접힘 상태로 복원(open 스냅샷 → 토글 상태 오염 없음) `[자동:tree_search_test.rb]`
+- 클라이언트 필터 전용 — 서버 검색/인덱스는 **미신설**(스펙 밖) `[설계 불변식]`
+
 ### 자동화 부적합 / 잔여 공백 (정직 표기)
 - JS 실패 폴백(turbo:fetch-request-error 공용 토스트 · E5) — importmap 컴파일 + smoke 부팅으로만 검증, 실패 토스트 실브라우저 발화는 `[공백]`
 - back-button bfcache 만료 폼 재제출 `[공백]` · 유휴 타임아웃 60분 실측 `[공백]`

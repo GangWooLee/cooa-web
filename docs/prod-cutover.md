@@ -152,3 +152,19 @@ CREATE ROLE cooa_app LOGIN PASSWORD '<COOA_APP_PASSWORD>'
 - **dashboard `tree_preorder` N+1**(루트만 preload) — 트리거: 대형 제품트리. flat 로드+Ruby 그룹핑으로 O(1) 쿼리화.
 - **`users` 테이블 tenant_id+RLS**(2a RLS-면제) — 트리거: pooled 멀티테넌트(freeze spec §5).
 - **인덱스**: `idx_ra_eligible_approver`(P4 ②)는 이미 추가(2a 무영향·2b 헤지). silo의 0-선택도 `tenant_id` 인덱스는 2b 풀드에서 발효.
+
+---
+
+## 14. 거버넌스 소속 정리 (Stage 5 — 트랙 재배정)
+
+Stage 5 확정판이 grab-bag 거버넌스 항목을 판정 압축하며 **코드로 만들지 않고 소속 트랙만** 명시해 이월했다. 여기에 "어디서 다뤄지는가"를 고정한다(스코프 크리프 방지 — 2a 리뷰 워크스페이스에서는 손대지 않는다).
+
+### (a) 배포 인프라 트랙 (2b/pooled 스케일 게이트 — §13에 귀속)
+아래는 **배포·스케일 인프라의 문제**이지 제품 기능이 아니다. 트리거는 §13과 동일(풀드 전환 or 규모 임계). ⚠️ 여기서의 "2b"는 **배포 스케일 게이트(§13)**를 가리키며, 제품 스펙의 **REF v2b 아크와는 별개**다(이름만 겹치는 다른 "2b" — 혼동 금지).
+- **legal hold(법적 보존)** — audit_logs는 이미 불변 트리거로 append-only(§13-1 RANGE 파티셔닝·DROP 아카이빙과 한 묶음 — 홀드는 파티션 DROP 예외로 구현). 도메인 행 홀드는 (b) soft-delete 설계에 의존.
+- **break-glass writer(긴급 우회 쓰기)** — 2a엔 writer 코드경로 없음(§10 B3 불변식: impersonation 3컬럼은 row 0건일 때만 드롭 안전). 실제 우회 쓰기 경로는 풀드 운영 트랙에서 감사 하네스와 함께 도입.
+- **retention/파티셔닝** — audit_logs RANGE 파티셔닝(by `ts`) + DROP 아카이빙(§13-1). 보존 정책(7년 무결)은 §11 연기 항목과 짝.
+- **detect_bola 알림 채널** — `audit:detect_bola`(deny 급증=BOLA 신호)의 **알림 싱크 연동**(§12 모니터링·§13-3). 잡은 recurring 등록만 되어 있고 채널 연동이 2b.
+
+### (b) 별도 설계 사이클 (ADR-002 §16-6 추출 후)
+- **soft-delete(논리 삭제)** · **퇴사자 인계(offboarding handover)** — 삭제 의미론(hard vs soft)·소유권 이전·고아 방지·감사 정합이 얽힌 별도 설계다. **ADR-002 §16-6로 추출**한 뒤 독립 설계 사이클에서 다룬다(Stage 5 범위 밖 · 배포 인프라 게이트와도 분리된 제품/데이터 모델 결정).

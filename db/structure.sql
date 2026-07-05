@@ -335,7 +335,8 @@ CREATE TABLE public.approval_requests (
     lock_version integer DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    component_version_id bigint NOT NULL
+    component_version_id bigint NOT NULL,
+    due_at timestamp with time zone
 );
 
 ALTER TABLE ONLY public.approval_requests FORCE ROW LEVEL SECURITY;
@@ -2448,6 +2449,7 @@ CREATE POLICY tenant_isolation ON public.screening_runs USING ((tenant_id = (NUL
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260705000001'),
 ('20260704000005'),
 ('20260704000004'),
 ('20260704000003'),

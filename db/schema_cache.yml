@@ -878,6 +878,30 @@ columns:
     comment:
   - *9
   - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: due_at
+    cast_type: !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::OID::TimestampWithTimeZone
+      precision:
+      scale:
+      limit:
+      timezone:
+    sql_type_metadata: !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::TypeMetadata
+      delegate_dc_obj: !ruby/object:ActiveRecord::ConnectionAdapters::SqlTypeMetadata
+        sql_type: timestamp with time zone
+        type: :timestamptz
+        limit:
+        precision:
+        scale:
+      oid: 1184
+      fmod: -1
+    'null': true
+    default:
+    default_function:
+    collation:
+    comment:
+  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial: true
     identity:
     generated: ''
@@ -3700,4 +3724,4 @@ indexes:
     comment:
     valid: true
   users: []
-version: 20260704000005
+version: 20260705000001

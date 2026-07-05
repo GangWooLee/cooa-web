@@ -26,4 +26,45 @@ class ApprovalRequestTest < ActiveSupport::TestCase
     req.add_reviewer!(@lee.id)
     assert_raises(ActiveRecord::RecordNotUnique) { req.add_reviewer!(@lee.id) }
   end
+
+  # ── Stage 5 P2: due_at + overdue? ──────────────────────────────────────────
+  # overdue? = due_at 존재 & 과거(엄격 <). 경계(due_at == now)는 아직 overdue 아님(엄격 <), 1초만 지나도 true.
+  # status 무관(순수 날짜 술어 — pending 필터는 호출부 쿼리가 담당). travel_to로 시각 동결 → 경계를 결정론적으로
+  # 검증(실시간 상대값 금지). DB 불요 — in-memory 인스턴스로 경계만 고정.
+  test "overdue?는 nil·미래·경계(==now)에서 false, 경계 1초 경과부터 true" do
+    travel_to Time.zone.local(2026, 7, 10, 12, 0, 0) do
+      assert_not ApprovalRequest.new(due_at: nil).overdue?,            "마감일 없음 → overdue 아님"
+      assert_not ApprovalRequest.new(due_at: 1.hour.from_now).overdue?, "미래 마감 → overdue 아님"
+      assert_not ApprovalRequest.new(due_at: Time.current).overdue?,    "경계 due_at == now → 아직 overdue 아님(엄격 <)"
+      assert ApprovalRequest.new(due_at: 1.second.ago).overdue?,       "경계에서 1초 경과 → overdue"
+    end
+  end
+
+  test "submit_for!는 due_at 미지정 시 nil (기존 호출부 호환)" do
+    req = ApprovalRequest.submit_for!(@cv, submitter_id: @kim.id, reviewer_ids: [])
+    assert_nil req.due_at
+  end
+
+  test "submit_for!는 due_at을 관통 저장한다" do
+    due = 3.days.from_now
+    req = ApprovalRequest.submit_for!(@cv, submitter_id: @kim.id, reviewer_ids: [], due_at: due)
+    assert_equal due.to_i, req.reload.due_at.to_i
+  end
+
+  test "재제출(비-terminal)은 같은 행의 due_at을 갱신한다" do
+    req  = ApprovalRequest.submit_for!(@cv, submitter_id: @kim.id, reviewer_ids: [], due_at: 3.days.from_now)
+    due2 = 10.days.from_now
+    req2 = ApprovalRequest.submit_for!(@cv, submitter_id: @kim.id, reviewer_ids: [], due_at: due2)
+    assert_equal req.id, req2.id, "버전당 1요청 — find_or_initialize로 같은 행"
+    assert_equal due2.to_i, req2.reload.due_at.to_i, "비-terminal 재제출은 폼이 진실원천 → 갱신"
+  end
+
+  test "terminal(reviewed) 재제출은 no-op — due_at 불변" do
+    due1 = 3.days.from_now
+    req  = ApprovalRequest.submit_for!(@cv, submitter_id: @kim.id, reviewer_ids: [], due_at: due1)
+    req.update!(status: "reviewed") # terminal로 전이
+    req2 = ApprovalRequest.submit_for!(@cv, submitter_id: @kim.id, reviewer_ids: [], due_at: 10.days.from_now)
+    assert req2.reviewed?, "terminal이면 그대로 반환"
+    assert_equal due1.to_i, req2.due_at.to_i, "terminal no-op — 새 due_at 무시(불변)"
+  end
 end

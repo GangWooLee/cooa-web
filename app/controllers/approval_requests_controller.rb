@@ -10,8 +10,11 @@ class ApprovalRequestsController < ApplicationController
   def create
     cv = ComponentVersion.find(params[:component_version_id])
     authorize cv, :submit_for_approval?
+    # due_at은 선택적 마감일(기록·표시 전용, 검증/과거 제한 없음). normalized_due_at이 blank→nil 정규화 +
+    # date-only 입력을 그날의 end_of_day로 변환(마감일=그날의 끝까지). reviewer_ids와 달리 스칼라라 화이트리스트 불요.
     req = ApprovalRequest.submit_for!(cv, submitter_id: current_account.user_id,
-                                          reviewer_ids: sanitized_reviewer_ids(cv))
+                                          reviewer_ids: sanitized_reviewer_ids(cv),
+                                          due_at: normalized_due_at)
     # L1: 이미 검토 확인된(terminal) 버전에 직접 POST → no-op. 오해소지 audit/notice 방지.
     return redirect_back(fallback_location: root_path, status: :see_other, notice: "이미 검토 확인된 버전입니다.") if req.reviewed?
     audit!(req, action: "submit_for_approval", before: nil)
@@ -76,6 +79,22 @@ class ApprovalRequestsController < ApplicationController
     AuditLog.record!(action: "confirm_review", resource_type: "ApprovalRequest", resource_id: req.id,
                      outcome: "deny", denial_reason: "stale_reviewed_tuple",
                      request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
+  end
+
+  # 마감일은 그날의 끝까지 유효 — date 입력(YYYY-MM-DD)을 해당 날짜의 end_of_day 인스턴트로 저장(표시·강조
+  # 전용, 게이팅 없음). 이렇게 하면 overdue?의 엄격 < 비교는 불변인 채로, 마감일 당일 자정부터가 아니라 그날이
+  # 끝나야 초과가 된다("7.10까지"=그날 끝까지의 업무 관례). 시간까지 들어온 값(향후 datetime 입력)은 그대로
+  # 존중하는 방어적 파싱. blank·파싱불가는 nil(마감 없음) — 검증 없음 관례 유지.
+  def normalized_due_at
+    raw = params[:due_at].presence
+    return nil if raw.nil?
+
+    instant = Time.zone.parse(raw)
+    return nil if instant.nil?
+
+    raw.match?(/\A\d{4}-\d{2}-\d{2}\z/) ? instant.end_of_day : instant
+  rescue ArgumentError # 범위 밖 날짜 등 → 마감 없음으로 관대 처리(검증 미도입 관례)
+    nil
   end
 
   # 지정 리뷰어는 서버측에서 후보 풀(권한 평면 — 브랜드 루트 서브트리 스코프 + tenant-wide grant)로 제한

@@ -10,7 +10,7 @@ class ApplicationController < ActionController::Base
   include Authentication
 
   before_action :set_nav
-  helper_method :header_tabs, :pending_review_count, :visible_product_id_set, :can_view_members?
+  helper_method :header_tabs, :pending_review_count, :overdue_review_count, :visible_product_id_set, :can_view_members?
 
   # Strict Pundit (ADR-002 §0 BOLA defense): every action must authorize (or explicitly skip_authorization).
   # verify_policy_scoped is enabled per-controller for index-like actions (DashboardController) — referencing
@@ -140,6 +140,22 @@ class ApplicationController < ActionController::Base
   def pending_review_count
     @pending_review_count ||= if nav_ready? && Current.tenant_id && current_user
       ApprovalRequest.where(status: "pending").joins(:approval_request_reviewers)
+                     .where(approval_request_reviewers: { reviewer_id: current_user.id }).count
+    else
+      0
+    end
+  end
+
+  # overdue 배지(warn 병기): pending_review_count와 동일 스코프(내가 지정 리뷰어인 pending = Segment A)에
+  # `due_at < now`만 얹은 부분집합(overdue ≤ pending). 배지 정책(REF L493)은 pending 카운트를 불변으로 두고,
+  # overdue는 별도 warn 배지로만 병기한다 — **개인 액션어블·bounded**하게 내 Segment A로 한정(Segment B는
+  # 여전히 완전 미배지, 인박스 행 강조로만 노출). 요청당 1회 메모이즈(0도 캐시되게 defined? 가드).
+  def overdue_review_count
+    return @overdue_review_count if defined?(@overdue_review_count)
+
+    @overdue_review_count = if nav_ready? && Current.tenant_id && current_user
+      ApprovalRequest.where(status: "pending").where("due_at < ?", Time.current)
+                     .joins(:approval_request_reviewers)
                      .where(approval_request_reviewers: { reviewer_id: current_user.id }).count
     else
       0

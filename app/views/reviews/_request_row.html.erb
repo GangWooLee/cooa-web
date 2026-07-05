@@ -13,6 +13,10 @@
       <div class="flex shrink-0 items-center gap-1.5 text-[12px] text-line">
         요청자 <%= avatar(req.submitter, size: 18) %> <span class="text-ink"><%= req.submitter.name %></span>
         <span class="ml-1"><%= req.requested_at&.strftime("%m.%d") %></span>
+        <%# 마감일(있을 때만). overdue면 warn 토큰 강조 — 정렬은 requested_at ASC 불변, due는 표시 전용. %>
+        <% if req.due_at %>
+          <span class="ml-1 <%= "font-bold text-warn" if req.overdue? %>" title="마감일<%= " · 초과" if req.overdue? %>">~<%= req.due_at.strftime("%-m.%-d") %></span>
+        <% end %>
       </div>
     <% end %>
     <% if claimable %>

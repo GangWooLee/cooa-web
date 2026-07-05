@@ -23,14 +23,22 @@ class ApprovalRequest < ApplicationRecord
   def reviewed? = status == "reviewed"
   def terminal? = TERMINAL.include?(status)
 
+  # 마감 초과 = 마감일이 있고 지금보다 엄격히 과거. 경계(due_at == now)는 아직 overdue 아님(< 사용). status는
+  # 보지 않는 순수 날짜 술어 — "내 pending만" 같은 스코프는 호출부 쿼리(인박스·배지)가 담당한다. 타임존:
+  # due_at은 timestamptz(절대 인스턴트), Time.current는 앱 TZ의 동일 인스턴트라 비교가 TZ-안전.
+  def overdue? = due_at.present? && due_at < Time.current
+
   # 리뷰 요청 + 콘텐츠 스냅샷 캡처. 버전당 멱등: terminal(reviewed)이면 그대로 반환, 아니면 pending.
   # (스크리닝 선행 불요 — RA가 검토 중 수행.)
-  def self.submit_for!(component_version, submitter_id:, reviewer_ids: [])
+  def self.submit_for!(component_version, submitter_id:, reviewer_ids: [], due_at: nil)
     req = find_or_initialize_by(tenant_id: Current.tenant_id, component_version_id: component_version.id)
     return req if req.terminal?
 
+    # due_at은 비-terminal 경로에서만 관통(위 terminal no-op 불변). 폼이 진실원천 — 재제출은 새 스냅샷·
+    # requested_at과 함께 due_at도 폼 값으로 갱신(nil이면 마감 없음으로 초기화). 마감일은 표시/강조 전용이라
+    # requested_at(정렬 축)에 영향 없음.
     transaction do
-      req.assign_attributes(submitter_id: submitter_id, requested_at: Time.current,
+      req.assign_attributes(submitter_id: submitter_id, requested_at: Time.current, due_at: due_at,
                             status: "pending", **ReviewedTuple.capture(component_version))
       req.save!
       req.sync_requested_reviewers!(reviewer_ids, exclude: submitter_id)
