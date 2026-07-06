@@ -3,6 +3,12 @@
 > ## ⚠️ [2026-07-01 v0.4 리프레임 — step-up/AR_ENCRYPTION 항목 폐기]
 > 규제 전자서명(B2 step-up TOTP·Part-11)이 제거됨(경량 "버전 리뷰"로 재구성). 따라서 이 런북의 **`AR_ENCRYPTION_PRIMARY_KEY`·`AR_ENCRYPTION_DETERMINISTIC_KEY`·`AR_ENCRYPTION_KEY_DERIVATION_SALT` 3개 부팅 시크릿·`/step-up` 등록·AR 라운드트립/step-up e2e 스모크·AR 키 로테이션/롤백 항목은 모두 불필요**(해당 코드·initializer·컬럼 삭제됨, 마이그 `20260701000001`). 시크릿은 `SECRET_KEY_BASE`/`RAILS_MASTER_KEY`·`COOA_APP_PASSWORD`·`KC_*`만 유지. 나머지(RLS·cooa_app·OIDC·force_ssl·seed prod 가드)는 불변.
 
+> ## ⚠️ [2026-07-06 정정 — 신원 기반 테넌트 해석 전환 + AR/step-up 사문(死文) 확정]
+> 두 가지 stale 정정(코드 대조 완료):
+> 1. **테넌트 해석 = 세션 신원 기반**(IT-트랙). `Current.tenant_id`는 더 이상 연결 상수(`COOA_TENANT_ID`)가 아니라 **로그인 세션의 `session[:tenant_id]`**(신원검증 후 저장)에서 온다(`authentication.rb:47-48`). 로그인 전 발견은 **`auth_lookup_*` SECURITY DEFINER 브리지 함수**가 담당(마이그 `20260706000001`). 아래 §6/§7의 "SI-silo COOA_TENANT_ID 상수" 서술은 단일 배포·단일 org 시나리오에 한해 유효하며, 다조직 셀프서브에선 §3의 **BYPASSRLS 게이트**가 컷오버 필수. `COOA_TENANT_ID`는 데모/단일-org 폴백으로만 잔존.
+> 2. **AR_ENCRYPTION_*·`/step-up`은 사문**. 상단 v0.4 배너대로 코드·initializer·컬럼 삭제됨(`config/initializers/active_record_encryption.rb` 부재 확인). 본문 §2·§4·§7-4·§8·§9·§10·§12에 남은 AR_ENCRYPTION/step-up 언급은 **전부 역사적 사문 — 프로비저닝·스모크·로테이션에서 무시하라**. 필요 시크릿은 `SECRET_KEY_BASE`/`RAILS_MASTER_KEY`·`COOA_APP_PASSWORD`·`GOOGLE_CLIENT_*`(·KC 사용 시 `KC_*`)뿐.
+> 준비도 전반은 vault `REF-프로덕션-준비도-지도.md`(2026-07-06 6축 감사) 참조 — 이 런북=how, 그 지도=what/상태.
+
 데모(로컬 account-picker · 단일 Postgres 역할 · 정적 데이터)에서 **프로덕션**으로 넘어갈 때의 단계. Phase 0~3에서 구축한 보안 토대를 실제로 강제하는 설정·시퀀스를 정리한다.
 
 > 코드 진실원천: `config/database.yml`(app_role seam) · `config/initializers/{tenant_config,omniauth}.rb` · `config/application.rb`(`config.x.local_login_enabled`) · `lib/tasks/cooa.rake`(`rls:grant_app`/`rls:audit`) · `lib/tasks/audit.rake`(`audit:verify`).
@@ -33,6 +39,8 @@ CREATE ROLE cooa_app LOGIN PASSWORD '<COOA_APP_PASSWORD>'
 ```
 > `cooa_app`이 **반드시 NOBYPASSRLS**여야 RLS가 의미를 가짐(`rls:audit`가 검증). dev 기본 비번 `cooa_dev_pw`는 prod 사용 금지.
 
+> ⚠️ **[P0 컷오버 게이트] auth_lookup 브리지 함수 소유자 = BYPASSRLS 필수**: `accounts`·`organizations`는 **FORCE ROW LEVEL SECURITY**라 테이블 소유자도 RLS 대상(owner-bypass 무효). 로그인 전 크로스테넌트 발견을 담당하는 `auth_lookup_accounts`/`auth_lookup_invitation`(SECURITY DEFINER)은 **소유자가 superuser 또는 BYPASSRLS 보유 role일 때만** 후보를 반환한다. `structure.sql`을 적재하는 role(=함수 소유자)이 평범한 테이블 소유자면 브리지가 **0행 반환 → 전원 로그인 fail-CLOSED(보안 누출 아닌 전면 로그인 장애·컷오버 정지)**. 따라서 **migrator/owner role을 BYPASSRLS 속성으로 생성**하거나 superuser로 structure.sql을 적재하라. `rls:audit`는 cooa_app 관점만 검증하고 이 소유자 속성은 검증하지 않으므로 §8 스모크의 브리지 실효성 확인이 별도 게이트다.
+
 ---
 
 ## 4. 환경변수
@@ -50,9 +58,9 @@ CREATE ROLE cooa_app LOGIN PASSWORD '<COOA_APP_PASSWORD>'
 | `KC_CLIENT_SECRET` | **시크릿**(KC 사용 시) | — |
 | `KC_REDIRECT_URI` | `https://<app>/auth/openid_connect/callback` | — |
 | `SECRET_KEY_BASE` | **시크릿**(세션 암호화) | — |
-| `AR_ENCRYPTION_PRIMARY_KEY` | **시크릿**(필수 · **부팅 fail-fast**) | **동일**(seed의 `provision_totp!`도 암호화 컬럼 씀) |
-| `AR_ENCRYPTION_DETERMINISTIC_KEY` | **시크릿**(필수 · 부팅 fail-fast) | 동일 |
-| `AR_ENCRYPTION_KEY_DERIVATION_SALT` | **시크릿**(필수 · 부팅 fail-fast) | 동일 |
+| ~~`AR_ENCRYPTION_PRIMARY_KEY`~~ | **폐기(사문)** — v0.4 step-up 제거·initializer 삭제. 설정 불요 | ~~동일~~ |
+| ~~`AR_ENCRYPTION_DETERMINISTIC_KEY`~~ | **폐기(사문)** | ~~동일~~ |
+| ~~`AR_ENCRYPTION_KEY_DERIVATION_SALT`~~ | **폐기(사문)** | ~~동일~~ |
 | `COOA_DB_HOST` | DB 호스트(default `localhost` — **관리형 Postgres면 필수**) | 동일 |
 | `RAILS_ENV` | `production` | `production` |
 
@@ -94,6 +102,7 @@ CREATE ROLE cooa_app LOGIN PASSWORD '<COOA_APP_PASSWORD>'
 - cooa_app: 로그인 계정 조회·대시보드 SELECT·도메인 INSERT 가능 / `audit_logs` UPDATE·DELETE **거부**.
 - OIDC: `<KC_ISSUER>/.well-known/openid-configuration` 200 → 브라우저 로그인 → 콜백 → 대시보드.
 - `audit:verify` 체인 무결.
+- **auth_lookup 브리지 실효성(§3 P0 게이트)**: 무-GUC(로그인 전) 상태에서 `SELECT * FROM auth_lookup_accounts('google_oauth2','<known-subject>','<verified-email>')`가 후보 행을 반환하는지 확인 — 0행이면 함수 소유자가 BYPASSRLS 미보유(전면 로그인 정지 원인). owner-provisioning 직후 필수.
 - 로컬 picker 라우트(`/session/new`) **404**(prod).
 - **AR 암호화 라운드트립**: 던질 계정에 `provision_totp!` → `account.totp_secret` 평문 복호화 성공(키가 단지 non-blank가 아니라 *정확*함 = step-up 실작동 보장; 부팅됨 ≠ 복호화됨).
 - **step-up e2e**: 결재자 `/step-up` 등록 → 유효 TOTP로 submit→approve → `approval_steps.re_auth_at` 세팅·`re_auth_factor='totp'`·`signed_c1_digest` 채워짐 + `outcome='allow'` audit. 음성: 빈/오답 코드 → `deny step_up_failed`; 미등록 → `step_up_not_enrolled` + `/step-up` 리다이렉트.
@@ -140,7 +149,7 @@ CREATE ROLE cooa_app LOGIN PASSWORD '<COOA_APP_PASSWORD>'
 - `audit:verify`는 **tail 절단(최근 이력 유실)을 못 잡음**(1..N 연속이면 PASS) — 복원 후 최신 `tenant_seq`를 외부 기록과 대조.
 
 **모니터링**
-- `audit:detect_bola`(deny 급증=BOLA 신호)를 야간 recurring으로 등록(`config/recurring.yml`). 알림 싱크 연동은 2b.
+- ⚠️ **[드리프트 정정 2026-07-06] `audit:detect_bola`는 아직 `config/recurring.yml`에 미등록**(현재 production 블록엔 `clear_solid_queue_finished_jobs`만 존재 — 실측). 아래 서술은 *목표*이지 현 상태가 아니다. **초기 운영 조치(준비도 지도 P1)**: `detect_bola`(+`audit:verify`)를 recurring.yml production에 야간 등록(owner 연결 필요 유의) — 등록 전까지 BOLA 자동 탐지·프로덕션 체인 무결 점검이 실행되는 곳이 없다. 알림 싱크 연동은 2b(§13-3).
 - 배포 게이트 `rls:audit`/`audit:verify`를 **체크인된 배포 스크립트**로 고정(사람 누락 방지; 2b에 블로킹 CI로 승격).
 - **잡 영구 실패 관측(E6)**: `solid_queue_failed_executions`를 주기 점검 — 비어있지 않으면 preprocessed 썸네일 변형 등 잡의 영구 실패 신호다. `ApplicationJob`은 일시 오류(`ActiveRecord::Deadlocked`)만 재시도하고 ActiveStorage 손상/포맷 오류는 재시도 없이 실패로 적재되므로, 이 테이블이 1차 관측면이다(예외 상세는 `Rails.error` 구조화 로그 `[error_report]`). 알림 싱크는 2b.
 
@@ -154,6 +163,8 @@ CREATE ROLE cooa_app LOGIN PASSWORD '<COOA_APP_PASSWORD>'
 - **인덱스**: `idx_ra_eligible_approver`(P4 ②)는 이미 추가(2a 무영향·2b 헤지). silo의 0-선택도 `tenant_id` 인덱스는 2b 풀드에서 발효.
 
 ---
+
+> **프로덕션 준비도 전반**은 vault `_기술/AI아키텍처/REF-프로덕션-준비도-지도.md`(2026-07-06 6축 감사)로 통합됨 — P0 3건(부팅 마이그 순서·백업 구현·§3 BYPASSRLS 게이트)·P1 11건·P2 이월. 이 §14/§13/§11 이월 항목의 "준비도 상태"도 그 지도에 반영. 런북=절차(how), 지도=준비도(what).
 
 ## 14. 거버넌스 소속 정리 (Stage 5 — 트랙 재배정)
 
