@@ -18,7 +18,7 @@ class MembersScopeTest < ApplicationSystemTestCase
       assert_no_selector "select[name='scope_product_id']", visible: :all
       fill_in "email", with: "org-sys@partner.dev"
       select "멤버", from: "role_key" # contributor(라벨=멤버)
-      click_button "전사 초대 만들기"
+      click_button "초대 만들기"
     end
 
     # 발급 직후: 1회용 링크 배너 + 백엔드는 tenant 스코프(전사)

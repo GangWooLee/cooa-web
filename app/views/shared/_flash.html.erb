@@ -1,0 +1,29 @@
+<%# 전역 flash 토스트(notice/alert) — fixed 우상단 오버레이. application/auth 레이아웃 공용(구 쌍둥이 통합).
+    마크업·토큰·role 보존(notice=status·line-soft / alert=alert·warn·font-medium). invite_link은 members
+    전용 배너(팝오버 내부)라 여기서 제외. 자동 소멸(notice 4s·alert 8s)+수동 ✕ = flash_controller.
+    컨테이너=pointer-events-none(빈 영역 클릭 통과)·아이템=pointer-events-auto(상호작용). 톱바(43px) 아래
+    슬롯(top-14)·z-[60]은 net_error_toast와 동일 토스트 레이어(드로어 z-20·메뉴 z-50 위). %>
+<% if flash[:notice].present? || flash[:alert].present? %>
+  <div class="pointer-events-none fixed right-4 top-14 z-[60] flex w-[min(92vw,380px)] flex-col gap-2">
+    <% if flash[:notice].present? %>
+      <div data-controller="flash" data-flash-kind-value="notice" role="status"
+           class="pointer-events-auto flex items-start gap-2 rounded-xl border border-line-soft bg-tint py-2 pl-4 pr-2 shadow-lg">
+        <span class="min-w-0 flex-1 py-1 text-[13px] text-ink"><%= flash[:notice] %></span>
+        <button type="button" data-action="flash#close" aria-label="닫기"
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-ink/50 transition hover:bg-ink/5 hover:text-ink">
+          <%= ui_icon "x", size: 16 %>
+        </button>
+      </div>
+    <% end %>
+    <% if flash[:alert].present? %>
+      <div data-controller="flash" data-flash-kind-value="alert" role="alert"
+           class="pointer-events-auto flex items-start gap-2 rounded-xl border border-warn bg-tint py-2 pl-4 pr-2 shadow-lg">
+        <span class="min-w-0 flex-1 py-1 text-[13px] font-medium text-ink"><%= flash[:alert] %></span>
+        <button type="button" data-action="flash#close" aria-label="닫기"
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-ink/50 transition hover:bg-ink/5 hover:text-ink">
+          <%= ui_icon "x", size: 16 %>
+        </button>
+      </div>
+    <% end %>
+  </div>
+<% end %>

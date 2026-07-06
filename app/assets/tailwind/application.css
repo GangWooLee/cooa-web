@@ -69,3 +69,12 @@ summary::-webkit-details-marker { display: none; }
 #app-sidebar { transition: margin-left .28s ease, opacity .2s ease; }
 html.sidebar-collapsed #app-sidebar { margin-left: -282px; opacity: 0; pointer-events: none; }
 
+/* flash 토스트 퇴장 — opacity/transform만(200ms). flash_controller가 닫을 때 이 클래스를 붙인다. */
+.flash-leave { transition: opacity .2s ease, transform .2s ease; opacity: 0; transform: translateY(-6px); }
+
+/* 접근성 — prefers-reduced-motion: 모션 최소화 시작점(현재: flash 토스트 트랜지션 무효화). 컨트롤러가
+   reduced-motion에서 즉시 제거하지만 CSS 경로에서도 이중으로 못박는다. 향후 다른 모션도 여기에 추가한다. */
+@media (prefers-reduced-motion: reduce) {
+  .flash-leave { transition: none; }
+}
+

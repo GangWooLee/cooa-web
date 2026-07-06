@@ -10,11 +10,11 @@ class BrandScopeTest < ApplicationSystemTestCase
     vitc = Product.find_by!(name: "비타민C 브라이트닝 앰플")
     visit workspace_path(vitc.derived_workspace)
 
-    assert_text "작업실"                 # 작업실 배지
-    assert_text "비타민C 브라이트닝 앰플"
+    assert_text "비타민C 브라이트닝 앰플"                  # D2 헤더 작업실명
+    assert_selector "summary[aria-label='멤버 초대·관리']"  # 멤버 어포던스 트리거(구 "작업실" 배지 대체)
 
-    # 인라인 멤버 관리 패널 열기(전사 관리로 이탈 없음) → 초대 폼엔 범위 select 부재
-    find("summary", text: "멤버 초대·관리").click
+    # 인라인 멤버 관리 팝오버 열기(전사 관리로 이탈 없음) → 초대 폼엔 범위 select 부재
+    find("summary[aria-label='멤버 초대·관리']").click
     within "form[action='#{invitations_path}']" do
       assert_no_selector "select[name='scope_product_id']", visible: :all
       fill_in "email", with: "brand-agency@vitc.dev"
@@ -32,12 +32,12 @@ class BrandScopeTest < ApplicationSystemTestCase
     sica = Product.find_by!(name: "시카 수딩 크림")
     visit workspace_path(id: sica.workspace_id)
 
-    assert_text "작업실"        # 작업실 배지(구 "브랜드 팀")
-    assert_text "시카 수딩 크림"
-    assert_text "최디자"         # 스코프 멤버 요약 배지
+    assert_text "시카 수딩 크림"                          # D2 헤더 작업실명
+    assert_selector "summary[aria-label='멤버 초대·관리']"  # 멤버 어포던스 트리거(구 "작업실" 배지 대체)
 
-    # 관리 권한자(owner)에겐 인라인 멤버 관리 패널(구 "멤버 관리" 이탈 링크 대체)
-    find("summary", text: "멤버 초대·관리").click
-    assert_text "이 작업실에 초대"
+    # 관리 권한자(owner)에겐 인라인 멤버 관리 팝오버(구 "멤버 관리" 이탈 링크 대체) — 열면 멤버 요약 + 초대 폼
+    find("summary[aria-label='멤버 초대·관리']").click
+    assert_text "최디자"          # 스코프 멤버 요약(패널 내부로 이관)
+    assert_text "이 작업실에 초대" # 초대 폼
   end
 end

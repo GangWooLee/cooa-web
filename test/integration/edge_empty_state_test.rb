@@ -8,8 +8,11 @@ class EdgeEmptyStateTest < ActionDispatch::IntegrationTest
     brand = Product.find_by!(name: "레티놀 3% 세럼") # 작업실 루트(폴더)
     get workspace_path(id: brand.workspace_id)
     assert_response :success
-    assert_match "데이터 관리", @response.body, "작업실 페이지도 대시보드(index) 셸을 렌더"
-    assert_match "작업실", @response.body, "T4 실구현 — 작업실 헤더"
+    # D2: 작업실 페이지 헤더 타이틀 = 작업실명(구 하드코드 "데이터 관리" 대체). 타이틀 태그도 작업실명이라
+    # "데이터 관리"(홈 타이틀·헤더)는 작업실 문맥 어디에도 없어야.
+    assert_match "레티놀 3% 세럼", @response.body, "작업실 페이지 헤더/타이틀 = 작업실명"
+    refute_match "데이터 관리", @response.body, "작업실 문맥엔 '데이터 관리' 부재(D2 타이틀 통합)"
+    assert_match "멤버 초대·관리", @response.body, "작업실 헤더 멤버 관리 어포던스(구 '작업실' 배지 대체)"
     # 메인 트리(테이블)는 그 브랜드 서브트리만 — 사이드바 전체 트리(모든 브랜드)와 구분해 테이블 행으로 단언.
     table_ids = css_select("table tbody tr[data-node-id]").map { |tr| tr["data-node-id"] }
     assert_includes table_ids, brand.id.to_s, "그 브랜드 루트는 메인 트리에 렌더"

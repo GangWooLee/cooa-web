@@ -37,21 +37,18 @@
     <%= link_to members_path, data: { turbo: false },
           class: "mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium text-ink transition hover:bg-tint #{'bg-tint' if current_page?(members_path)}" do %>
       <%= ui_icon "user", size: 16, klass: "text-line" %>
-      <span>전사 관리</span>
+      <span>구성원</span>
     <% end %>
   <% end %>
 
   <% if current_workspace %>
-    <%# ── 작업실 컨텍스트 ── 작업실 헤더 + "← 모든 작업실" %>
+    <%# ── 작업실 컨텍스트 ── "← 모든 작업실" 백링크(작업실명은 헤더 타이틀·트리 루트로 표시 — D3 중복 제거).
+        border-t 블록은 유지: 전역 내비(사용자·인박스·구성원)와 작업실 트리 사이의 시각 구분자로 남긴다. %>
     <div class="mx-2 mb-1 mt-2 border-t border-line-soft pt-3">
       <%= link_to root_path, data: { turbo: false },
-            class: "mb-1 flex items-center gap-1 px-1 text-[11px] font-medium text-line transition hover:text-cooa" do %>
+            class: "flex items-center gap-1 px-1 text-[11px] font-medium text-line transition hover:text-cooa" do %>
         <span aria-hidden="true">←</span><span>모든 작업실</span>
       <% end %>
-      <div class="flex min-w-0 items-center gap-1.5 px-1">
-        <%= ui_icon "layers", size: 16, klass: "shrink-0 text-cooa" %>
-        <span class="truncate text-[15px] font-bold text-ink"><%= current_workspace_label %></span>
-      </div>
     </div>
 
     <%# 작업실 서브트리 트리 + 아트워크 찾기(클라이언트 필터) %>
@@ -87,7 +84,7 @@
           <% active_ids |= fnode.self_and_ancestors.map(&:id) %>
         <% end %>
         <% context_tree_roots.each do |node| %>
-          <%= render "shared/tree_node", node: node, active_ids: active_ids, current_id: @product&.id, root: true, context: true %>
+          <%= render "shared/tree_node", node: node, active_ids: active_ids, current_id: @product&.id %>
         <% end %>
         <%# 검색 무매치 시 tree_filter가 노출(그 외엔 hidden). %>
         <p data-tree-filter-target="empty" class="hidden px-3 py-6 text-center text-[13px] text-line">일치하는 항목 없음</p>

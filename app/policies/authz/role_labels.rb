@@ -17,7 +17,7 @@ module Authz
     }.freeze
 
     DESCRIPTIONS = {
-      "owner" => "조직 전체 관리",
+      "owner" => "회사 전체 관리",
       "brand_admin" => "작업실·멤버 관리",
       "contributor" => "업로드·피드백·리뷰 요청",
       "viewer" => "열람만",

@@ -1,4 +1,4 @@
-<% content_for :title, "데이터 관리 - 대시보드" %>
+<% content_for :title, (@workspace ? current_workspace_label : "데이터 관리 - 대시보드") %>
 <%# 작업실 진입(@workspace) = 트리 테이블 셸, 홈 = 작업실 카드 목록(W1). %>
 <% if @workspace %>
   <%= render "dashboard/shell" %>

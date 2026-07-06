@@ -29,7 +29,7 @@ class DashboardCtxTest < ApplicationSystemTestCase
   test "'· 하위' 텍스트 제거" do
     page.current_window.resize_to(1440, 900)
     visit workspace_path(folder.derived_workspace)
-    assert_text "데이터 관리", wait: 6
+    assert_text "레티놀 3% 세럼", wait: 6 # D2: 헤더 타이틀 = 작업실명(구 "데이터 관리")
     assert_no_text "· 하위"
   end
 end

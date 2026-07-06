@@ -3,7 +3,16 @@
   <div class="text-[22px] font-bold text-ink">COOA</div>
 
   <% if @invitation %>
-    <p class="mb-1 mt-3 text-[16px] font-semibold text-ink"><%= @organization.name %> 조직에 초대되었습니다</p>
+    <p class="mb-1 mt-3 text-[16px] font-semibold text-ink">
+      <% case @invitation.scope_type
+         when "workspace" %>
+        <%= @invitation.scope_workspace&.name %> 작업실에 초대되었습니다
+      <% when "product" %>
+        <%= @invitation.scope_product&.name %> 제품에 초대되었습니다
+      <% else %>
+        <%= @organization.name %>에 초대되었습니다
+      <% end %>
+    </p>
     <p class="mb-6 text-[13px] text-line">
       <b><%= @invitation.email %></b> 로 발급된 초대입니다 — 같은 이메일의 Google 계정으로 계속하세요.
       수락하면 <span class="rounded bg-tint px-1 py-0.5 text-[12px]" title="<%= role_description(@invitation.role_key) %>"><%= role_label(@invitation.role_key) %></span> 역할로
