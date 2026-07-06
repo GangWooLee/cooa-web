@@ -30,6 +30,17 @@ class Invitation < ApplicationRecord
 
   def self.digest(raw) = Digest::SHA256.hexdigest(raw.to_s)
 
+  # 재초대 제안(모달 combobox ⓑ "이전 초대") — scope(기본 all) 안에서 과거 초대된 distinct 이메일(최근순), 현재
+  # 대기 중(재발급하면 RecordNotUnique)·이미 계정(ⓐ addable 또는 이미 멤버)인 이메일은 제외 → 순수 재발급 후보만.
+  # scope는 호출측이 관할(관리자 가시 서브트리)로 좁힌다 — 무-스코프(테넌트-와이드)면 스코프 admin에게 형제
+  # 브랜드의 과거 초대 이메일(관할 밖 PII)이 열거된다(RLS는 테넌트만 격리하지 브랜드-레벨 관할은 못 한다). 형제
+  # 데이터원 @workspace_pending과 동일 서브트리로 스코프(dashboard#load_workspace_member_admin가 한 관계를 공유).
+  # 이메일 비교는 소문자 정규화(Invitation은 normalizes로 이미 소문자 · Account는 미정규라 downcase).
+  def self.suggestion_emails(scope = all, limit: 20)
+    exclude = scope.pending.pluck(:email).to_set | Account.pluck(:email).map { |e| e.to_s.downcase }.to_set
+    scope.order(created_at: :desc).pluck(:email).uniq.reject { |e| exclude.include?(e) }.first(limit)
+  end
+
   # 생성 + raw 토큰 1회 반환(256bit). digest만 저장하므로 이 반환값이 링크를 만들 유일한 기회.
   # scope_* 는 기본 tenant-wide(하위호환) — 스코프 초대는 컨트롤러가 명시 전달, 모델 검증이 게이트.
   def self.generate!(email:, role_key:, invited_by_account_id:,

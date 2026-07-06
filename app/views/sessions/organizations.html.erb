@@ -5,18 +5,18 @@
     the raw account_id). @candidates = AuthLookup::Candidate structs (org label only — minimal surface). %>
 <div class="w-full max-w-md rounded-2xl border border-line bg-white p-8 shadow-sm">
   <div class="text-[22px] font-bold text-ink">COOA</div>
-  <p class="mb-1 mt-3 text-[16px] font-semibold text-ink">계속할 조직을 선택하세요</p>
-  <p class="mb-6 text-[13px] text-line">이 계정은 여러 조직의 멤버입니다 — 들어갈 조직을 고르세요.</p>
+  <p class="mb-1 mt-3 text-section font-semibold text-ink">계속할 조직을 선택하세요</p>
+  <p class="mb-6 text-body text-muted">이 계정은 여러 조직의 멤버입니다 — 들어갈 조직을 고르세요.</p>
 
   <div class="space-y-2">
     <% @candidates.each do |c| %>
       <%= button_to select_organization_path, method: :post, params: { account_id: c.account_id },
             class: "flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-white px-4 py-3 text-left transition hover:border-cooa hover:bg-tint" do %>
-        <span class="text-[14px] font-semibold text-ink"><%= c.org_name %></span>
-        <span class="rounded bg-tint px-2 py-0.5 text-[11px] text-line"><%= c.org_region %></span>
+        <span class="text-note font-semibold text-ink"><%= c.org_name %></span>
+        <span class="rounded bg-tint px-2 py-0.5 text-caption text-muted"><%= c.org_region %></span>
       <% end %>
     <% end %>
   </div>
 
-  <p class="mt-4 text-[11px] text-line">본인 계정이 있는 조직만 표시됩니다.</p>
+  <p class="mt-4 text-caption text-muted">본인 계정이 있는 조직만 표시됩니다.</p>
 </div>

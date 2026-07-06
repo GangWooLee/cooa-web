@@ -4,24 +4,29 @@
   <div class="flex items-center gap-3 rounded-lg border border-line-soft p-3 transition hover:border-cooa">
     <%= link_to component_version_path(cv), class: "flex min-w-0 flex-1 items-center justify-between gap-3" do %>
       <div class="min-w-0">
-        <div class="flex items-center gap-2 text-[13px]">
-          <span class="shrink-0 rounded bg-tint px-1.5 py-0.5 text-[11px] font-bold text-ink/70"><%= cv.product.code %></span>
+        <div class="flex items-center gap-2 text-body">
+          <span class="shrink-0 rounded bg-tint px-1.5 py-0.5 text-caption font-bold text-ink/70"><%= cv.product.code %></span>
           <span class="truncate font-bold text-ink"><%= cv.component.display_name %> <%= cv.vlabel.upcase %></span>
         </div>
-        <div class="mt-1 truncate text-[12px] text-line"><%= cv.product.name %></div>
+        <div class="mt-1 truncate text-meta text-muted"><%= cv.product.name %></div>
       </div>
-      <div class="flex shrink-0 items-center gap-1.5 text-[12px] text-line">
+      <div class="flex shrink-0 items-center gap-1.5 text-meta text-muted">
         요청자 <%= avatar(req.submitter, size: 18) %> <span class="text-ink"><%= req.submitter.name %></span>
         <span class="ml-1"><%= req.requested_at&.strftime("%m.%d") %></span>
-        <%# 마감일(있을 때만). overdue면 warn 토큰 강조 — 정렬은 requested_at ASC 불변, due는 표시 전용. %>
+        <%# 마감일 배지(있을 때만). 남은 기한=D-n, 초과=warn 색+아이콘+"n일 지남"(3중 신호). end_of_day 의미는
+            req.overdue?가 보존(정렬은 requested_at ASC 불변, due는 표시 전용). overdue 행당 span.text-warn 정확히 1. %>
         <% if req.due_at %>
-          <span class="ml-1 <%= "font-bold text-warn" if req.overdue? %>" title="마감일<%= " · 초과" if req.overdue? %>">~<%= req.due_at.strftime("%-m.%-d") %></span>
+          <% od = req.overdue?; dd = (req.due_at.to_date - Date.current).to_i %>
+          <span class="ml-1 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-caption font-bold <%= od ? "text-warn bg-warn/10" : "text-muted bg-tint" %>"
+                title="마감일 <%= req.due_at.strftime("%-m.%-d") %><%= " · 초과" if od %>">
+            <% if od %><%= ui_icon "warn", size: 11 %><%= -dd %>일 지남<% else %>D-<%= dd %><% end %>
+          </span>
         <% end %>
       </div>
     <% end %>
     <% if claimable %>
       <%= button_to "내가 맡기", claim_approval_request_path(req), form: { class: "shrink-0" },
-            class: "shrink-0 cursor-pointer rounded-lg bg-cooa-gradient px-3 py-2 text-[12px] font-bold text-white transition hover:opacity-90" %>
+            class: ui_button_classes(variant: :primary, size: :sm, extra: "shrink-0") %>
     <% end %>
   </div>
 </li>

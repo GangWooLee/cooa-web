@@ -8,7 +8,7 @@
     <% if flash[:notice].present? %>
       <div data-controller="flash" data-flash-kind-value="notice" role="status"
            class="pointer-events-auto flex items-start gap-2 rounded-xl border border-line-soft bg-tint py-2 pl-4 pr-2 shadow-lg">
-        <span class="min-w-0 flex-1 py-1 text-[13px] text-ink"><%= flash[:notice] %></span>
+        <span class="min-w-0 flex-1 py-1 text-body text-ink"><%= flash[:notice] %></span>
         <button type="button" data-action="flash#close" aria-label="닫기"
                 class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-ink/50 transition hover:bg-ink/5 hover:text-ink">
           <%= ui_icon "x", size: 16 %>
@@ -18,7 +18,7 @@
     <% if flash[:alert].present? %>
       <div data-controller="flash" data-flash-kind-value="alert" role="alert"
            class="pointer-events-auto flex items-start gap-2 rounded-xl border border-warn bg-tint py-2 pl-4 pr-2 shadow-lg">
-        <span class="min-w-0 flex-1 py-1 text-[13px] font-medium text-ink"><%= flash[:alert] %></span>
+        <span class="min-w-0 flex-1 py-1 text-body font-medium text-ink"><%= flash[:alert] %></span>
         <button type="button" data-action="flash#close" aria-label="닫기"
                 class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-ink/50 transition hover:bg-ink/5 hover:text-ink">
           <%= ui_icon "x", size: 16 %>

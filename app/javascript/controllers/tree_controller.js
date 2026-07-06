@@ -14,15 +14,26 @@ export default class extends Controller {
     tr.classList.add("tree-selected")
   }
 
-  newFolder() { this._create("folder") }
-  newItem() { this._create("item") }
+  newFolder(e) { this._create("folder", e) }
+  newItem(e) { this._create("item", e) }
 
   // 선택 노드 기준으로 생성(서버 apply_creation_context가 parent_id·position 결정) → 트리 인라인 명명.
   // 현재 작업실 id를 실어 보낸다(D3): 미선택 = 루트 생성이면 이 작업실에 귀속(빈 작업실도 첫 항목이 여기로),
   // 폴더 선택 = 자식 생성이면 서버가 workspace_id를 무시(brand_root로 도출) — 항상 실어도 무해.
-  _create(kind) {
+  _create(kind, e) {
+    this._markLoading(e?.currentTarget) // 클릭 즉시 피드백 — 별도 폼 네비라 버튼 disable은 제출에 무간섭
     const fields = { "product[kind]": kind, relative_to: this.selectedId }
     if (this.hasWorkspaceIdValue && this.workspaceIdValue) fields.workspace_id = this.workspaceIdValue
     submitDynamicForm(this.createUrlValue, fields)
+  }
+
+  // 아이콘→스피너 교체 + disable(라벨 유지). 풀 네비가 페이지를 교체하므로 리셋 불요.
+  _markLoading(btn) {
+    if (!btn) return
+    btn.disabled = true
+    btn.classList.add("opacity-70")
+    btn.querySelector("svg")?.replaceWith(Object.assign(document.createElement("span"), {
+      className: "spinner", ariaHidden: "true"
+    }))
   }
 }

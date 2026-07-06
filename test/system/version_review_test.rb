@@ -23,17 +23,17 @@ class VersionReviewTest < ApplicationSystemTestCase
     # 요청 후: "리뷰 대기" + 지정 리뷰어(이쿠아) 표시 + SoD 게이트(본인엔 확인 버튼 부재 + SoD 문구)
     assert_text "리뷰 대기"
     assert_text "이쿠아" # 지정 리뷰어 표시
-    assert_no_button "✓ 검토 확인", wait: 2
+    assert_no_button "검토 확인", wait: 2
     assert_text "본인이 요청한 리뷰는 본인이 확인할 수 없습니다 (SoD)"
 
     # 리뷰어(이쿠아 approver)로 신원 전환 → 확인 가능 → 확인 → 확정 상태가 사용자에게 보임
     system_sign_in("lee@cooa.dev")
     visit component_version_path(v5)
-    assert_button "✓ 검토 확인"
-    accept_confirm { click_button "✓ 검토 확인" } # v5는 미해결 피드백 1개 → 소프트 경고 수락
-    assert_text "✓ 검토 확인됨"
+    assert_button "검토 확인"
+    accept_confirm { click_button "검토 확인" } # v5는 미해결 피드백 1개 → 소프트 경고 수락
+    assert_text "검토 확인됨"
     assert_text "이쿠아"
-    assert_no_button "✓ 검토 확인", wait: 2 # 확정 후 액션 사라짐(멱등)
+    assert_no_button "검토 확인", wait: 2 # 확정 후 액션 사라짐(멱등)
   end
 
   # 부정 페르소나: contributor(박쿠아)는 리뷰어 권한이 없어 확인 버튼 부재
@@ -46,6 +46,8 @@ class VersionReviewTest < ApplicationSystemTestCase
     system_sign_in("park@cooa.dev") # scm → contributor(리뷰어 아님)
     visit component_version_path(v5)
     assert_text "리뷰 대기"
-    assert_no_button "✓ 검토 확인"
+    # park 첫 방문 = 리뷰 details 접힘(flash 없음) → 펼쳐서 패널 본문까지 포함해도 검토 확인 버튼이 없음을 확증
+    find("summary", text: "버전 리뷰").click
+    assert_no_button "검토 확인"
   end
 end

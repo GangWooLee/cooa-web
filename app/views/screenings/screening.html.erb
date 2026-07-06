@@ -1,48 +1,55 @@
 <% content_for :title, "인허가 스크리닝 · #{@product.code}" %>
 <% fboxes = @run ? finding_boxes(@run.screening_findings) : [] %>
 <% box_seq = {}; fboxes.each { |b| box_seq[b[:finding_id]] = b[:seq] } %>
-<div class="flex h-full flex-col">
+<%# 스크리닝 컨트롤러는 최상위 래퍼에 — 결과 패널과 하단 재실행 폼을 함께 감싸(폼 submit->screening#onRerun 배선).
+    artwork-viewer:focus는 버블링으로 최상위까지 도달(Stimulus dispatch bubbles:true). %>
+<div class="flex h-full flex-col" data-controller="screening"
+     data-action="artwork-viewer:focus->screening#onFocus"
+     data-screening-just-ran-value="<%= params[:ran].present? %>">
   <%# 헤더 + 주의문 %>
-  <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-5 py-3">
-    <div class="text-sm"><%= node_breadcrumb(@product, trailing: "#{@version.component.display_name} #{@version.vlabel.upcase} 인허가 스크리닝") %></div>
-    <div class="text-xs text-line">AI의 답변은 완벽하지 않으니 꼭 RA 담당자의 검토를 권합니다.</div>
+  <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-6 py-3">
+    <div class="text-note"><%= node_breadcrumb(@product, trailing: "#{@version.component.display_name} #{@version.vlabel.upcase} 인허가 스크리닝") %></div>
+    <div class="text-meta text-muted">AI의 답변은 완벽하지 않으니 꼭 RA 담당자의 검토를 권합니다.</div>
   </div>
 
-  <div data-controller="screening" data-action="artwork-viewer:focus->screening#onFocus"
-       data-screening-just-ran-value="<%= params[:ran].present? %>"
-       class="flex min-h-0 flex-1 flex-col lg:flex-row">
+  <div class="flex min-h-0 flex-1 flex-col lg:flex-row">
     <%# 좌: 아트워크 + finding 박스 (방금 실행 시 스캔 애니메이션) %>
     <div class="relative min-h-0 min-w-0 flex-1 p-3 <%= "screening-scanning" if params[:ran] %>" style="min-height:380px">
       <% if artwork?(@version) %>
+        <%# 줌 활성(세 아트워크 뷰 일관) — finding 박스는 stage %-자식이라 줌 transform과 함께 이동/확대(좌표 정합).
+            스캔 빔 오버레이는 pane 절대배치·pointer-events-none·초기 실행 시에만이라 줌과 독립. %>
         <%= render "shared/artwork_viewer", image_src: artwork_src(@version),
               is_pdf: @version.artwork_pdf?, thumb_src: artwork_thumb_src(@version),
               worker_src: asset_path("pdfjs.worker.min.js"),
-              boxes: fboxes, zoom: false %>
+              boxes: fboxes, zoom: true %>
         <%# 스캔 빔 오버레이 — 방금 실행 시 JS가 표시 후 애니메이션 %>
         <div data-screening-target="scanner" class="pointer-events-none absolute inset-3 z-20 hidden overflow-hidden rounded-xl">
           <div class="scan-line"></div>
         </div>
       <% else %>
-        <div class="flex h-full items-center justify-center rounded-xl border border-line bg-tint-2 text-line">아트워크 이미지 없음 · <%= @version.component.display_name %> <%= @version.vlabel.upcase %></div>
+        <div class="flex h-full items-center justify-center rounded-xl border border-line bg-tint-2 text-muted">아트워크 이미지 없음 · <%= @version.component.display_name %> <%= @version.vlabel.upcase %></div>
       <% end %>
     </div>
 
     <%# 우: 결과 패널 %>
     <aside class="flex w-full shrink-0 flex-col border-t border-line bg-white lg:w-[400px] lg:border-l lg:border-t-0">
       <div class="border-b border-line-soft p-3">
-        <h3 class="text-base font-bold text-ink">스크리닝 결과</h3>
+        <%# 라이브 라벨 — 서버는 항상 "스크리닝 결과"로 렌더(reduced-motion·비-ran 안전). ran 스캔 동안만 JS가
+            "스크리닝 중…"으로 바꿨다가 완료 시 되돌린다. %>
+        <h3 data-screening-target="label" class="text-section font-bold text-ink">스크리닝 결과</h3>
         <% if @run %>
           <%# reorder(nil): drop association default order(:position) — PG rejects ORDER BY cols not in GROUP BY %>
           <% counts = @run.screening_findings.reorder(nil).group(:decision).count %>
-          <div class="mt-2 flex flex-wrap items-center gap-1.5">
+          <%# 판정 요약 칩 — ran이면 초기 숨김(스포일러 방지) 후 카드 스태거 뒤 페이드인(리빌 마지막 단계) %>
+          <div data-screening-target="summary" class="mt-2 flex flex-wrap items-center gap-1.5 <%= "opacity-0" if params[:ran] %>">
             <% Decidable::DECISIONS.each do |key, meta| %>
               <% next if key == "ok" %>
               <% n = counts[key] || 0 %>
               <% on = n.positive? %>
-              <span class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[13px] font-bold"
+              <span class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-body font-bold"
                     style="color:<%= on ? meta[:color] : "#9aa0a6" %>;background:<%= on ? meta[:bg] : "#f1f1f1" %>">
                 <%= meta[:label] %>
-                <span class="flex h-[18px] min-w-[18px] items-center justify-center rounded px-1 text-xs text-white" style="background:<%= on ? meta[:color] : "#b9bcc2" %>"><%= n %></span>
+                <span class="flex h-[18px] min-w-[18px] items-center justify-center rounded px-1 text-meta text-white" style="background:<%= on ? meta[:color] : "#b9bcc2" %>"><%= n %></span>
               </span>
             <% end %>
           </div>
@@ -64,35 +71,35 @@
             <%= tag.div class: f_class.join(" "), style: "border-left:4px solid #{f.decision_meta[:color]}", data: f_data do %>
               <div class="flex items-center justify-between gap-2">
                 <div class="flex min-w-0 items-center gap-2">
-                  <% if seq %><span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white" style="background:<%= f.decision_meta[:color] %>"><%= seq %></span><% end %>
-                  <span class="shrink-0 rounded bg-tint px-1.5 py-0.5 text-[11px] text-ink/60"><%= f.element_label %></span>
-                  <span class="truncate text-sm font-bold text-ink"><%= f.subject %></span>
+                  <% if seq %><span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-caption font-bold text-white" style="background:<%= f.decision_meta[:color] %>"><%= seq %></span><% end %>
+                  <span class="shrink-0 rounded bg-tint px-1.5 py-0.5 text-caption text-ink/60"><%= f.element_label %></span>
+                  <span class="truncate text-note font-bold text-ink"><%= f.subject %></span>
                 </div>
                 <%= decision_pill(f.decision) %>
               </div>
               <%# 근거(판단 사유) %>
-              <p class="mt-1.5 text-[13px] text-ink/80"><%= f.issue_description %></p>
-              <% if f.recommended_action.present? %><p class="mt-1 text-[13px] text-cooa">→ <%= f.recommended_action %></p><% end %>
+              <p class="mt-1.5 text-body text-ink/80"><%= f.issue_description %></p>
+              <% if f.recommended_action.present? %><p class="mt-1 text-body text-cooa">→ <%= f.recommended_action %></p><% end %>
               <%# 출처 — 판단 근거의 규제 출처를 명확히 명시(사용자 검증용) %>
               <% if f.citation.present? %>
-                <div class="mt-2 flex items-start gap-1.5 rounded-md bg-tint px-2 py-1.5 text-[11px]">
-                  <%= ui_icon "external", size: 12, klass: "mt-0.5 shrink-0 text-line" %>
-                  <span><span class="font-bold text-line">출처</span> <span class="break-all text-ink/70"><%= f.citation %></span></span>
+                <div class="mt-2 flex items-start gap-1.5 rounded-md bg-tint px-2 py-1.5 text-caption">
+                  <%= ui_icon "external", size: 12, klass: "mt-0.5 shrink-0 text-muted" %>
+                  <span><span class="font-bold text-muted">출처</span> <span class="break-all text-ink/70"><%= f.citation %></span></span>
                 </div>
               <% end %>
-              <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-line">
+              <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-caption text-muted">
                 <span>신뢰도 <%= f.confidence %>%</span>
                 <% if f.human_review_required? %><span class="font-bold text-warn">· RA 검토 필요</span><% end %>
               </div>
             <% end %>
           <% end %>
         <% elsif @run %>
-          <div class="py-12 text-center text-sm">
-            <span class="text-[15px] font-bold" style="color:#5f8f2e">✓ 위반·주의 사항 없음</span><br>
-            <span class="text-line">검토 기준을 통과했습니다.</span>
+          <div class="py-12 text-center text-note">
+            <span class="inline-flex items-center gap-1.5 text-[15px] font-bold text-ok-strong"><%= ui_icon "check", size: 16, stroke: 2.4 %>위반·주의 사항 없음</span><br>
+            <span class="text-muted">검토 기준을 통과했습니다.</span>
           </div>
         <% else %>
-          <div class="py-12 text-center text-sm text-line">아직 스크리닝을 실행하지 않았습니다.<br>아래 <b>‘인허가 스크리닝’</b>을 눌러 실행하세요.</div>
+          <div class="py-12 text-center text-note text-ink">아직 스크리닝을 실행하지 않았습니다.<br>아래 <b>‘인허가 스크리닝’</b>을 눌러 실행하세요.</div>
         <% end %>
       </div>
 
@@ -103,11 +110,14 @@
   <%# 하단 액션바 — 국가 미지정이면 실행 차단(거짓 '적합' 방지) %>
   <div class="flex items-center justify-center gap-3 border-t border-line-soft bg-white px-6 py-3">
     <% if @product.country.blank? %>
-      <span class="flex items-center gap-1.5 text-[13px] font-medium text-warn">
+      <span class="flex items-center gap-1.5 text-body font-medium text-warn">
         <%= ui_icon "warn", size: 16 %> 국가가 지정되지 않아 스크리닝을 실행할 수 없습니다 — 드로어에서 국가를 먼저 지정하세요.
       </span>
     <% else %>
+      <%# 제출 시 버튼 로딩(스피너 + "스크리닝 중…") — 중복 실행 방지. 리다이렉트(?ran=1)로 새 버튼 렌더 = 리셋. %>
       <%= button_to (@run ? "인허가 스크리닝 다시 실행" : "인허가 스크리닝"), run_screening_component_version_path(@version),
+            form: { data: { controller: "submit-loading", action: "submit->submit-loading#onSubmit submit->screening#onRerun", submit_loading_label_value: "스크리닝 중…" } },
+            data: { submit_loading_target: "button" },
             class: "rounded-lg px-6 py-2.5 text-[15px] font-bold text-ink", style: "background-image:linear-gradient(to right,#fdd5d4,#e6caff)" %>
     <% end %>
   </div>

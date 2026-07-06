@@ -78,10 +78,10 @@ module UiHelper
   # 조상 경로 브레드크럼 (루트 › … › 현재 [› trailing]) — 가시 조상만
   #  · 폴더 세그먼트 → 대시보드(해당 폴더 펼침)  · 리프 세그먼트 → 드로어
   def node_breadcrumb(product, trailing: nil)
-    sep = content_tag(:span, "›", class: "px-1 text-line")
+    sep = content_tag(:span, "›", class: "px-1 text-muted")
     crumbs = visible_ancestors(product).map do |a|
       href = a.folder? ? root_path(focus: a.id) : product_path(a)
-      link_to(a.name, href, class: "text-line hover:text-cooa")
+      link_to(a.name, href, class: "text-muted hover:text-cooa")
     end
     crumbs << content_tag(:span, trailing, class: "text-ink") if trailing.present?
     safe_join(crumbs, sep)
@@ -104,10 +104,51 @@ module UiHelper
   # 4-enum 판정 알약
   def decision_pill(decision)
     m = Decidable::DECISIONS[decision] || Decidable::DECISIONS["unable"]
-    content_tag :span, class: "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] font-bold",
+    content_tag :span, class: "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-body font-bold",
                        style: "color:#{m[:color]};background:#{m[:bg]}" do
       concat ui_icon(m[:icon], size: 15, stroke: 2.2)
       concat m[:label]
+    end
+  end
+
+  # 피드백 상태 알약 (3중 신호: 아이콘 + 라벨 + 색). decision_pill과 동형. extra로 정렬 유틸(ml-auto 등) 흡수.
+  def annotation_status_pill(annotation, extra: nil)
+    m = annotation.status_meta
+    content_tag :span, class: [ "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-bold", extra ].compact.join(" "),
+                       style: "color:#{m[:color]};background:#{m[:bg]}" do
+      concat ui_icon(m[:icon], size: 11, stroke: 2.4)
+      concat m[:label]
+    end
+  end
+
+  # ── 표준 버튼 (단일 진실원) ────────────────────────────────────────────────
+  # radius rounded-lg 1종 · size별 padding/텍스트 고정 · disabled · focus-visible 링 내장.
+  # 브랜드 그라데이션 프라이머리는 홈 "새 작업실" 히어로 1곳만 예외(여기 미포함).
+  BTN_BASE = "inline-flex items-center justify-center rounded-lg font-semibold transition cursor-pointer " \
+             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/50 focus-visible:ring-offset-1 " \
+             "disabled:pointer-events-none disabled:opacity-50"
+  BTN_VARIANTS = {
+    primary:   "bg-cooa text-white hover:bg-cooa-dark",              # 채움 · 주요 CTA
+    secondary: "border border-cooa bg-white text-cooa hover:bg-accent", # 아웃라인 · 보조 액션(로그인 등)
+    ghost:     "text-muted hover:bg-tint hover:text-ink",            # 무테 저강도 · 취소/닫기/부차
+    danger:    "border border-warn bg-white text-warn hover:bg-warn hover:text-white" # 파괴적
+  }.freeze
+  BTN_SIZES = { sm: "gap-1 px-3 py-1.5 text-meta", md: "gap-1.5 px-4 py-2 text-body" }.freeze
+
+  # 클래스 문자열만 반환 — button_to / f.submit / submit_tag 등 자체 폼·메서드가 필요한 버튼류에서 직접 사용.
+  def ui_button_classes(variant: :primary, size: :md, extra: nil)
+    [ BTN_BASE, BTN_VARIANTS.fetch(variant), BTN_SIZES.fetch(size), extra ].compact.join(" ")
+  end
+
+  # 표준 버튼. href: → <a>(link_to) · 그 외 → <button>(기본 type="button"). 블록(아이콘+라벨) 지원.
+  def ui_button(label = nil, variant: :primary, size: :md, **opts, &block)
+    klass = ui_button_classes(variant:, size:, extra: opts.delete(:class))
+    body  = block ? capture(&block) : label
+    if (href = opts.delete(:href))
+      link_to body, href, class: klass, **opts
+    else
+      opts[:type] ||= "button"
+      button_tag body, class: klass, **opts
     end
   end
 

@@ -6,7 +6,7 @@ import { Controller } from "@hotwired/stimulus"
 //  · autofocus: 첫 박스로 시작. fit: 전체 보기(선택·흐림 해제).
 //  · drawable: 마지막 pane(현재)에서 Shift+드래그 → "artwork-viewer:draw"(%좌표) 디스패치.
 export default class extends Controller {
-  static targets = ["canvas", "pane", "stage", "image", "page", "minimap", "viewport", "box", "draftBox", "hint", "notice"]
+  static targets = ["canvas", "pane", "stage", "image", "page", "minimap", "viewport", "box", "draftBox", "hint", "notice", "drawToggle"]
   static values = {
     drawable: { type: Boolean, default: false },
     autofocus: { type: Boolean, default: false },
@@ -16,6 +16,7 @@ export default class extends Controller {
 
   connect() {
     this.scale = 1; this.tx = 0; this.ty = 0; this.fitScale = 1
+    this.drawMode = false // "영역 표시" 토글(버튼) — on이면 드래그=박스 드로우(Shift 불요). Shift+드래그는 상시 병행.
     this.nat = { w: 0, h: 0 }; this.activeSeq = null
     this._resize = () => this.refit()
     window.addEventListener("resize", this._resize)
@@ -249,11 +250,17 @@ export default class extends Controller {
   zoomIn() { const c = this.rect; this.zoomAt(c.width / 2, c.height / 2, 1.3) }
   zoomOut() { const c = this.rect; this.zoomAt(c.width / 2, c.height / 2, 1 / 1.3) }
 
+  // "영역 표시" 토글: on이면 드래그로 박스 드로우(Shift 불요), off면 드래그=팬. 버튼 aria-pressed로 활성 표시.
+  toggleDraw(e) {
+    this.drawMode = !this.drawMode
+    e.currentTarget.setAttribute("aria-pressed", this.drawMode ? "true" : "false")
+  }
+
   // ── 팬 / 드로잉 ──
   onDown = (e) => {
     if (e.target.closest(".av-ui, [data-artwork-viewer-target='box']")) return
     const lastPane = this.paneTargets[this.paneTargets.length - 1]
-    if (this.drawableValue && e.shiftKey && this.paneAt(e.clientX, e.clientY) === lastPane) return this.startDraw(e)
+    if (this.drawableValue && (e.shiftKey || this.drawMode) && this.paneAt(e.clientX, e.clientY) === lastPane) return this.startDraw(e)
     e.preventDefault()
     const sx = e.clientX, sy = e.clientY, tx0 = this.tx, ty0 = this.ty
     const move = (ev) => { this.tx = tx0 + (ev.clientX - sx); this.ty = ty0 + (ev.clientY - sy); this.apply() }

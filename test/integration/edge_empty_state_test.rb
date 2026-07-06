@@ -30,7 +30,7 @@ class EdgeEmptyStateTest < ActionDispatch::IntegrationTest
 
     get root_path
     assert_response :success
-    assert_match "데이터 관리", @response.body, "완전 빈 테넌트여도 대시보드 셸은 렌더"
+    assert_match "작업실", @response.body, "완전 빈 테넌트여도 대시보드 셸은 렌더"
     assert_match "아직 작업실이 없습니다", @response.body, "빈 상태 안내 노출"
     refute_match "레티놀 3% 세럼", @response.body, "삭제된 작업실/제품명은 어디에도 없어야"
   end

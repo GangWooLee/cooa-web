@@ -1,7 +1,7 @@
 <%# 커스텀 속성 한 줄 — 키(dt, 인라인 rename) + 값(dd, 인라인 편집 + 우측 호버 삭제). 고정 필드와 동일 정렬. locals: product, property %>
 <dt data-controller="inline-edit"
     data-inline-edit-auto-value="<%= params[:rename_property].to_s == property.id.to_s %>"
-    class="min-w-0 font-bold text-line">
+    class="min-w-0 font-bold text-muted">
   <span data-inline-edit-target="display" data-action="click->inline-edit#edit" title="키 이름 변경"
         class="block cursor-text truncate transition hover:text-cooa"><%= property.name %></span>
   <%= form_with model: [product, property], method: :patch,
@@ -9,7 +9,7 @@
     <%= hidden_field_tag :inline, 1 %>
     <%= f.text_field :name, id: "prop_name_#{property.id}",
           data: { "inline-edit-target": "input", action: "keydown->inline-edit#keydown blur->inline-edit#save" },
-          class: "w-full rounded border border-cooa px-1 py-0.5 text-[12px] font-bold focus:outline-none" %>
+          class: "w-full rounded border border-cooa px-1 py-0.5 text-meta font-bold focus:outline-none" %>
   <% end %>
 </dt>
 <%# 값은 선택 — 빈값으로 비우기 허용(clearable). 키(dt)는 필수라 기본(되돌림) %>
@@ -21,10 +21,10 @@
     <%= hidden_field_tag :inline, 1 %>
     <%= f.text_field :value, id: "prop_value_#{property.id}",
           data: { "inline-edit-target": "input", action: "keydown->inline-edit#keydown blur->inline-edit#save" },
-          class: "w-full rounded border border-cooa px-1.5 py-0.5 text-[13px] focus:outline-none" %>
+          class: "w-full rounded border border-cooa px-1.5 py-0.5 text-body focus:outline-none" %>
   <% end %>
   <%= button_to [product, property], method: :delete, title: "속성 삭제",
         form: { class: "shrink-0 opacity-0 transition-opacity duration-150 group-hover/prop:opacity-100",
                 data: { turbo_frame: "_top", turbo_confirm: "'#{property.name}' 속성을 삭제할까요?" } },
-        class: "rounded p-0.5 text-line hover:text-warn" do %><%= ui_icon "trash", size: 12 %><% end %>
+        class: "rounded p-0.5 text-muted hover:text-warn" do %><%= ui_icon "trash", size: 12 %><% end %>
 </dd>

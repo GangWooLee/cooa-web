@@ -33,7 +33,7 @@ class ReviewClaimTest < ApplicationSystemTestCase
       assert_text "맡을 수 있는 미배정 리뷰가 없습니다"
       find("a", text: "CO0001").click
     end
-    accept_confirm { click_button "✓ 검토 확인" } # v5는 미해결 피드백 → 소프트 경고 수락
-    assert_text "✓ 검토 확인됨"
+    accept_confirm { click_button "검토 확인" } # v5는 미해결 피드백 → 소프트 경고 수락
+    assert_text "검토 확인됨"
   end
 end

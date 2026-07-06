@@ -23,8 +23,8 @@ class ReviewsInboxTest < ApplicationSystemTestCase
     click_link "내 리뷰 인박스"
     assert_text "내게 요청된 리뷰"
     find("a", text: "CO0001").click
-    accept_confirm { click_button "✓ 검토 확인" } # v5는 미해결 피드백 → 소프트 경고 수락
-    assert_text "✓ 검토 확인됨"
+    accept_confirm { click_button "검토 확인" } # v5는 미해결 피드백 → 소프트 경고 수락
+    assert_text "검토 확인됨"
   end
 
   test "요청받지 않은 사용자의 수신함은 비어있음 (park)" do

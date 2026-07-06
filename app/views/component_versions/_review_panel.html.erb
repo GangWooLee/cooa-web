@@ -1,75 +1,86 @@
 <%# 버전 리뷰 패널 — 계산은 ReviewPanelPresenter(@review), 정책 게이트만 뷰. 리뷰는 버전에 앵커
     (스크리닝 비의존): 디자이너는 스크리닝 없이 요청, RA가 검토 중 수행. "고쳐야 함"은 피드백(annotation)
-    채널(변경 요청 폐지). 신원 SoD: 요청자는 본인 요청을 확인할 수 없음. %>
-<div class="border-t border-line p-3">
-  <div class="mb-2 text-[13px] font-bold text-ink">버전 리뷰</div>
-  <% case @review.state %>
-  <% when :none %>
-    <% if policy(@version).submit_for_approval? %>
-      <% candidates = @review.candidate_members(current_user) %>
-      <%= form_with url: approval_requests_path, method: :post, class: "space-y-2" do |f| %>
-        <%= hidden_field_tag :component_version_id, @version.id %>
-        <% if candidates.any? %>
-          <%# 후보 = 권한 평면(role_assignment) 기준 브랜드 팀 — 표시 명부(담당자)와 분리(Stage 4 T2) %>
-          <div class="text-[11px] font-bold text-line">리뷰어 지정 (브랜드 팀)</div>
-          <div class="space-y-1">
-            <% candidates.each do |u| %>
-              <label class="flex cursor-pointer items-center gap-2 rounded-md border border-line-soft px-2 py-1.5 text-[12px] hover:border-cooa">
-                <%= check_box_tag "reviewer_ids[]", u.id, false, class: "accent-cooa" %>
-                <%= avatar(u, size: 18) %>
-                <span class="font-medium text-ink"><%= u.name %></span>
-                <span class="text-line"><%= u.role_short %></span>
-              </label>
+    채널(변경 요청 폐지). 신원 SoD: 요청자는 본인 요청을 확인할 수 없음.
+    aside 하단 고정 <details>: summary=제목+상태 요약(상시 노출), 본문=폼/리뷰어/경고/안내(접힘). 기본 접힘,
+    단 state=none(요청 폼이 1차 액션)이거나 방금 요청/확인(flash notice·alert)이면 펼침 — tree-caret 회전 재사용. %>
+<% review_open = @review.state == :none || flash[:notice].present? || flash[:alert].present? %>
+<details class="border-t border-line"<%= " open" if review_open %>>
+  <summary class="flex cursor-pointer items-center gap-2 p-3 transition hover:bg-tint">
+    <%= ui_icon "caret", size: 14, klass: "tree-caret shrink-0 text-muted" %>
+    <span class="text-body font-bold text-ink">버전 리뷰</span>
+    <span class="ml-auto flex items-center gap-1.5">
+      <% case @review.state %>
+      <% when :none %>
+        <span class="text-meta font-medium text-muted">미요청</span>
+      <% when :pending %>
+        <span class="text-meta font-medium text-muted">리뷰 대기</span>
+        <span class="rounded-full bg-warn-strong px-2 py-0.5 text-caption font-bold text-white">요청됨</span>
+      <% when :reviewed %>
+        <span class="inline-flex items-center gap-1 rounded-full bg-ok-soft px-2 py-0.5 text-caption font-bold text-ok-strong"><%= ui_icon "check", size: 12, stroke: 2.4 %>검토 확인됨</span>
+      <% end %>
+    </span>
+  </summary>
+  <div class="px-3 pb-3">
+    <% case @review.state %>
+    <% when :none %>
+      <% if policy(@version).submit_for_approval? %>
+        <% candidates = @review.candidate_members(current_user) %>
+        <%= form_with url: approval_requests_path, method: :post, class: "space-y-2" do |f| %>
+          <%= hidden_field_tag :component_version_id, @version.id %>
+          <% if candidates.any? %>
+            <%# 후보 = 권한 평면(role_assignment) 기준 브랜드 팀 — 표시 명부(담당자)와 분리(Stage 4 T2) %>
+            <div class="text-caption font-bold text-muted">리뷰어 지정 (브랜드 팀)</div>
+            <div class="space-y-1">
+              <% candidates.each do |u| %>
+                <label class="flex cursor-pointer items-center gap-2 rounded-md border border-line-soft px-2 py-1.5 text-meta hover:border-cooa">
+                  <%= check_box_tag "reviewer_ids[]", u.id, false, class: "accent-cooa" %>
+                  <%= avatar(u, size: 18) %>
+                  <span class="font-medium text-ink"><%= u.name %></span>
+                  <span class="text-muted"><%= u.role_short %></span>
+                </label>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-caption text-muted">지정할 리뷰어가 없습니다 — 요청 시 자격 리뷰어 누구나 확인할 수 있습니다.</p>
+          <% end %>
+          <%# 선택적 마감일(기록·표시 전용 — 과거도 허용, 검증 없음). 인박스에서 ~M.D로 표시, 초과 시 warn 강조. %>
+          <div>
+            <div class="mb-1 text-caption font-bold text-muted">마감일 (선택)</div>
+            <%= date_field_tag :due_at, nil, class: "w-full rounded-md border border-line-soft px-2 py-1.5 text-meta text-ink focus:border-cooa focus:outline-none focus:ring-1 focus:ring-cooa" %>
+          </div>
+          <%= ui_button "리뷰 요청", type: "submit", class: "w-full" %>
+        <% end %>
+      <% else %>
+        <p class="text-meta text-muted">리뷰 요청 권한이 없습니다.</p>
+      <% end %>
+    <% when :pending %>
+      <% req = @review.request %>
+      <div class="space-y-2">
+        <div class="flex items-center gap-1.5 text-meta text-muted">요청자 <%= avatar(req.submitter, size: 18) %> <span class="font-medium text-ink"><%= req.submitter.name %></span></div>
+        <% if @review.requested_reviewers.any? %>
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-muted">리뷰어
+            <% @review.requested_reviewers.each do |rv| %>
+              <span class="inline-flex items-center gap-1"><%= avatar(rv, size: 18) %> <span class="font-medium text-ink"><%= rv.name %></span></span>
             <% end %>
           </div>
-        <% else %>
-          <p class="text-[11px] text-line">지정할 리뷰어가 없습니다 — 요청 시 자격 리뷰어 누구나 확인할 수 있습니다.</p>
         <% end %>
-        <%# 선택적 마감일(기록·표시 전용 — 과거도 허용, 검증 없음). 인박스에서 ~M.D로 표시, 초과 시 warn 강조. %>
-        <div>
-          <div class="mb-1 text-[11px] font-bold text-line">마감일 (선택)</div>
-          <%= date_field_tag :due_at, nil, class: "w-full rounded-md border border-line-soft px-2 py-1.5 text-[12px] text-ink outline-none focus:border-cooa" %>
-        </div>
-        <%= f.submit "리뷰 요청", class: "w-full cursor-pointer rounded-lg bg-cooa-gradient px-4 py-2.5 text-[13px] font-bold text-white" %>
-      <% end %>
-    <% else %>
-      <p class="text-[12px] text-line">리뷰 요청 권한이 없습니다.</p>
-    <% end %>
-  <% when :pending %>
-    <% req = @review.request %>
-    <div class="space-y-2">
-      <div class="flex items-center justify-between">
-        <span class="text-[13px] font-bold text-ink">리뷰 대기</span>
-        <span class="rounded-full px-2 py-0.5 text-[11px] font-bold text-white" style="background:#d99a00">요청됨</span>
+        <% if @review.open_feedback? %>
+          <div class="rounded-md bg-accent px-2 py-1 text-meta text-cooa">미반영 피드백 <%= @review.open_feedback_count %>개 — 반영 후 재요청하거나, 리뷰어가 검토 확인합니다.</div>
+        <% end %>
+        <% if policy(req).confirm_review? %>
+          <%# 검토 확인 액션은 하단 액션바 primary로 승격(위계 교정) — 여기선 안내만 남긴다. %>
+          <p class="pt-1 text-caption text-muted">고칠 점은 아트워크에 <b>피드백</b>으로 남기고, 문제 없으면 아래 <b>검토 확인</b>으로 이 버전을 확정하세요.</p>
+        <% elsif current_user == req.submitter %>
+          <p class="pt-1 text-caption text-muted">본인이 요청한 리뷰는 본인이 확인할 수 없습니다 (SoD).</p>
+        <% else %>
+          <p class="pt-1 text-caption text-muted"><%= @review.waiting_message %></p>
+        <% end %>
       </div>
-      <div class="flex items-center gap-1.5 text-[12px] text-line">요청자 <%= avatar(req.submitter, size: 18) %> <span class="font-medium text-ink"><%= req.submitter.name %></span></div>
-      <% if @review.requested_reviewers.any? %>
-        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-line">리뷰어
-          <% @review.requested_reviewers.each do |rv| %>
-            <span class="inline-flex items-center gap-1"><%= avatar(rv, size: 18) %> <span class="font-medium text-ink"><%= rv.name %></span></span>
-          <% end %>
-        </div>
-      <% end %>
-      <% if @review.open_feedback? %>
-        <div class="rounded-md px-2 py-1 text-[12px]" style="color:#8e0300;background:#fdeceb">미해결 피드백 <%= @review.open_feedback_count %>개 — 반영 후 재요청하거나, 리뷰어가 검토 확인합니다.</div>
-      <% end %>
-      <% if policy(req).confirm_review? %>
-        <div class="space-y-1.5 pt-1">
-          <p class="text-[11px] text-line">고칠 점은 아트워크에 <b>피드백</b>으로 남기고, 문제 없으면 검토 확인하세요.</p>
-          <%= button_to "✓ 검토 확인", confirm_approval_request_path(req),
-                class: "w-full cursor-pointer rounded-lg bg-cooa-gradient px-3 py-2 text-[13px] font-bold text-white",
-                form: (@review.confirm_warning ? { data: { turbo_confirm: @review.confirm_warning } } : {}) %>
-        </div>
-      <% elsif current_user == req.submitter %>
-        <p class="pt-1 text-[11px] text-line">본인이 요청한 리뷰는 본인이 확인할 수 없습니다 (SoD).</p>
-      <% else %>
-        <p class="pt-1 text-[11px] text-line"><%= @review.waiting_message %></p>
-      <% end %>
-    </div>
-  <% when :reviewed %>
-    <% step = @review.confirmed_step %>
-    <div class="rounded-lg p-2.5 text-[13px] font-bold" style="color:#5f8f2e;background:#eef6e3">
-      ✓ 검토 확인됨<% if step&.approver %> · <%= step.approver.name %><% end %><% if step&.acted_at %> · <%= step.acted_at.strftime("%Y.%m.%d %H:%M") %><% end %>
-    </div>
-  <% end %>
-</div>
+    <% when :reviewed %>
+      <% step = @review.confirmed_step %>
+      <div class="flex items-center gap-1.5 rounded-lg bg-ok-soft p-2.5 text-body font-bold text-ok-strong">
+        <%= ui_icon "check", size: 15, stroke: 2.4 %><span>검토 확인됨<% if step&.approver %> · <%= step.approver.name %><% end %><% if step&.acted_at %> · <%= step.acted_at.strftime("%Y.%m.%d %H:%M") %><% end %></span>
+      </div>
+    <% end %>
+  </div>
+</details>

@@ -8,7 +8,7 @@ class WorkspaceNavTest < ApplicationSystemTestCase
     visit root_path
 
     # 홈 = 작업실 카드 목록.
-    assert_text "데이터 관리", wait: 6
+    assert_text "작업실", wait: 6
     within "main" do
       assert_text "레티놀 3% 세럼"
       assert_text "비타민C 브라이트닝 앰플"
@@ -29,7 +29,7 @@ class WorkspaceNavTest < ApplicationSystemTestCase
 
     # "← 모든 작업실" → 홈 카드 복귀.
     within("#app-sidebar") { click_link "모든 작업실" }
-    assert_text "데이터 관리", wait: 6
+    assert_text "작업실", wait: 6
     within("main") { assert_text "비타민C 브라이트닝 앰플" } # 카드 목록으로 복귀
   end
 

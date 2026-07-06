@@ -27,17 +27,9 @@ class RoleAssignmentsController < ApplicationController
       return redirect_to(member_admin_redirect, alert: "이 역할은 작업실에 부여할 수 없습니다 — 관리자·멤버·뷰어·외부 협력 중에서 선택하세요.")
     end
 
-    # 요청은 이미 RLS 트랜잭션 안(Authentication#scope_to_tenant) — uniq_role_assignment_v3 위반이 그 tx를
-    # 통째로 abort시키면 이후 쿼리가 InFailedSqlTransaction. requires_new(=SAVEPOINT)로 격리 → 위반은
-    # 세이브포인트만 롤백하고 재부여를 아래 rescue가 멱등 처리(바깥 tx는 온전).
-    grant = RoleAssignment.transaction(requires_new: true) do
-      RoleAssignment.create!(
-        account_id: params[:account_id], tenant_id: Current.tenant_id, role_key: role_key,
-        scope_type: scope[:type], scope_workspace_id: scope[:workspace_id], scope_product_id: scope[:product_id],
-        granted_by: current_account.id, granted_at: Time.current
-      )
-    end
-    audit!("role_assignment.grant", grant)
+    # 발급(SAVEPOINT 격리)+감사는 공용(MemberAdministration#create_scoped_grant!) — workspace_memberships 자동분기와
+    # 공유. uniq_role_assignment_v3 위반은 세이브포인트만 롤백하고 아래 rescue가 멱등 처리(바깥 RLS tx는 온전).
+    create_scoped_grant!(account_id: params[:account_id], role_key: role_key, scope: scope)
     redirect_to member_admin_redirect, notice: "작업실 멤버로 추가했습니다."
   rescue ActiveRecord::RecordInvalid => e
     redirect_to member_admin_redirect, alert: e.record.errors.full_messages.to_sentence
@@ -55,19 +47,12 @@ class RoleAssignmentsController < ApplicationController
     # 제품→그 제품 · 구성요소→소유 제품)로 authorize. 타 관할 회수 시도는 deny(403). tenant-wide admin은 통과.
     authorize_member_write!(scope_authorize_target(grant))
     grant.destroy!
-    audit!("role_assignment.revoke", grant)
+    record_member_audit!("role_assignment.revoke", "RoleAssignment",
+                         account_id: grant.account_id, role_key: grant.role_key,
+                         scope_workspace_id: grant.scope_workspace_id, scope_product_id: grant.scope_product_id)
     redirect_to member_admin_redirect, notice: "작업실에서 제외했습니다."
   rescue LastOwnerGuard::Error => e
     # 마지막 owner grant 회수 시도(스코프 grant엔 해당 없음 — 방어). 가드가 tx 롤백 + 예외.
     redirect_to member_admin_redirect, alert: e.message
-  end
-
-  private
-
-  def audit!(action, grant)
-    AuditLog.record!(action: action, resource_type: "RoleAssignment", resource_id: nil, outcome: "allow",
-                     after: { account_id: grant.account_id, role_key: grant.role_key,
-                              scope_workspace_id: grant.scope_workspace_id, scope_product_id: grant.scope_product_id },
-                     request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
   end
 end

@@ -51,6 +51,22 @@ module Authz
       scoped - tenant_wide
     end
 
+    # "이 작업실에 추가 가능한 계정" 관계(모달 combobox ⓐ · /workspace_memberships 즉시추가 분기의 단일 규율).
+    # = 관리자 가시 범위 ∩ 이 작업실 비-스코프(아직 멤버 아님) ∩ 비-tenant-wide(전역 멤버는 이미 전 작업실 접근).
+    # dashboard 렌더(제안 목록)와 membership 컨트롤러의 분기가 같은 관계를 공유해 "동료면 즉시 추가"가 표시·서버
+    # 판정에서 코드로 일치한다(UI-서버 드리프트 불가). :all=전 조직 · Array(scoped admin)=자기 서브트리 스코프
+    # 멤버만(가시 범위 내 — 리크 없음) · nil=권한 없음(none). N+1 없음(배치).
+    def addable_accounts_for(account, workspace)
+      base = case (scope = self.for(account))
+      when :all  then Account.all
+      when Array then Account.where(id: scoped_member_account_ids(Product.subtree_ids(scope.map(&:id))))
+      else return Account.none
+      end
+      exclude = member_account_ids_for_workspace(workspace).to_set |
+                RoleAssignment.active.tenant_wide.distinct.pluck(:account_id).to_set
+      base.includes(:user).where.not(id: exclude.to_a).order(:created_at)
+    end
+
     # 작업실 멤버 계정 ids = 그 작업실 workspace-scope grant ∪ 서브트리 product/component-scope grant, tenant-wide
     # 제외. 빈 작업실(서브트리 0)도 workspace grant 멤버를 표면화한다 — 제품 파생 scoped_member_account_ids는
     # product_ids가 비면 조기반환([])이라 workspace grant를 놓치므로, 작업실을 직접 받는 이 진입점이 W3 멤버 요약·

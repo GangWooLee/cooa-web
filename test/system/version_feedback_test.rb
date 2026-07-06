@@ -66,7 +66,7 @@ class VersionFeedbackTest < ApplicationSystemTestCase
 
     visit component_version_path(v5)
     open_feedback_detail(ann.seq)
-    within(detail_of(ann.seq)) { click_button "✓ 반영됨으로 표시" }
+    within(detail_of(ann.seq)) { click_button "반영됨으로 표시" }
 
     # PATCH+리로드 완료를 가시 신호로 대기(즉시 DB 조회는 레이스) — 상세 재오픈 시 반영확인/다시열기 노출
     open_feedback_detail(ann.seq)
@@ -79,7 +79,7 @@ class VersionFeedbackTest < ApplicationSystemTestCase
     # reopen → 리로드 후 resolve 버튼 복귀를 가시 신호로 대기
     within(detail_of(ann.seq)) { click_button "다시 열기" }
     open_feedback_detail(ann.seq)
-    within(detail_of(ann.seq)) { assert_button "✓ 반영됨으로 표시" }
+    within(detail_of(ann.seq)) { assert_button "반영됨으로 표시" }
     assert ann.reload.open?, "reopen 시 open 되어야 함"
   end
 
@@ -90,7 +90,7 @@ class VersionFeedbackTest < ApplicationSystemTestCase
     ann = v5.annotations.open.first
     visit component_version_path(v5)
     open_feedback_detail(ann.seq)
-    within(detail_of(ann.seq)) { assert_no_button "✓ 반영됨으로 표시" }
+    within(detail_of(ann.seq)) { assert_no_button "반영됨으로 표시" }
   end
 
   private

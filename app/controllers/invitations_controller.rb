@@ -17,18 +17,8 @@ class InvitationsController < ApplicationController
       return redirect_to member_admin_redirect, alert: "이 역할은 작업실에 초대할 수 없습니다 — 관리자·멤버·뷰어·외부 협력 중에서 선택하세요."
     end
     # 모델 검증이 백스톱(교차테넌트/미존재·역할 정합은 Invitation 검증에서 거부 → RecordInvalid rescue로 안내).
-    invitation, raw = Invitation.generate!(
-      email: params[:email], role_key: params[:role_key],
-      invited_by_account_id: current_account.id,
-      scope_type: scope[:type], scope_workspace_id: scope[:workspace_id], scope_product_id: scope[:product_id]
-    )
-    AuditLog.record!(action: "invitation.create", resource_type: "Invitation",
-                     resource_id: nil, outcome: "allow", # bigint 도메인 공간 — uuid는 after로
-                     after: { invitation_id: invitation.id, email: invitation.email, role_key: invitation.role_key,
-                              scope_type: invitation.scope_type, scope_workspace_id: invitation.scope_workspace_id,
-                              scope_product_id: invitation.scope_product_id },
-                     request_id: request.request_id, source_ip: request.remote_ip,
-                     user_agent: request.user_agent)
+    # 발급+감사는 공용(MemberAdministration#create_scoped_invitation!) — workspace_memberships 자동분기와 공유.
+    _invitation, raw = create_scoped_invitation!(email: params[:email], role_key: params[:role_key], scope: scope)
     # 메일 자동발송 확장점: raw가 존재하는 유일한 시점이 여기다.
     # InvitationMailer.with(invitation:, raw_token: raw).invite.deliver_later
     flash[:invite_link] = invite_url(raw)
@@ -48,10 +38,7 @@ class InvitationsController < ApplicationController
       redirect_to member_admin_redirect, alert: "이미 수락된 초대는 취소할 수 없습니다."
     else
       invitation.revoke!
-      AuditLog.record!(action: "invitation.revoke", resource_type: "Invitation",
-                       resource_id: nil, outcome: "allow", after: { invitation_id: invitation.id },
-                       request_id: request.request_id, source_ip: request.remote_ip,
-                       user_agent: request.user_agent)
+      record_member_audit!("invitation.revoke", "Invitation", invitation_id: invitation.id)
       redirect_to member_admin_redirect, notice: "초대를 취소했습니다."
     end
   end

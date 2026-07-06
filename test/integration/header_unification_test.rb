@@ -11,11 +11,11 @@ class HeaderUnificationTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     # 헤더 타이틀 span(20px bold)은 main 안에서 유일(테이블·툴바는 더 작은 글자) → 작업실명으로 조준.
-    title = css_select("main span").find { |s| s["class"].to_s.include?("text-[20px]") }
+    title = css_select("main span").find { |s| s["class"].to_s.include?("text-display") }
     assert_equal "레티놀 3% 세럼", title&.text&.strip, "헤더 타이틀 = 작업실명(구 '데이터 관리')"
 
-    # 멤버 관리 팝오버 트리거 — 관리자(kim owner)의 접근 이름 = aria-label "멤버 초대·관리".
-    assert_select "summary[aria-label='멤버 초대·관리']", { minimum: 1 }, "멤버 어포던스 팝오버 트리거"
+    # 멤버 관리 모달 트리거 — 관리자(kim owner)의 접근 이름 = aria-label "멤버 초대·관리".
+    assert_select "button[aria-label='멤버 초대·관리']", { minimum: 1 }, "멤버 어포던스 모달 트리거"
   end
 
   test "D3 사이드바 = '모든 작업실' 백링크 존치 · 작업실명 고정 행(15px bold) 삭제" do

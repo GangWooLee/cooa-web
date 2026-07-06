@@ -3,11 +3,10 @@
 <% if flash[:invite_link].present? %>
   <div data-controller="clipboard" data-clipboard-source-value="<%= flash[:invite_link] %>"
        class="mb-5 rounded-xl border border-cooa/40 bg-tint p-3">
-    <div class="mb-1 text-[12px] font-bold text-cooa">초대 링크 — 지금 복사해 전달하세요 (다시 표시되지 않습니다 · 7일 유효)</div>
+    <div class="mb-1 text-meta font-bold text-cooa">초대 링크 — 지금 복사해 전달하세요 (다시 표시되지 않습니다 · 7일 유효)</div>
     <div class="flex items-center gap-2">
-      <code class="min-w-0 flex-1 truncate rounded bg-white px-2 py-1.5 text-[12px] text-ink"><%= flash[:invite_link] %></code>
-      <button type="button" data-clipboard-target="button" data-action="clipboard#copy"
-              class="shrink-0 cursor-pointer rounded-lg bg-cooa px-3 py-1.5 text-[12px] font-bold text-white">링크 복사</button>
+      <code class="min-w-0 flex-1 truncate rounded bg-white px-2 py-1.5 text-meta text-ink"><%= flash[:invite_link] %></code>
+      <%= ui_button "링크 복사", size: :sm, class: "shrink-0", data: { clipboard_target: "button", action: "clipboard#copy" } %>
     </div>
   </div>
 <% end %>

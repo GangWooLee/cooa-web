@@ -5,31 +5,33 @@
   <div data-controller="version-select" class="min-h-0 flex-1 overflow-auto scrollbar-slim">
     <%# 블러시 헤더 — 이름 인라인 편집 + 우상단 삭제·닫기 %>
     <div class="relative border-b border-line-soft bg-accent/40 px-5 py-4">
-      <div class="absolute right-3 top-3 flex items-center gap-1">
+      <div class="absolute right-3 top-3 flex items-center gap-2">
+        <%# 삭제(파괴적) — 닫기와 구분선·간격으로 분리해 오클릭 방지(확인 다이얼로그 유지). danger 등급 호버. %>
         <%= button_to product_path(product), method: :delete, title: "삭제",
               form: { data: { turbo_frame: "_top", turbo_confirm: del_confirm } },
-              class: "rounded-lg p-1.5 text-line transition hover:bg-tint hover:text-warn" do %><%= ui_icon "trash", size: 16 %><% end %>
+              class: "rounded-lg p-1.5 text-muted transition hover:bg-warn/10 hover:text-warn" do %><%= ui_icon "trash", size: 16 %><% end %>
+        <span class="h-4 w-px shrink-0 bg-line-soft"></span>
         <button type="button" data-action="detail-drawer#close" aria-label="닫기"
-                class="rounded-lg p-1.5 text-line transition hover:bg-tint hover:text-ink"><%= ui_icon "x", size: 18 %></button>
+                class="rounded-lg p-1.5 text-muted transition hover:bg-tint hover:text-ink"><%= ui_icon "x", size: 18 %></button>
       </div>
       <div data-controller="inline-edit" data-inline-edit-auto-value="<%= params[:rename] == "1" %>" class="flex flex-wrap items-center gap-2 pr-20">
         <% if product.code.present? %>
-          <span class="bg-cooa-gradient rounded-md px-2 py-0.5 text-[12px] font-bold text-white">[<%= product.code %>]</span>
+          <span class="bg-cooa-gradient rounded-md px-2 py-0.5 text-meta font-bold text-white">[<%= product.code %>]</span>
         <% end %>
         <h1 data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 이름 변경"
-            class="min-w-0 cursor-text break-words text-xl font-bold text-ink transition hover:text-cooa"><%= product.name %></h1>
+            class="min-w-0 cursor-text break-words text-display font-bold text-ink transition hover:text-cooa"><%= product.name %></h1>
         <%= form_with model: product, url: product_path(product), method: :patch,
               data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden min-w-0 flex-1" do |f| %>
           <%= hidden_field_tag :inline, 1 %>
           <%= f.text_field :name, data: { "inline-edit-target": "input", action: "keydown->inline-edit#keydown blur->inline-edit#save" },
-                class: "w-full min-w-0 rounded-lg border border-cooa bg-white px-2 py-1 text-xl font-bold text-ink focus:outline-none" %>
+                class: "w-full min-w-0 rounded-lg border border-cooa bg-white px-2 py-1 text-display font-bold text-ink focus:outline-none" %>
         <% end %>
-        <span class="rounded-full bg-white/70 px-2 py-0.5 text-[11px] text-ink/70"><%= product.folder? ? "그룹" : product.product_type %></span>
+        <span class="rounded-full bg-white/70 px-2 py-0.5 text-caption text-ink/70"><%= product.folder? ? "그룹" : product.product_type %></span>
       </div>
       <%# 메타 — 값 클릭 시 인라인 편집(별도 편집 페이지 없음) %>
-      <dl class="mt-3 grid grid-cols-[4.5rem_1fr] items-center gap-x-4 gap-y-1.5 text-[13px]">
+      <dl class="mt-3 grid grid-cols-[4.5rem_1fr] items-center gap-x-4 gap-y-1.5 text-body">
         <% if product.notion_url.present? %>
-          <dt class="font-bold text-line">기획</dt>
+          <dt class="font-bold text-muted">기획</dt>
           <dd class="min-w-0 truncate">
             <%= link_to product.notion_url, target: "_blank", rel: "noopener", class: "inline-flex items-center gap-1 text-cooa hover:underline" do %>
               <%= ui_icon "external", size: 14 %> Notion 기획문서
@@ -37,7 +39,7 @@
           </dd>
         <% end %>
         <%# 경로 — 표시 전용(이동은 트리 드래그앤드롭). 클릭 편집 안 함 %>
-        <dt class="font-bold text-line">경로</dt>
+        <dt class="font-bold text-muted">경로</dt>
         <dd class="min-w-0 break-words px-1 text-ink"><%= node_path_label(product) %></dd>
         <% unless product.folder? %>
           <%= render "products/inline_meta", product: product, label: "품목코드", attr: :code, kind: :text, display: product.code %>
@@ -51,15 +53,15 @@
           <% end %>
           <%# 담당자 — 자유 역할 + 팀에서 사람 선택, 행 추가/삭제. Stage 4 T2: 이 명부는 표시 전용이며
               리뷰어 후보·권한과 무관하다(후보·권한은 role_assignment 평면 — ReviewCandidates/AdminScope). %>
-          <dt class="font-bold text-line">담당자<span class="ml-1 font-normal text-[10px] text-line">(표시용 · 권한과 무관)</span></dt>
+          <dt class="font-bold text-muted">담당자<span class="ml-1 font-normal text-caption text-muted">(표시용 · 권한과 무관)</span></dt>
           <dd data-controller="inline-edit members" class="min-w-0">
             <span data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 수정"
                   class="flex cursor-text flex-wrap items-center gap-x-3 gap-y-1 rounded px-1 hover:bg-white/70">
               <% if product.product_members.any? %>
                 <% product.product_members.each do |pm| %>
-                  <span class="inline-flex items-center gap-1"><%= avatar(pm.user, size: 22) %><span class="text-[12px] font-bold text-ink"><%= pm.user.name %></span><span class="max-w-[88px] truncate text-[10px] text-line"><%= pm.role_short %></span></span>
+                  <span class="inline-flex items-center gap-1"><%= avatar(pm.user, size: 22) %><span class="text-meta font-bold text-ink"><%= pm.user.name %></span><span class="max-w-[88px] truncate text-meta text-muted" title="<%= pm.role_label %>"><%= pm.role_short %></span></span>
                 <% end %>
-              <% else %><span class="text-line">None</span><% end %>
+              <% else %><span class="text-muted">None</span><% end %>
             </span>
             <%= form_with model: product, url: product_path(product), method: :patch,
                   data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden" do %>
@@ -70,8 +72,8 @@
                 <% end %>
               </div>
               <div class="mt-2 flex items-center gap-2">
-                <button type="button" data-action="members#add" class="inline-flex items-center gap-1 rounded px-1 text-[12px] text-cooa hover:underline"><%= ui_icon "plus", size: 12 %> 담당자 추가</button>
-                <button type="button" data-action="members#save" class="rounded bg-cooa px-2.5 py-0.5 text-[12px] font-bold text-white">저장</button>
+                <button type="button" data-action="members#add" class="inline-flex items-center gap-1 rounded px-1 text-meta text-cooa hover:underline"><%= ui_icon "plus", size: 12 %> 담당자 추가</button>
+                <%= ui_button "저장", size: :sm, data: { action: "members#save" } %>
               </div>
               <template data-members-target="template"><%= render "products/member_row", role: "", user_id: nil %></template>
             <% end %>
@@ -80,7 +82,7 @@
           <dt class="whitespace-nowrap">
             <%= button_to product_product_properties_path(product), method: :post,
                   form: { class: "inline", data: { turbo_frame: "_top" } },
-                  class: "inline-flex items-center gap-1 rounded px-1 text-[12px] text-line transition hover:text-cooa" do %>
+                  class: "inline-flex items-center gap-1 rounded px-1 text-meta text-muted transition hover:text-cooa" do %>
               <%= ui_icon "plus", size: 12 %> 속성 추가
             <% end %>
           </dt>
@@ -94,27 +96,27 @@
       <div class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft px-5 py-3">
         <%# 버전 비교 (슬롯 2) %>
         <div class="flex items-center gap-1.5 rounded-xl bg-accent px-2.5 py-1.5">
-          <span class="flex shrink-0 items-center gap-1 text-[12px] font-bold text-cooa"><%= ui_icon "layers", size: 14 %> 버전 비교</span>
+          <span class="flex shrink-0 items-center gap-1 text-meta font-bold text-cooa"><%= ui_icon "layers", size: 14 %> 버전 비교</span>
           <% %w[a b].each do |s| %>
             <button type="button" data-version-select-target="slot" data-slot="<%= s %>" data-action="click->version-select#clear dragover->version-select#dragover dragleave->version-select#dragleave drop->version-select#drop"
-                    class="flex h-7 min-w-[34px] cursor-pointer items-center justify-center rounded-md border border-dashed border-line bg-white px-1.5 text-[12px] font-bold text-line transition hover:border-cooa">
+                    class="flex h-7 min-w-[34px] cursor-pointer items-center justify-center rounded-md border border-dashed border-line bg-white px-1.5 text-meta font-bold text-muted transition hover:border-cooa">
               <span data-label>+</span>
             </button>
           <% end %>
           <button type="button" data-version-select-target="compareBtn" data-action="version-select#compare" disabled
-                  class="shrink-0 rounded-lg bg-cooa px-3 py-1.5 text-[12px] font-bold text-white transition disabled:bg-line-soft disabled:opacity-70">비교 열기</button>
+                  class="shrink-0 rounded-lg bg-cooa px-3 py-1.5 text-meta font-bold text-white transition disabled:bg-line-soft disabled:opacity-70">비교 열기</button>
         </div>
         <%# 인허가 스크리닝 (슬롯 1) %>
         <div class="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5" style="background:#f1ecfb">
-          <span class="flex shrink-0 items-center gap-1 text-[12px] font-bold" style="color:#6b4ea8"><%= ui_icon "spark", size: 14 %> 인허가 스크리닝</span>
+          <span class="flex shrink-0 items-center gap-1 text-meta font-bold" style="color:#6b4ea8"><%= ui_icon "spark", size: 14 %> 인허가 스크리닝</span>
           <button type="button" data-version-select-target="slot" data-slot="c" data-action="click->version-select#clear dragover->version-select#dragover dragleave->version-select#dragleave drop->version-select#drop"
-                  class="flex h-7 min-w-[34px] cursor-pointer items-center justify-center rounded-md border border-dashed border-line bg-white px-1.5 text-[12px] font-bold text-line transition hover:border-cooa">
+                  class="flex h-7 min-w-[34px] cursor-pointer items-center justify-center rounded-md border border-dashed border-line bg-white px-1.5 text-meta font-bold text-muted transition hover:border-cooa">
             <span data-label>+</span>
           </button>
           <button type="button" data-version-select-target="screenBtn" data-action="version-select#screen" disabled
-                  class="shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-bold text-white transition disabled:bg-line-soft disabled:opacity-70" style="background:#6b4ea8">스크리닝</button>
+                  class="shrink-0 rounded-lg px-3 py-1.5 text-meta font-bold text-white transition disabled:bg-line-soft disabled:opacity-70" style="background:#6b4ea8">스크리닝</button>
         </div>
-        <span class="text-[11px] text-line">버전을 끌어다 슬롯에 놓기 · 슬롯을 클릭하면 비움</span>
+        <span class="text-caption text-muted">버전 칩의 <b>담기(+)</b> 또는 드래그로 슬롯 채우기 · 슬롯 클릭 시 비움</span>
       </div>
     <% end %>
 
@@ -123,10 +125,10 @@
       <%# 구성요소 · 버전 타임라인 (항목=leaf) — 추가/삭제 %>
       <% if product.leaf? %>
         <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h2 class="text-base font-bold text-ink">구성요소 · 버전</h2>
+          <h2 class="text-section font-bold text-ink">구성요소 · 버전</h2>
           <%= button_to product_components_path(product), method: :post,
                 form: { class: "inline", data: { turbo_frame: "_top" } },
-                class: "inline-flex cursor-pointer items-center gap-1 rounded-lg border border-cooa bg-white px-2.5 py-1.5 text-[12px] font-bold text-cooa transition hover:bg-cooa hover:text-white" do %>
+                class: ui_button_classes(variant: :secondary, size: :sm) do %>
             <%= ui_icon "plus", size: 13 %> 구성요소 추가
           <% end %>
         </div>
@@ -136,7 +138,7 @@
             <%= render partial: "products/component", collection: product.components.sort_by { |c| [c.position || 0, c.id] }, as: :component %>
           </div>
         <% else %>
-          <p class="rounded-xl border border-dashed border-line-soft px-4 py-6 text-center text-[13px] text-line">구성요소가 없습니다 · 위에서 추가하세요</p>
+          <p class="rounded-xl border border-dashed border-line-soft px-4 py-6 text-center text-body text-muted">구성요소가 없습니다 · 위에서 추가하세요</p>
         <% end %>
       <% end %>
     </div>

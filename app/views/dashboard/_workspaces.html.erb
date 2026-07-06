@@ -1,27 +1,32 @@
 <%# 홈 = 작업실 카드 목록(W1). 각 카드: 작업실명·제품 수·멤버 아바타. 좌클릭 = 작업실 진입, 우클릭(관리자) =
      이름 변경·삭제. "새 작업실"(관리자만) = 모달 폼(이름 + 선택 멤버 4종). 이름 간이 클라 필터. %>
 <% controllers = [ "workspace-filter" ]
-   controllers += [ "workspace-create", "workspace-ctx" ] if @can_manage_workspaces %>
+   controllers += [ "dialog", "workspace-ctx" ] if @can_manage_workspaces %>
 <div data-controller="<%= controllers.join(" ") %>" class="flex h-full min-w-0 flex-col bg-white">
-  <div class="border-b border-line-soft px-6 pt-4">
+  <div class="border-b border-line-soft px-6 py-4">
     <div class="flex min-w-0 flex-wrap items-center justify-between gap-3">
       <div class="flex min-w-0 items-center gap-2">
         <%= ui_icon "grid", size: 20, klass: "text-cooa" %>
-        <span class="truncate text-[20px] font-bold text-ink">데이터 관리</span>
+        <span class="truncate text-display font-bold text-ink">작업실</span>
       </div>
-      <% if @can_manage_workspaces %>
-        <button type="button" data-action="workspace-create#open"
-                class="bg-cooa-gradient flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-bold text-white transition hover:opacity-90">
+      <%# 카드 0개면 헤더 CTA를 숨긴다 — 빈 상태 히어로 "새 작업실 만들기"가 유일 primary(중복 CTA 제거). %>
+      <% if @can_manage_workspaces && @workspace_cards.any? %>
+        <button type="button" data-action="dialog#open"
+                class="bg-cooa-gradient flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-body font-bold text-white transition hover:opacity-90">
           <%= ui_icon "plus", size: 16, stroke: 2 %> 새 작업실
         </button>
       <% end %>
     </div>
-    <div class="mt-3 pb-3">
-      <div class="relative max-w-sm">
-        <input data-workspace-filter-target="input" data-action="input->workspace-filter#filter"
-               placeholder="작업실 찾기" class="w-full rounded-lg bg-tint px-3 py-2 text-[14px] outline-none">
+    <%# 필터는 카드가 많을 때만(8개 미만은 한눈에 보임 — 불필요한 입력 제거). 돋보기 아이콘 + 테두리. %>
+    <% if @workspace_cards.size >= 8 %>
+      <div class="mt-3">
+        <div class="relative max-w-sm">
+          <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted"><%= ui_icon "search", size: 15 %></span>
+          <input data-workspace-filter-target="input" data-action="input->workspace-filter#filter"
+                 placeholder="작업실 찾기" class="w-full rounded-lg border border-line-soft bg-tint py-2 pl-9 pr-3 text-note focus:border-cooa focus:outline-none focus:ring-1 focus:ring-cooa">
+        </div>
       </div>
-    </div>
+    <% end %>
   </div>
 
   <div class="min-w-0 flex-1 overflow-auto px-6 py-5">
@@ -43,13 +48,13 @@
               </div>
             </div>
             <div class="flex items-center justify-between">
-              <span class="text-[12px] text-line"><%= card[:product_count] %>개 제품</span>
+              <span class="text-meta text-muted"><%= card[:product_count] %>개 제품</span>
               <% members = card[:members] %>
               <% if members.any? %>
                 <div class="flex -space-x-1.5">
                   <% members.first(4).each do |acc| %><%= avatar(acc.user, size: 22) %><% end %>
                   <% if members.size > 4 %>
-                    <span class="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-tint px-1 text-[10px] font-bold text-line ring-2 ring-white">+<%= members.size - 4 %></span>
+                    <span class="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-tint px-1 text-caption font-bold text-muted ring-2 ring-white">+<%= members.size - 4 %></span>
                   <% end %>
                 </div>
               <% end %>
@@ -57,19 +62,19 @@
           <% end %>
         <% end %>
       </div>
-      <p data-workspace-filter-target="empty" class="hidden px-3 py-10 text-center text-[13px] text-line">일치하는 작업실 없음</p>
+      <p data-workspace-filter-target="empty" class="hidden px-3 py-10 text-center text-body text-muted">일치하는 작업실 없음</p>
     <% else %>
       <div class="flex flex-col items-center gap-2 px-3 py-16 text-center">
-        <%= ui_icon "layers", size: 32, klass: "text-line" %>
-        <p class="text-[14px] font-medium text-ink">아직 작업실이 없습니다</p>
+        <%= ui_icon "layers", size: 32, klass: "text-muted" %>
+        <p class="text-note font-medium text-ink">아직 작업실이 없습니다</p>
         <% if @can_manage_workspaces %>
-          <p class="text-[13px] text-line">첫 작업실을 만들어 폴더·항목을 담고 멤버를 초대해 보세요.</p>
-          <button type="button" data-action="workspace-create#open"
-                  class="bg-cooa-gradient mt-1 flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-bold text-white transition hover:opacity-90">
+          <p class="text-body text-muted">첫 작업실을 만들어 폴더·항목을 담고 멤버를 초대해 보세요.</p>
+          <button type="button" data-action="dialog#open"
+                  class="bg-cooa-gradient mt-1 flex items-center gap-1.5 rounded-lg px-3 py-2 text-body font-bold text-white transition hover:opacity-90">
             <%= ui_icon "plus", size: 16, stroke: 2 %> 새 작업실 만들기
           </button>
         <% else %>
-          <p class="text-[13px] text-line">접근 가능한 작업실이 배정되면 여기에 표시됩니다.</p>
+          <p class="text-body text-muted">접근 가능한 작업실이 배정되면 여기에 표시됩니다.</p>
         <% end %>
       </div>
     <% end %>
@@ -77,32 +82,32 @@
 
   <% if @can_manage_workspaces %>
     <%# 새 작업실 모달 — 이름(autofocus) + 선택 멤버(4종·건너뛰기 가능). <dialog> 네이티브(Esc/백드롭 닫기). %>
-    <dialog data-workspace-create-target="dialog"
-            class="w-full max-w-md rounded-2xl border border-line bg-white p-0 shadow-2xl backdrop:bg-ink/40">
+    <dialog data-dialog-target="dialog"
+            class="m-auto w-full max-w-md rounded-2xl border border-line bg-white p-0 shadow-2xl backdrop:bg-ink/40">
       <%= form_with url: workspaces_path, method: :post, data: { turbo: false }, class: "flex max-h-[80vh] flex-col" do %>
         <div class="border-b border-line-soft px-5 py-4">
-          <div class="text-[16px] font-bold text-ink">새 작업실</div>
-          <p class="mt-0.5 text-[12px] text-line">이름을 정하고, 함께할 멤버를 선택하세요(건너뛰어도 됩니다).</p>
+          <div class="text-section font-bold text-ink">새 작업실</div>
+          <p class="mt-0.5 text-meta text-muted">이름을 정하고, 함께할 멤버를 선택하세요(건너뛰어도 됩니다).</p>
         </div>
         <div class="min-h-0 flex-1 space-y-4 overflow-auto px-5 py-4">
           <div>
-            <label class="block text-[12px] font-bold text-ink">작업실 이름</label>
-            <input type="text" name="name" required maxlength="200" data-workspace-create-target="name"
+            <label class="block text-meta font-bold text-ink">작업실 이름</label>
+            <input type="text" name="name" required maxlength="200" data-dialog-target="autofocus"
                    placeholder="예: 2026 리뉴얼 TF"
-                   class="mt-1 w-full rounded-lg border border-line-soft px-3 py-2 text-[14px] focus:border-cooa focus:outline-none">
+                   class="mt-1 w-full rounded-lg border border-line-soft px-3 py-2 text-note focus:border-cooa focus:outline-none focus:ring-1 focus:ring-cooa">
           </div>
           <% if @workspace_member_candidates&.any? %>
             <div>
-              <div class="mb-1.5 text-[12px] font-bold text-ink">멤버 추가 <span class="font-normal text-line">— 역할을 정해 선택(선택 사항)</span></div>
+              <div class="mb-1.5 text-meta font-bold text-ink">멤버 추가 <span class="font-normal text-muted">— 역할을 정해 선택(선택 사항)</span></div>
               <div class="max-h-52 divide-y divide-line-soft overflow-auto rounded-lg border border-line-soft">
                 <% @workspace_member_candidates.each do |acc| %>
-                  <label class="flex items-center gap-2 px-3 py-2 text-[13px]">
+                  <label class="flex items-center gap-2 px-3 py-2 text-body">
                     <input type="checkbox" name="member_ids[]" value="<%= acc.id %>" class="accent-cooa">
                     <span class="min-w-0 flex-1 truncate">
                       <span class="font-medium text-ink"><%= acc.name || acc.email %></span>
-                      <span class="ml-1 text-[11px] text-line"><%= acc.email %></span>
+                      <span class="ml-1 text-caption text-muted"><%= acc.email %></span>
                     </span>
-                    <select name="roles[<%= acc.id %>]" class="rounded border border-line-soft px-1.5 py-1 text-[12px]">
+                    <select name="roles[<%= acc.id %>]" class="rounded border border-line-soft px-1.5 py-1 text-meta">
                       <%= role_option_tags(Authz::RoleLabels::WORKSPACE_ROLE_KEYS, selected: "contributor") %>
                     </select>
                   </label>
@@ -112,17 +117,15 @@
           <% end %>
         </div>
         <div class="flex items-center justify-end gap-2 border-t border-line-soft px-5 py-3">
-          <button type="button" data-action="workspace-create#close"
-                  class="rounded-lg px-3 py-2 text-[13px] font-medium text-line transition hover:bg-tint">취소</button>
-          <button type="submit"
-                  class="bg-cooa-gradient rounded-lg px-4 py-2 text-[13px] font-bold text-white transition hover:opacity-90">작업실 만들기</button>
+          <%= ui_button "취소", variant: :ghost, data: { action: "dialog#close" } %>
+          <%= ui_button "작업실 만들기", type: "submit" %>
         </div>
       <% end %>
     </dialog>
 
     <%# 카드 우클릭 컨텍스트 메뉴(관리자만) — 이름 변경 / 삭제 %>
-    <div data-workspace-ctx-target="menu" class="fixed z-50 hidden w-44 overflow-hidden rounded-lg border border-line-soft bg-white py-1 text-[13px] shadow-xl">
-      <button type="button" data-action="workspace-ctx#rename" class="flex w-full items-center gap-2 px-3 py-2 text-left text-ink hover:bg-tint"><%= ui_icon "pencil", size: 14, klass: "text-line" %> 이름 변경</button>
+    <div data-workspace-ctx-target="menu" class="fixed z-50 hidden w-44 overflow-hidden rounded-lg border border-line-soft bg-white py-1 text-body shadow-xl">
+      <button type="button" data-action="workspace-ctx#rename" class="flex w-full items-center gap-2 px-3 py-2 text-left text-ink hover:bg-tint"><%= ui_icon "pencil", size: 14, klass: "text-muted" %> 이름 변경</button>
       <button type="button" data-action="workspace-ctx#del" class="flex w-full items-center gap-2 px-3 py-2 text-left text-warn hover:bg-tint"><%= ui_icon "trash", size: 14 %> 삭제</button>
     </div>
   <% end %>

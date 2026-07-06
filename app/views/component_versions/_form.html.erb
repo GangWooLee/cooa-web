@@ -4,23 +4,26 @@
 <% method     = persisted ? :patch : :post %>
 <% cancel_url = persisted ? component_version_path(@version) : product_path(@component.product) %>
 
-<%= form_with model: @version, url: url, method: method, multipart: true, class: "space-y-5" do |f| %>
+<%# 제출 시 버튼 로딩(스피너 + "추가 중…"/"저장 중…") — 업로드 왕복 동안 중복 제출 방지. 422 재렌더/리다이렉트가 새 버튼을 그려 리셋. %>
+<%= form_with model: @version, url: url, method: method, multipart: true, class: "space-y-5",
+      data: { controller: "submit-loading", action: "submit->submit-loading#onSubmit", submit_loading_label_value: (persisted ? "저장 중…" : "추가 중…") } do |f| %>
   <% if @version.errors.any? %>
-    <div class="rounded-lg border border-warn/50 p-3 text-[13px] text-warn">
-      <ul class="list-disc pl-4">
+    <div class="flex gap-2 rounded-lg border border-warn/50 p-3 text-body text-ink">
+      <%= ui_icon "warn", size: 16, klass: "mt-0.5 shrink-0 text-warn" %>
+      <ul class="list-disc pl-4 font-medium">
         <% @version.errors.full_messages.each do |m| %><li><%= m %></li><% end %>
       </ul>
     </div>
   <% end %>
 
   <div>
-    <label class="block text-[13px] font-bold text-ink">아트워크 파일 <span class="font-normal text-line">· PDF·PNG·JPG·WEBP · 30MB 이하</span></label>
+    <label class="block text-body font-bold text-ink">아트워크 파일 <span class="font-normal text-muted">· PDF·PNG·JPG·WEBP · 30MB 이하</span></label>
     <%# blob.persisted? 가드: 검증 실패(422) 재렌더 시 거부된 미저장 업로드가 "현재 파일"로 뜨거나
         미서명 blob의 signed_id로 500이 나는 것 방지(EC-4) — 저장된 기존 첨부만 표시. %>
     <% if persisted && @version.artwork.attached? && @version.artwork.blob&.persisted? %>
-      <div class="mt-2 flex items-center gap-2 text-[12px] text-line">
+      <div class="mt-2 flex items-center gap-2 text-meta text-muted">
         <% if @version.artwork_pdf? %>
-          <span class="flex h-16 w-12 items-center justify-center rounded border border-line-soft bg-tint-2"><%= ui_icon "doc", size: 22, klass: "text-line" %></span>
+          <span class="flex h-16 w-12 items-center justify-center rounded border border-line-soft bg-tint-2"><%= ui_icon "doc", size: 22, klass: "text-muted" %></span>
           <span class="font-medium text-ink"><%= @version.artwork.filename %></span>
         <% else %>
           <img src="<%= artwork_src(@version) %>" class="h-16 w-auto rounded border border-line-soft" alt="현재 아트워크">
@@ -29,24 +32,22 @@
       </div>
     <% end %>
     <%= f.file_field :artwork, accept: "application/pdf,image/png,image/jpeg,image/webp",
-          class: "mt-2 block w-full text-[13px] text-ink file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-cooa file:px-3 file:py-2 file:font-bold file:text-white" %>
+          class: "mt-2 block w-full text-body text-ink file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-cooa file:px-3 file:py-2 file:font-bold file:text-white" %>
   </div>
 
   <div>
-    <label class="block text-[13px] font-bold text-ink">변경사유</label>
+    <label class="block text-body font-bold text-ink">변경사유</label>
     <%= f.text_area :change_reason, rows: 3, placeholder: "이 버전에서 무엇이 달라졌나요?",
-          class: "mt-2 w-full rounded-lg border border-line-soft px-3 py-2 text-[14px] focus:border-cooa focus:outline-none" %>
+          class: "mt-2 w-full rounded-lg border border-line-soft px-3 py-2 text-note focus:border-cooa focus:outline-none focus:ring-1 focus:ring-cooa" %>
   </div>
 
-  <label class="flex items-center gap-2 text-[14px] text-ink">
+  <label class="flex items-center gap-2 text-note text-ink">
     <%= f.check_box :current, class: "h-4 w-4 rounded border-line text-cooa" %>
     이 버전을 <b>현재 버전</b>으로 지정
   </label>
 
   <div class="flex items-center gap-2 pt-1">
-    <%= f.submit(persisted ? "저장" : "버전 추가",
-          class: "cursor-pointer rounded-lg bg-cooa px-5 py-2.5 text-[14px] font-bold text-white") %>
-    <%= link_to "취소", cancel_url, data: { turbo_frame: "_top" },
-          class: "rounded-lg border border-line px-4 py-2.5 text-[14px] font-bold text-ink transition hover:border-cooa" %>
+    <%= ui_button(persisted ? "저장" : "버전 추가", type: "submit", data: { submit_loading_target: "button" }) %>
+    <%= ui_button "취소", variant: :ghost, href: cancel_url, data: { turbo_frame: "_top" } %>
   </div>
 <% end %>

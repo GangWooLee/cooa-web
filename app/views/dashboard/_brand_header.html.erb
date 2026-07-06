@@ -1,51 +1,45 @@
-<%# 헤더 우측 멤버 어포던스 팝오버(W3) — /workspaces/:id 진입 화면(@workspace)에서만 렌더. 트리거 = 스코프
-    멤버 아바타 스택(≤3) + 인원수(접근 이름은 aria-label). 열면 패널: 발급 링크 배너 → 멤버 요약(+빈 상태
-    안내) → (관리자) 초대·추가·회수(_workspace_members). native details 토글 + popover 컨트롤러(Esc/바깥클릭
-    닫기). flash[:invite_link] 있으면 자동 열림(발급 직후 링크 노출). 비관리자 = 읽기 전용(요약만). %>
-<details data-controller="popover" class="relative shrink-0" <%= "open" if flash[:invite_link].present? %>>
-  <summary aria-label="<%= @can_manage_workspace ? "멤버 초대·관리" : "작업실 멤버 보기" %>"
-           class="flex min-h-[36px] cursor-pointer list-none items-center gap-2 rounded-lg border border-line-soft bg-white px-2.5 py-1 transition hover:border-cooa/40 hover:bg-tint">
+<%# 헤더 우측 멤버 어포던스(W3) — /workspaces/:id 진입 화면(@workspace)에서만 렌더. 트리거 = 스코프 멤버 아바타
+    스택(≤3) + 인원수(접근 이름은 aria-label). 클릭 = <dialog> 모달(새 작업실 모달과 동형 — dialog 컨트롤러 ·
+    native Esc/백드롭). 모달 본문: 발급 링크 배너(최상단) → 멤버 목록 → 대기 초대 → (관리자) 사람 추가(제안
+    combobox → /workspace_memberships가 동료면 즉시 추가·미지면 초대 자동 분기). flash[:invite_link] 있으면 자동
+    열림(발급 직후 링크 노출 — dialog#connect openValue). 비관리자 = 읽기 전용(멤버 목록만). %>
+<div data-controller="dialog" data-dialog-open-value="<%= flash[:invite_link].present? %>" class="shrink-0">
+  <button type="button" data-action="dialog#open"
+          aria-label="<%= @can_manage_workspace ? "멤버 초대·관리" : "작업실 멤버 보기" %>"
+          class="flex min-h-[36px] cursor-pointer items-center gap-2 rounded-lg border border-line-soft bg-white px-2.5 py-1 transition hover:border-cooa/40 hover:bg-tint">
     <% if @workspace_members.any? %>
       <div class="flex -space-x-1.5">
         <% @workspace_members.first(3).each do |acc| %><%= avatar(acc.user, size: 24) %><% end %>
       </div>
-      <span class="text-[12px] font-medium text-ink"><%= @workspace_members.size %>명</span>
+      <span class="text-meta font-medium text-ink"><%= @workspace_members.size %>명</span>
     <% else %>
-      <%= ui_icon "user", size: 16, klass: "text-line" %>
-      <span class="text-[12px] font-medium text-line">멤버</span>
+      <%= ui_icon "user", size: 16, klass: "text-muted" %>
+      <span class="text-meta font-medium text-muted">멤버</span>
     <% end %>
     <% if @can_manage_workspace %><%= ui_icon "plus", size: 14, klass: "shrink-0 text-cooa" %><% end %>
-  </summary>
+  </button>
 
-  <div class="absolute right-0 top-full z-30 mt-2 max-h-[70vh] w-[420px] max-w-[calc(100vw-2rem)] overflow-auto rounded-xl border border-line bg-white p-3 shadow-lg">
-    <%# 발급 직후 초대 링크(1회 노출) — 팝오버 최상단(자동 열림과 짝). %>
-    <%= render "shared/invite_link_banner" %>
-
-    <%# 멤버 요약(구 brand_header 바에서 이관) — 스코프 grant 멤버(전역 역할 제외). 빈 상태 안내 포함. %>
-    <div class="<%= "mb-3" if @can_manage_workspace %>">
-      <div class="mb-1.5 text-[12px] font-bold text-ink">작업실 멤버<% if @workspace_members.any? %> (<%= @workspace_members.size %>)<% end %></div>
-      <% if @workspace_members.any? %>
-        <div class="flex flex-wrap items-center gap-2">
-          <% @workspace_members.each do |acc| %>
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-tint px-2 py-1 text-[12px]">
-              <%= avatar(acc.user, size: 20, ring: false) %>
-              <span class="font-medium text-ink"><%= acc.name || acc.email %></span>
-              <% acc.role_assignments.select { |ra| ra.active? && !ra.tenant_wide? }.map(&:role_key).uniq.each do |rk| %>
-                <span class="rounded bg-accent px-1 text-[10px] font-bold text-cooa" title="<%= role_description(rk) %>"><%= role_label(rk) %></span>
-              <% end %>
-            </span>
-          <% end %>
+  <dialog data-dialog-target="dialog"
+          class="m-auto w-full max-w-md rounded-2xl border border-line bg-white p-0 shadow-2xl backdrop:bg-ink/40">
+    <div class="flex max-h-[80vh] flex-col">
+      <div class="flex items-center justify-between border-b border-line-soft px-5 py-4">
+        <div class="min-w-0">
+          <div class="text-section font-bold text-ink">작업실 멤버</div>
+          <p class="mt-0.5 truncate text-meta text-muted"><%= @workspace.name %></p>
         </div>
-      <% else %>
-        <p class="text-[12px] text-line">이 작업실에 지정된 멤버가 없습니다 — 회사 전체 역할 멤버가 관리합니다.</p>
-      <% end %>
-    </div>
-
-    <%# 관리자: 이 작업실에서 초대·추가·회수(전사 관리 이탈 없음). 서버가 scope_workspace_id로 재확인. %>
-    <% if @can_manage_workspace %>
-      <div class="border-t border-line-soft pt-3">
+        <button type="button" data-action="dialog#close" aria-label="닫기"
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-ink/50 transition hover:bg-ink/5 hover:text-ink">
+          <%= ui_icon "x", size: 18 %>
+        </button>
+      </div>
+      <div class="min-h-0 flex-1 space-y-4 overflow-auto px-5 py-4">
+        <%# 발급 직후 초대 링크(1회 노출) — 모달 최상단(자동 열림과 짝). %>
+        <%= render "shared/invite_link_banner" %>
         <%= render "dashboard/workspace_members" %>
       </div>
-    <% end %>
-  </div>
-</details>
+      <div class="flex items-center justify-end border-t border-line-soft px-5 py-3">
+        <%= ui_button "닫기", variant: :ghost, data: { action: "dialog#close" } %>
+      </div>
+    </div>
+  </dialog>
+</div>

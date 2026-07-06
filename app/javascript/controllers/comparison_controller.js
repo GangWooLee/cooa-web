@@ -2,7 +2,14 @@ import { Controller } from "@hotwired/stimulus"
 
 // 버전 비교: 뷰어 박스 focus → 해당 어노테이션 상세 패널 전환, draw → 새 피드백 폼
 export default class extends Controller {
-  static targets = ["list", "detail", "newForm", "newX", "newY", "newW", "newH"]
+  static targets = ["list", "detail", "newForm", "newX", "newY", "newW", "newH", "aside"]
+
+  // 우패널(피드백) 접기/펼치기 — lg+ side-by-side에서 아트워크에 폭을 몰아줄 때. 기본 펼침(무회귀).
+  toggleAside(e) {
+    if (!this.hasAsideTarget) return
+    const collapsed = this.asideTarget.classList.toggle("hidden")
+    e.currentTarget.setAttribute("aria-pressed", collapsed ? "true" : "false")
+  }
 
   get viewer() {
     const el = this.element.querySelector("[data-controller~='artwork-viewer']")

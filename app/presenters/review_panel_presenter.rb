@@ -14,9 +14,9 @@ class ReviewPanelPresenter
 
   def open_feedback? = open_feedback_count.positive?
 
-  # 검토 확인 시 미해결 피드백 소프트 경고(advisory·클라이언트 turbo_confirm). 없으면 nil.
+  # 검토 확인 시 미반영 피드백 소프트 경고(advisory·클라이언트 turbo_confirm). 없으면 nil.
   def confirm_warning
-    "미해결 피드백 #{open_feedback_count}개가 있습니다. 그래도 검토 확인하시겠습니까?" if open_feedback?
+    "미반영 피드백 #{open_feedback_count}개가 있습니다. 그래도 검토 확인하시겠습니까?" if open_feedback?
   end
 
   def confirmed_step = request&.approval_steps&.find_by(decision: "confirmed")

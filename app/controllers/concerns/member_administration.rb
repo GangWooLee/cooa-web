@@ -46,7 +46,9 @@ module MemberAdministration
   def resolve_member_scope
     if (wid = params[:scope_workspace_id].presence)
       ws = Workspace.find(wid)
-      { type: "workspace", workspace_id: ws.id, product_id: nil, target: ws.products.first }
+      # workspace: 원본 레코드도 실어 보낸다(즉시추가 분기의 addable 조회 재사용 — 재-find 회피). 하위호환:
+      # 기존 소비처는 [:type]/[:workspace_id]/[:product_id]/[:target]만 읽으므로 키 추가는 무해.
+      { type: "workspace", workspace_id: ws.id, product_id: nil, target: ws.products.first, workspace: ws }
     elsif (pid = params[:scope_product_id].presence)
       { type: "product", workspace_id: nil, product_id: pid, target: Product.find(pid) }
     else
@@ -75,5 +77,50 @@ module MemberAdministration
     return members_path unless wid
 
     visible_workspaces.any? { |w| w.id.to_s == wid.to_s } ? workspace_path(wid) : members_path
+  end
+
+  # 스코프 grant 생성(초대 우회 직접 추가)의 단일 출처. 요청은 이미 RLS 트랜잭션 안이라 uniq_role_assignment_v3
+  # 위반이 그 tx를 통째로 abort하면 이후 쿼리가 InFailedSqlTransaction → requires_new(SAVEPOINT)로 격리하고
+  # 감사(allow)를 남긴다. RecordInvalid(정합)/RecordNotUnique(중복)은 rescue하지 않는다 — 호출측(role_assignments
+  # ·workspace_memberships)이 각자의 R9 문구로 표면화한다(중복 구현 금지 — 생성 로직만 공유).
+  def create_scoped_grant!(account_id:, role_key:, scope:)
+    grant = RoleAssignment.transaction(requires_new: true) do
+      RoleAssignment.create!(
+        account_id: account_id, tenant_id: Current.tenant_id, role_key: role_key,
+        scope_type: scope[:type], scope_workspace_id: scope[:workspace_id], scope_product_id: scope[:product_id],
+        granted_by: current_account.id, granted_at: Time.current
+      )
+    end
+    record_member_audit!("role_assignment.grant", "RoleAssignment",
+                         account_id: grant.account_id, role_key: grant.role_key,
+                         scope_workspace_id: grant.scope_workspace_id, scope_product_id: grant.scope_product_id)
+    grant
+  end
+
+  # 스코프 초대 발급의 단일 출처. digest만 저장하므로 raw는 여기서만 존재 → 호출측이 flash[:invite_link]로 1회
+  # 노출한다. 감사(allow)를 남긴다. RecordInvalid(이미 멤버·역할 정합)/RecordNotUnique(대기 초대 중복)은 호출측이
+  # rescue한다(invitations·workspace_memberships가 각자의 R9 문구로).
+  def create_scoped_invitation!(email:, role_key:, scope:)
+    # 요청은 이미 RLS 트랜잭션 안(Authentication#scope_to_tenant) — invitations_tenant_open_email_key(대기 초대
+    # 중복) 위반이 그 tx를 abort하면 이후 member_admin_redirect의 visible_workspaces 쿼리가 InFailedSqlTransaction.
+    # grant 경로와 동형으로 requires_new(SAVEPOINT)로 격리 → 위반은 세이브포인트만 롤백하고 호출측 rescue가 멱등 처리.
+    invitation, raw = Invitation.transaction(requires_new: true) do
+      Invitation.generate!(
+        email: email, role_key: role_key, invited_by_account_id: current_account.id,
+        scope_type: scope[:type], scope_workspace_id: scope[:workspace_id], scope_product_id: scope[:product_id]
+      )
+    end
+    record_member_audit!("invitation.create", "Invitation",
+                         invitation_id: invitation.id, email: invitation.email, role_key: invitation.role_key,
+                         scope_type: invitation.scope_type, scope_workspace_id: invitation.scope_workspace_id,
+                         scope_product_id: invitation.scope_product_id)
+    [ invitation, raw ]
+  end
+
+  # 멤버 관리 감사(초대/grant 발급·회수 공용). resource_id=nil 관례(bigint 도메인 공간 — uuid PK는 after로).
+  # 도메인 액터 없는 계정은 AuditLog.record!가 fail-closed raise → 각 액션이 before_action :require_domain_actor로 선차단.
+  def record_member_audit!(action, resource_type, **after)
+    AuditLog.record!(action: action, resource_type: resource_type, resource_id: nil, outcome: "allow", after: after,
+                     request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
   end
 end

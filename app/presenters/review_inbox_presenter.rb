@@ -26,6 +26,9 @@ class ReviewInboxPresenter
 
   def active_filter = @filter
 
+  # 필터 적용된 플랫 리스트(Segment A용 — 그룹 없이 행 렌더). 필터 없으면 전체.
+  def requests = filtered
+
   private
 
   def filtered

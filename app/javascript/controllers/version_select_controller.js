@@ -54,6 +54,12 @@ export default class extends Controller {
   // 버전 노드 클릭 → 해당 버전 파일 전체 페이지로(드로어 프레임 탈출). 드래그 시엔 click 미발화.
   view(e) { Turbo.visit(`/versions/${e.currentTarget.dataset.vid}`) }
 
+  // 담기(+) 클릭 → 다음 빈 비교 슬롯(a→b) 채움. 터치패드 등 드래그가 번거로운 환경의 폴백(드래그와 병존).
+  quickFill(e) {
+    const slot = !this.sel.a ? "a" : (!this.sel.b ? "b" : "a") // a→b 순서, 둘 다 차면 a부터 갱신
+    this.fill(slot, this.dataOf(e.currentTarget))
+  }
+
   // 슬롯 클릭 → 비우기(초기화)
   clear(e) { delete this.sel[e.currentTarget.dataset.slot]; this.render() }
   compare() { const { a, b } = this.sel; if (a && b && a.comp === b.comp) Turbo.visit(`/versions/${a.id}/compare/${b.id}`) }

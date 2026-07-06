@@ -24,36 +24,36 @@
       <% end %>
 
       <% if node.folder? %>
-        <span class="tree-caret shrink-0 text-line transition-transform"><%= ui_icon "caret", size: 15 %></span>
+        <span class="tree-caret shrink-0 text-muted transition-transform"><%= ui_icon "caret", size: 15 %></span>
         <%= ui_icon "folder", size: 16, klass: "shrink-0 text-cooa" %>
         <%# 폴더명 클릭 = 펼침/접힘(행과 동일). 이름변경은 우클릭 메뉴 / 생성 직후 auto-open %>
         <span data-controller="inline-edit"
               data-inline-edit-auto-value="<%= params[:rename].to_s == node.id.to_s %>" class="min-w-0">
           <span data-inline-edit-target="display"
-                class="text-[14px] font-bold text-ink"><%= node.name %></span>
+                class="text-note font-bold text-ink"><%= node.name %></span>
           <%= form_with model: node, url: product_path(node), method: :patch,
                 data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden" do |f| %>
             <%= hidden_field_tag :inline, 1 %>
             <%= hidden_field_tag :return, "tree" %>
             <%= f.text_field :name, id: "node_name_#{node.id}", data: { "no-rowlink": "", "inline-edit-target": "input", action: "keydown->inline-edit#keydown blur->inline-edit#save" },
-                  class: "w-40 rounded border border-cooa px-1 py-0.5 text-[14px] font-bold focus:outline-none" %>
+                  class: "w-40 rounded border border-cooa px-1 py-0.5 text-note font-bold focus:outline-none" %>
           <% end %>
         </span>
       <% else %>
         <span class="inline-block w-[15px] shrink-0"></span>
-        <%= ui_icon "doc", size: 15, klass: "shrink-0 text-line" %>
+        <%= ui_icon "doc", size: 15, klass: "shrink-0 text-muted" %>
         <%# 리프명 = 드로어 링크(클릭). 생성 직후엔 트리에서 인라인 명명(auto), 클릭-편집은 아님 %>
         <span data-controller="inline-edit" data-no-rowlink
               data-inline-edit-auto-value="<%= params[:rename].to_s == node.id.to_s %>" class="min-w-0">
           <%= link_to node.name, product_path(node),
                 data: { turbo_frame: "detail", turbo_action: "advance", "row-link-target": "link", "inline-edit-target": "display" },
-                class: "text-[14px] text-ink hover:text-cooa" %>
+                class: "text-note text-ink hover:text-cooa" %>
           <%= form_with model: node, url: product_path(node), method: :patch,
                 data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden" do |f| %>
             <%= hidden_field_tag :inline, 1 %>
             <%= hidden_field_tag :return, "tree" %>
             <%= f.text_field :name, id: "node_name_#{node.id}", data: { "inline-edit-target": "input", action: "keydown->inline-edit#keydown blur->inline-edit#save" },
-                  class: "w-40 rounded border border-cooa px-1 py-0.5 text-[14px] focus:outline-none" %>
+                  class: "w-40 rounded border border-cooa px-1 py-0.5 text-note focus:outline-none" %>
           <% end %>
         </span>
       <% end %>
@@ -62,7 +62,7 @@
       <span class="ml-1.5 inline-flex items-center gap-0.5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100" data-no-rowlink>
         <%= button_to product_path(node), method: :delete, title: "삭제",
               form: { class: "inline", data: { turbo_frame: "_top", turbo_confirm: del_confirm } },
-              class: "rounded p-0.5 text-line hover:bg-tint hover:text-warn" do %><%= ui_icon "trash", size: 14 %><% end %>
+              class: "rounded p-0.5 text-muted hover:bg-tint hover:text-warn" do %><%= ui_icon "trash", size: 14 %><% end %>
       </span>
     </div>
   </td>
@@ -82,7 +82,7 @@
       <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
         <% node.components.sort_by { |c| [c.position || 0, c.id] }.each do |comp| %>
           <span class="inline-flex items-center gap-1">
-            <span class="text-[12px] text-ink/80"><%= comp.display_name %></span>
+            <span class="text-meta text-ink/80"><%= comp.display_name %></span>
             <% if (v = comp.current_version) %>
               <%= link_to component_version_path(v), title: "#{v.vlabel.upcase} 파일 보기",
                     class: "inline-block rounded-md transition hover:ring-2 hover:ring-cooa/40" do %><%= version_chip(v.vlabel, size: 22) %><% end %>
@@ -94,7 +94,13 @@
   </td>
   <td class="whitespace-nowrap px-3 py-2.5 text-ink/80">
     <% if node.leaf? && node.deadline %>
-      <span class="inline-flex items-center gap-1"><%= ui_icon "calendar", size: 15 %> <%= node.deadline.strftime("%Y.%m.%d") %></span>
+      <%# 기한 초과 3중 신호: warn 색 + warn 아이콘 + "n일 지남"(색만으로 신호하지 않음) %>
+      <% od = node.deadline < Date.current %>
+      <span class="inline-flex items-center gap-1 <%= "font-bold text-warn" if od %>">
+        <%= ui_icon (od ? "warn" : "calendar"), size: 15 %>
+        <span><%= node.deadline.strftime("%Y.%m.%d") %></span>
+        <% if od %><span class="text-caption font-bold"><%= (Date.current - node.deadline).to_i %>일 지남</span><% end %>
+      </span>
     <% end %>
   </td>
 <% end %>

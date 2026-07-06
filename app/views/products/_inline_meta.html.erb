@@ -1,5 +1,5 @@
 <%# 인라인 편집 메타 필드 — locals: product, label, attr, kind(:text/:date/:select), display, options(select용) %>
-<dt class="font-bold text-line"><%= label %></dt>
+<dt class="font-bold text-muted"><%= label %></dt>
 <%# 메타 필드(코드·국가·채널·기한)는 모두 선택 — 빈값으로 비우기 허용(clearable) %>
 <dd data-controller="inline-edit" data-inline-edit-clearable-value="true" class="min-w-0">
   <span data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 수정"
@@ -9,13 +9,13 @@
     <%= hidden_field_tag :inline, 1 %>
     <% if kind == :text %>
       <%= f.text_field attr, data: { "inline-edit-target": "input", action: "keydown->inline-edit#keydown blur->inline-edit#save" },
-            class: "w-40 rounded border border-cooa px-1.5 py-0.5 text-[13px] focus:outline-none" %>
+            class: "w-40 rounded border border-cooa px-1.5 py-0.5 text-body focus:outline-none" %>
     <% elsif kind == :date %>
       <%= f.date_field attr, data: { "inline-edit-target": "input", action: "change->inline-edit#change blur->inline-edit#save" },
-            class: "rounded border border-cooa px-1.5 py-0.5 text-[13px] focus:outline-none" %>
+            class: "rounded border border-cooa px-1.5 py-0.5 text-body focus:outline-none" %>
     <% elsif kind == :select %>
       <%= f.select attr, options, {}, data: { "inline-edit-target": "input", action: "change->inline-edit#change blur->inline-edit#save" },
-            class: "rounded border border-cooa px-1.5 py-0.5 text-[13px] focus:outline-none" %>
+            class: "rounded border border-cooa px-1.5 py-0.5 text-body focus:outline-none" %>
     <% end %>
   <% end %>
 </dd>

@@ -39,8 +39,8 @@ class BrandsPageTest < ActionDispatch::IntegrationTest
 
   test "관리 권한자(kim owner)는 작업실 인라인 멤버 관리 패널 노출" do
     get workspace_path(id: retinol.workspace_id) # 기본 로그인 = kim(owner)
-    # 구 "멤버 관리" 이탈 링크 → 작업실 페이지 인라인 패널(_workspace_members). 초대 폼 헤딩으로 단언.
-    assert_match "이 작업실에 초대", response.body
+    # 구 "멤버 관리" 이탈 링크 → 작업실 페이지 인라인 모달(_workspace_members). "사람 추가" 폼 헤딩으로 단언.
+    assert_match "사람 추가", response.body
   end
 
   test "비가시 브랜드(스코프 계정의 타 브랜드) 접근 → root redirect(콘텐츠 미노출)" do

@@ -80,6 +80,8 @@ Rails.application.routes.draw do
   get "/invite/:token", to: "invitation_acceptances#show", as: :invite
   # 스코프 grant 직접 부여/회수(Stage 3 D5) — 기존 계정을 특정 제품에 재-스코프(초대 우회)
   resources :role_assignments, only: [ :create, :destroy ]
+  # 작업실 멤버 추가 단일 엔드포인트(모달 "사람 추가" 폼 전용) — 서버가 이메일로 즉시 grant/초대 자동 분기(V2)
+  resources :workspace_memberships, only: [ :create ]
 
   # 상단 히스토리 탭 닫기(세션)
   delete "/tabs/:id", to: "tabs#destroy", as: :tab

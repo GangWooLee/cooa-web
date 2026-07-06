@@ -3,75 +3,60 @@
   <%# 헤더 — 타이틀 = 작업실명(current_workspace_label · 홈은 별도 _workspaces가 "데이터 관리"). 우상단 = 멤버
       어포던스 팝오버(작업실 진입 화면 @workspace에서만). 제품 풀페이지(products#show)도 이 헤더를 그 작업실명으로
       렌더(current_workspace가 @product에서 도출). nil 방어 폴백 "데이터 관리". %>
-  <div class="border-b border-line-soft px-6 pt-4">
+  <div class="border-b border-line-soft px-6 pb-4 pt-4">
     <div class="flex min-w-0 items-center justify-between gap-3">
       <div class="flex min-w-0 items-center gap-2">
         <%= ui_icon "layers", size: 20, klass: "shrink-0 text-cooa" %>
-        <span class="truncate text-[20px] font-bold text-ink"><%= current_workspace_label || "데이터 관리" %></span>
+        <span class="truncate text-display font-bold text-ink"><%= current_workspace_label || "데이터 관리" %></span>
       </div>
       <% if @workspace %><%= render "dashboard/brand_header" %><% end %>
     </div>
-    <nav class="mt-3 flex items-center gap-7 overflow-x-auto text-[15px]">
-      <span class="whitespace-nowrap border-b-2 border-cooa pb-2 font-bold text-cooa">대시보드</span>
-      <span class="cursor-not-allowed whitespace-nowrap pb-2 text-ink/60 opacity-60" title="준비 중">타임라인</span>
-      <span class="cursor-not-allowed whitespace-nowrap pb-2 text-ink/60 opacity-60" title="준비 중">칸반뷰</span>
-    </nav>
   </div>
 
-  <%# 액션 툴바 — 새로 만들기(폴더/항목) + 미구현은 비활성 %>
+  <%# 액션 툴바 — 첫 행동(새 폴더/새 파일). 선택 노드 기준(폴더→자식 / 파일→형제 / 미선택→루트 맨 아래).
+      아이콘+텍스트 라벨로 승격(빈 상태 문구의 "새 폴더·새 파일"과 명칭 일치). %>
   <div class="flex min-w-0 flex-wrap items-center gap-2 px-6 py-3">
-    <%# 상단 생성 아이콘 — 선택 노드 기준(폴더→자식 / 파일→형제 / 미선택→루트 맨 아래) %>
-    <div class="flex items-center gap-1.5">
-      <button type="button" data-action="tree#newFolder" title="새 폴더"
-              class="bg-cooa-gradient flex items-center justify-center rounded-lg p-2 text-white transition hover:opacity-90">
-        <%= ui_icon "folder", size: 18 %>
-      </button>
-      <button type="button" data-action="tree#newItem" title="새 파일"
-              class="flex items-center justify-center rounded-lg border border-line-soft bg-white p-2 text-cooa transition hover:bg-tint">
-        <%= ui_icon "doc", size: 18 %>
-      </button>
-    </div>
-    <button type="button" disabled title="준비 중"
-            class="flex cursor-not-allowed items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-[14px] font-bold text-cooa opacity-60">
-      <%= ui_icon "plus", size: 16, stroke: 2 %> 규칙 만들기 <%= ui_icon "caret", size: 15 %>
+    <button type="button" data-action="tree#newFolder" title="새 폴더"
+            class="bg-cooa-gradient flex items-center gap-1.5 rounded-lg px-3 py-2 text-note font-semibold text-white transition hover:opacity-90">
+      <%= ui_icon "folder", size: 16 %> 새 폴더
     </button>
-    <div class="ml-3 flex items-center gap-4 text-ink/80">
-      <span class="flex cursor-not-allowed items-center gap-1 text-[14px] opacity-60" title="준비 중"><%= ui_icon "user", size: 18 %> 담당자</span>
-      <span class="flex cursor-not-allowed items-center gap-1 text-[14px] opacity-60" title="준비 중"><%= ui_icon "filter", size: 18 %> 필터</span>
-      <span class="flex cursor-not-allowed items-center gap-1 text-[14px] opacity-60" title="준비 중"><%= ui_icon "sort", size: 18 %> 순서</span>
-    </div>
+    <button type="button" data-action="tree#newItem" title="새 파일"
+            class="flex items-center gap-1.5 rounded-lg border border-line-soft bg-white px-3 py-2 text-note font-semibold text-cooa transition hover:border-cooa hover:bg-tint">
+      <%= ui_icon "doc", size: 16 %> 새 파일
+    </button>
+    <%# 로드맵(규칙·담당자·필터·정렬)은 가짜 비활성 컨트롤 6개 대신 1줄 표기로 축약 — 첫 행동에 집중. %>
+    <span class="ml-auto text-caption text-muted">곧 제공 · 규칙 · 담당자 · 필터 · 정렬</span>
   </div>
 
-  <%# 제품 트리 테이블 — 좁은 폭에서 가로 스크롤 %>
+  <%# 제품 트리 테이블 — 좁은 폭에서 가로 스크롤. 빈 작업실은 860px 테이블 크롬(불필요한 가로 스크롤 유발)
+      대신 빈 상태 카드만 렌더 — 첫 폴더/항목 유도(D3). 위 툴바의 "새 폴더/새 파일"이 이 작업실에 귀속. %>
   <div class="min-w-0 flex-1 overflow-auto px-6 pb-10" data-controller="tree-table tree-dnd">
-    <div class="min-w-0 overflow-x-auto">
-      <table class="w-full min-w-[860px] border-collapse text-[14px]">
-        <thead class="sticky top-0 z-10">
-          <tr class="bg-tint text-ink">
-            <% ["제품","품목코드","국가","채널","담당자","구성요소","기한"].each do |h| %>
-              <th class="whitespace-nowrap border-y border-line-soft px-3 py-2 text-left font-bold"><%= h %></th>
-            <% end %>
-          </tr>
-        </thead>
-        <tbody>
-          <%# 빈 작업실(방금 만든 작업실) — 첫 폴더/항목 유도(D3). 위 툴바의 "새 폴더/새 파일"이 이 작업실에 귀속. %>
-          <% if @workspace && @rows.empty? %>
-            <tr>
-              <td colspan="7" class="px-3 py-16 text-center">
-                <div class="flex flex-col items-center gap-2">
-                  <%= ui_icon "folder", size: 32, klass: "text-line" %>
-                  <p class="text-[14px] font-medium text-ink">아직 폴더나 항목이 없습니다</p>
-                  <p class="text-[13px] text-line">위의 <b>새 폴더</b>·<b>새 파일</b>로 이 작업실의 첫 항목을 만들어 보세요<% if @can_manage_workspace %> — 위 헤더의 <b>＋ 멤버 초대·관리</b>에서 멤버도 초대할 수 있습니다<% end %>.</p>
-                </div>
-              </td>
+    <% if @workspace && @rows.empty? %>
+      <div class="mx-auto mt-10 max-w-md rounded-2xl border border-line-soft bg-white px-6 py-14 text-center shadow-sm">
+        <div class="flex flex-col items-center gap-2">
+          <%= ui_icon "folder", size: 32, klass: "text-muted" %>
+          <p class="text-note font-medium text-ink">아직 폴더나 항목이 없습니다</p>
+          <p class="text-body text-muted">위의 <b>새 폴더</b>·<b>새 파일</b>로 이 작업실의 첫 항목을 만들어 보세요<% if @can_manage_workspace %> — 위 헤더의 <b>＋ 멤버 초대·관리</b>에서 멤버도 초대할 수 있습니다<% end %>.</p>
+        </div>
+      </div>
+    <% else %>
+      <div class="min-w-0 overflow-x-auto">
+        <table class="w-full min-w-[860px] border-collapse text-note">
+          <thead class="sticky top-0 z-10">
+            <tr class="bg-tint text-ink">
+              <% ["제품","품목코드","국가","채널","담당자","구성요소","기한"].each do |h| %>
+                <th class="whitespace-nowrap border-y border-line-soft px-3 py-2 text-left font-bold"><%= h %></th>
+              <% end %>
             </tr>
-          <% end %>
-          <% @rows.each do |node, depth| %>
-            <%= render "dashboard/row", node: node, depth: depth %>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            <% @rows.each do |node, depth| %>
+              <%= render "dashboard/row", node: node, depth: depth %>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
   </div>
 
   <%= render "shared/tree_context_menu" %>

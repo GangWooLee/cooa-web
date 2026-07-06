@@ -11,7 +11,7 @@ class DemoFlowsTest < ActionDispatch::IntegrationTest
     # 홈 = 작업실 카드 목록(W1). 레티놀 작업실이 카드로 보인다(제품 트리는 진입 후).
     get root_path
     assert_response :success
-    assert_match "데이터 관리", response.body
+    assert_match "작업실", response.body
     assert_match "레티놀 3% 세럼", response.body
     assert_no_match(/BRAND/, response.body)
 

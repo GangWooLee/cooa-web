@@ -5,7 +5,8 @@
   --color-cooa: #8e0300;        /* 브랜드 메인(버건디) */
   --color-cooa-dark: #280100;   /* 그라데이션 끝 */
   --color-ink: #3d3d3d;         /* 본문 텍스트 */
-  --color-line: #a3a3a3;        /* 보더 */
+  --color-muted: #5f6368;       /* 본문 보조·메타 텍스트 — white 6.05:1·tint 5.55:1·accent 5.39:1 (WCAG AA ≥4.5:1) */
+  --color-line: #a3a3a3;        /* 보더 전용(text-* 금지 — 텍스트는 --color-muted). 대비 2.52:1로 본문 부적격 */
   --color-line-soft: #d9d9d9;   /* 연한 보더/배경 */
   --color-tint: #f5f5f5;        /* 배경 틴트 */
   --color-tint-2: #e9e9e9;      /* 상단바 배경 */
@@ -13,7 +14,29 @@
   --color-accent: #ffeeee;      /* 강조 연틴트(#fee) */
   --color-warn: #e6a700;        /* 위험신호 */
   --color-ok: #84b733;          /* 적합 */
+  --color-ok-strong: #5f8f2e;   /* 반영/해결 강조 그린(확인 버튼·상태) — 기존 인라인색 토큰화. white 대비 3.85:1(AA large 3:1 통과·normal 미달) */
+  --color-ok-soft: #eef6e3;     /* 적합/확인 연틴트 배경(ok-strong 텍스트와 짝) — 기존 인라인색 토큰화 */
+  --color-warn-strong: #d99a00; /* 대기/요청 강조 앰버(pill 채움) — 기존 인라인색 토큰화. warn(#e6a700)보다 어두워 white 캡션 가독 우위 */
   --font-sans: "Pretendard Variable", Pretendard, ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* 타이포 스케일 (6단계). line-height는 컨텍스트 상속 — 기존 text-[Npx] 거동과 동일해 무회귀 치환. */
+  --text-caption: 0.6875rem;    /* 11px — 캡션·뱃지·태그(최소 하한) */
+  --text-meta: 0.75rem;         /* 12px — 메타·보조 라벨 */
+  --text-body: 0.8125rem;       /* 13px — 본문 기본 */
+  --text-note: 0.875rem;        /* 14px — 강조 라벨·소제목 */
+  --text-section: 1rem;         /* 16px — 섹션 제목 */
+  --text-display: 1.25rem;      /* 20px — 큰 제목 */
+}
+
+/* 여백 규약(화면 간 일관성): 페이지/패널 좌우 = px-6 · 헤더줄과 하단 액션바는 상하 대칭 패딩(py-*)으로 정렬 ·
+   포커스 링을 두르는 인풋을 담는 컨테이너는 링이 잘리지 않도록 상단 여유(pt-*)를 준다.
+   (적용: 사이드바 검색·작업실 헤더·버전/비교/스크리닝/리뷰 헤더줄) */
+
+/* 전역 키보드 포커스 링 — 대체 시각 단서가 없는 모든 포커스 가능 요소(버튼·링크·summary 등)의 최소
+   가시성 보장. 입력 필드는 focus:outline-none + focus:ring-1 ring-cooa로 자체 처리하므로 이 규칙이
+   적용되지 않는다(specificity상 focus:outline-none이 우선). ui_button은 자체 focus-visible 링 내장. */
+@layer base {
+  :focus-visible { outline: 2px solid var(--color-cooa); outline-offset: 2px; }
 }
 
 /* 브랜드 그라데이션 뱃지 (버전 칩 등) */
@@ -72,9 +95,22 @@ html.sidebar-collapsed #app-sidebar { margin-left: -282px; opacity: 0; pointer-e
 /* flash 토스트 퇴장 — opacity/transform만(200ms). flash_controller가 닫을 때 이 클래스를 붙인다. */
 .flash-leave { transition: opacity .2s ease, transform .2s ease; opacity: 0; transform: translateY(-6px); }
 
-/* 접근성 — prefers-reduced-motion: 모션 최소화 시작점(현재: flash 토스트 트랜지션 무효화). 컨트롤러가
-   reduced-motion에서 즉시 제거하지만 CSS 경로에서도 이중으로 못박는다. 향후 다른 모션도 여기에 추가한다. */
+/* 공용 로딩 스피너 — 회전 링(장식·aria-hidden). 항상 텍스트 라벨과 동반하므로(submit-loading·트리 생성)
+   prefers-reduced-motion 시 회전을 멈춰도 라벨이 진행 상태를 전달한다(정지 대체 텍스트). 크기=1em(라벨 상속),
+   색=currentColor(버건디 채움·아웃라인 버튼 어디서나 대비 확보). keyframe명은 Tailwind 내장 spin과 분리(cooa-spin). */
+.spinner {
+  display: inline-block; width: 1em; height: 1em;
+  border: 2px solid currentColor; border-right-color: transparent;
+  border-radius: 9999px; animation: cooa-spin .6s linear infinite;
+  vertical-align: -0.125em;
+}
+@keyframes cooa-spin { to { transform: rotate(360deg); } }
+
+/* 접근성 — prefers-reduced-motion: 모션 최소화 시작점(flash 토스트 트랜지션·로딩 스피너 회전 무효화).
+   컨트롤러가 reduced-motion에서 즉시 제거하지만 CSS 경로에서도 이중으로 못박는다. 향후 다른 모션도 여기에 추가한다. */
 @media (prefers-reduced-motion: reduce) {
   .flash-leave { transition: none; }
+  .spinner { animation: none; }
+  .scan-line { animation: none; } /* 스크리닝 스캔 빔 무효(컨트롤러도 reduced-motion 시 스캐너 미표시 — 이중 못박기) */
 }
 

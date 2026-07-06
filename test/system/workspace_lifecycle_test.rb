@@ -7,7 +7,7 @@ class WorkspaceLifecycleTest < ApplicationSystemTestCase
     choi = Account.find_by!(email: "choi@partner.example") # 비-전역 멤버 후보
     page.current_window.resize_to(1440, 900)
     visit root_path
-    assert_text "데이터 관리", wait: 6
+    assert_text "작업실", wait: 6
 
     # 1) "새 작업실" → 모달 → 이름 + 멤버(최디자=관리자[4종 라벨]) → 만들기.
     click_button "새 작업실"

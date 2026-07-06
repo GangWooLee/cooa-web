@@ -87,4 +87,19 @@ class InvitationTest < ActiveSupport::TestCase
     assert_equal "tenant", inv.scope_type
     assert_nil inv.scope_product_id
   end
+
+  # 정보 노출 회귀(리뷰 blocking): 재초대 제안은 caller가 넘긴 scope(관리자 가시 서브트리) 안의 과거 초대만 낸다.
+  # 무-스코프면 형제 서브트리의 관할 밖 이메일(PII)이 스코프 admin에게 열거된다 — @workspace_pending과 동형 스코프.
+  test "suggestion_emails only proposes past invites within the given (subtree) scope" do
+    product_b = Product.create!(name: "PB")
+    build(scope_type: "product", scope_product_id: @product.id,
+          email: "reinvite-a@partner.dev", revoked_at: Time.current).save!
+    build(scope_type: "product", scope_product_id: product_b.id,
+          email: "reinvite-b@partner.dev", revoked_at: Time.current).save!
+
+    suggestions = Invitation.suggestion_emails(Invitation.where(scope_product_id: @product.id))
+
+    assert_includes suggestions, "reinvite-a@partner.dev"     # 관할 안 재초대 후보는 제안
+    assert_not_includes suggestions, "reinvite-b@partner.dev" # 형제 서브트리 이메일은 관할 밖 → 미노출
+  end
 end

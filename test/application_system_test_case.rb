@@ -28,6 +28,10 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   # 재호출하면 create의 reset_session으로 신원이 전환됨(SoD 라운드트립 시나리오의 전제).
   def system_sign_in(email)
     visit new_session_path
+    # 데모 계정은 Google 우선 위계상 <details>로 접힐 수 있다 — 버튼이 안 보이면 펼친다(의도 보존: 여전히
+    # account-picker를 걷는다). test env엔 GOOGLE_CLIENT_ID 미설정 → <details open> 렌더 → 버튼 즉시 가시 →
+    # summary 클릭 스킵(무회귀). CI에서 Google이 설정돼도 방어적 open으로 견고.
+    find("summary", text: "데모 계정").click unless has_selector?(:button, text: email, wait: 1)
     find("button", text: email).click
     assert_no_current_path new_session_path, wait: 5 # create → root 리다이렉트 완료 대기
   end

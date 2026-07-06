@@ -18,7 +18,7 @@ class OnboardingJourneyTest < ApplicationSystemTestCase
     onboard_via_google(uid: "g-sys-founder", email: "founder@sysco.example", name: "창업자", workspace: "레티놀 라인")
     assert_text "환영합니다", wait: 6                      # signed in as the new owner (flash)
     assert_text "레티놀 라인"                               # the new (empty) workspace, by its name (D2 header title)
-    assert_selector "summary[aria-label='멤버 초대·관리']"  # owner affordance (D2 popover trigger·접근 이름=aria-label)
+    assert_selector "button[aria-label='멤버 초대·관리']"  # owner affordance (D2 모달 트리거·접근 이름=aria-label)
 
     # ── visitor 2: a different identity mints a COMPLETELY separate org ───────────────────────────
     onboard_via_google(uid: "g-sys-second", email: "second@other.example", name: "제2", workspace: "비타민C 라인")

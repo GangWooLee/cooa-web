@@ -12,10 +12,11 @@ class Annotation < ApplicationRecord
   CATEGORY_COLORS = {
     "오탈자" => "#e6a700", "인허가" => "#8e0300", "디자인" => "#4f74e3", "기타" => "#6b7280"
   }.freeze
+  # 상태 알약(3중 신호: 색+라벨+아이콘). 라벨은 액션 동사(반영됨으로 표시·반영 확인)와 정합하는 반영/미반영으로 통일.
   STATUS_META = {
-    "open"      => { label: "미해결", color: "#8e0300", bg: "#fdeceb" },
-    "resolved"  => { label: "해결",   color: "#5f8f2e", bg: "#eef6e3" },
-    "dismissed" => { label: "보류",   color: "#6b7280", bg: "#f1f1f1" }
+    "open"      => { label: "미반영", color: "#8e0300", bg: "#fdeceb", icon: "clock" },
+    "resolved"  => { label: "반영",   color: "#5f8f2e", bg: "#eef6e3", icon: "check" },
+    "dismissed" => { label: "보류",   color: "#6b7280", bg: "#f1f1f1", icon: "x" }
   }.freeze
 
   scope :ordered, -> { order(:seq, :position, :id) }

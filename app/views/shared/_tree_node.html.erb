@@ -4,17 +4,17 @@
     <summary class="group/brand flex cursor-pointer list-none items-center gap-1 rounded-md px-2 py-1.5 hover:bg-tint <%= 'bg-accent/60' if active_ids.include?(node.id) %>"
              data-node-id="<%= node.id %>" data-node-kind="folder" data-node-name="<%= node.name %>" data-node-path="<%= node_path_label(node) %>"
              data-node-confirm="<%= delete_confirm(node) %>" data-action="contextmenu->tree-ctx#open">
-      <%= ui_icon "caret", size: 15, klass: "tree-caret shrink-0 text-line" %>
+      <%= ui_icon "caret", size: 15, klass: "tree-caret shrink-0 text-muted" %>
       <%= ui_icon "folder", size: 16, klass: "shrink-0 text-cooa" %>
       <%# 이름 = 표시 / 생성·우클릭 rename(rename_side) 시 사이드바에서 인라인 입력 auto-open(클릭편집 액션은 미부여 → 클릭은 토글) %>
       <span data-controller="inline-edit" data-inline-edit-auto-value="<%= params[:rename_side].to_s == node.id.to_s %>" class="min-w-0 flex-1">
-        <span data-inline-edit-target="display" class="block truncate text-[14px] <%= current ? 'font-bold text-cooa' : 'font-semibold text-ink' %>"><%= node.name %></span>
+        <span data-inline-edit-target="display" class="block truncate text-note <%= current ? 'font-bold text-cooa' : 'font-semibold text-ink' %>"><%= node.name %></span>
         <%= form_with model: node, url: product_path(node), method: :patch,
               data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden" do |f| %>
           <%= hidden_field_tag :return, "tree" %>
           <%= f.text_field :name, value: node.name,
                 data: { "inline-edit-target": "input", action: "click->inline-edit#stop keydown->inline-edit#keydown blur->inline-edit#save" },
-                class: "w-full rounded border border-cooa px-1 py-0.5 text-[14px] font-semibold focus:outline-none" %>
+                class: "w-full rounded border border-cooa px-1 py-0.5 text-note font-semibold focus:outline-none" %>
         <% end %>
       </span>
     </summary>
@@ -32,16 +32,16 @@
           data: { "inline-edit-target": "display", "tree-filter-target": "leaf", name: "#{node.name} #{node.code}",
                   "node-id": node.id, "node-kind": "leaf", "node-name": node.name, "node-path": node_path_label(node),
                   "node-confirm": delete_confirm(node), action: "contextmenu->tree-ctx#open" } do %>
-      <%= ui_icon "doc", size: 15, klass: "shrink-0 text-line" %>
-      <span class="flex-1 truncate text-[14px]"><%= node.name %></span>
-      <% if node.code.present? %><span class="shrink-0 text-[10px] text-line"><%= node.code %></span><% end %>
+      <%= ui_icon "doc", size: 15, klass: "shrink-0 text-muted" %>
+      <span class="flex-1 truncate text-note"><%= node.name %></span>
+      <% if node.code.present? %><span class="shrink-0 text-caption text-muted"><%= node.code %></span><% end %>
     <% end %>
     <%= form_with model: node, url: product_path(node), method: :patch,
           data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden py-1 pl-[30px] pr-2" do |f| %>
       <%= hidden_field_tag :return, "tree" %>
       <%= f.text_field :name, value: node.name,
             data: { "inline-edit-target": "input", action: "keydown->inline-edit#keydown blur->inline-edit#save" },
-            class: "w-full rounded border border-cooa px-1 py-0.5 text-[14px] focus:outline-none" %>
+            class: "w-full rounded border border-cooa px-1 py-0.5 text-note focus:outline-none" %>
     <% end %>
   </span>
 <% end %>

@@ -1,25 +1,32 @@
 <% content_for :title, "버전 비교 · #{@product.code}" %>
-<div class="flex h-full flex-col">
-  <%# 상단: 브레드크럼 + 버전 페어 선택기 (가치 라벨 없음) %>
-  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft px-5 py-3">
-    <div class="text-sm"><%= node_breadcrumb(@product, trailing: "#{@component.display_name} 버전 비교") %></div>
-    <div data-controller="version-picker" class="flex items-center gap-2 text-sm">
-      <span class="text-xs text-line">기준</span>
-      <select data-role="from" data-action="change->version-picker#go" class="rounded-md border border-line-soft bg-white px-2 py-1">
-        <% @versions.each do |v| %><option value="<%= v.id %>" <%= "selected" if v.id == @from.id %>><%= v.vlabel %></option><% end %>
-      </select>
-      <span class="text-line">→</span>
-      <span class="text-xs text-line">검토</span>
-      <select data-role="to" data-action="change->version-picker#go" class="rounded-md border border-line-soft bg-white px-2 py-1">
-        <% @versions.each do |v| %><option value="<%= v.id %>" <%= "selected" if v.id == @to.id %>><%= v.vlabel %></option><% end %>
-      </select>
+<div class="flex h-full flex-col" data-controller="comparison"
+     data-action="artwork-viewer:focus->comparison#onFocus artwork-viewer:draw->comparison#onDraw">
+  <%# 상단: 브레드크럼 + 버전 페어 선택기 (가치 라벨 없음) + 우패널 접기 %>
+  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft px-6 py-3">
+    <div class="text-note"><%= node_breadcrumb(@product, trailing: "#{@component.display_name} 버전 비교") %></div>
+    <div class="flex items-center gap-2">
+      <div data-controller="version-picker" class="flex items-center gap-2 text-note">
+        <span class="text-meta text-muted">기준</span>
+        <select data-role="from" data-action="change->version-picker#go" class="rounded-md border border-line-soft bg-white px-2 py-1">
+          <% @versions.each do |v| %><option value="<%= v.id %>" <%= "selected" if v.id == @from.id %>><%= v.vlabel %></option><% end %>
+        </select>
+        <span class="text-muted">→</span>
+        <span class="text-meta text-muted">검토</span>
+        <select data-role="to" data-action="change->version-picker#go" class="rounded-md border border-line-soft bg-white px-2 py-1">
+          <% @versions.each do |v| %><option value="<%= v.id %>" <%= "selected" if v.id == @to.id %>><%= v.vlabel %></option><% end %>
+        </select>
+      </div>
+      <%# 우패널(피드백) 접기 — lg+에서만(그 이하는 아래로 쌓여 접기 불필요). aria-pressed=접힘 상태. %>
+      <button type="button" data-action="comparison#toggleAside" aria-pressed="false"
+              title="피드백 패널 접기/펼치기" aria-label="피드백 패널 접기/펼치기"
+              class="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line-soft bg-white text-muted transition hover:border-cooa hover:text-cooa aria-pressed:border-cooa aria-pressed:bg-accent aria-pressed:text-cooa lg:inline-flex">
+        <%= ui_icon "panel-left", size: 16, klass: "scale-x-[-1]" %>
+      </button>
     </div>
   </div>
 
   <%# 본문: 뷰어 + 우측 패널 %>
-  <div data-controller="comparison"
-       data-action="artwork-viewer:focus->comparison#onFocus artwork-viewer:draw->comparison#onDraw"
-       class="flex min-h-0 flex-1 flex-col xl:flex-row">
+  <div class="flex min-h-0 flex-1 flex-col lg:flex-row">
     <%# 좌: 검토(현재) 버전 아트워크 + 이전 버전 피드백 박스 %>
     <div class="min-h-0 min-w-0 flex-1 p-3" style="min-height:380px">
       <% if artwork?(@from) && artwork?(@to) %>
@@ -30,19 +37,19 @@
                 { image_src: artwork_src(@from), thumb_src: artwork_thumb_src(@from), is_pdf: @from.artwork_pdf?, label: @from.vlabel, boxes: anns },
                 { image_src: artwork_src(@to),   thumb_src: artwork_thumb_src(@to),   is_pdf: @to.artwork_pdf?,   label: @to.vlabel,   boxes: anns }
               ],
-              drawable: true, zoom: false %><%# autofocus 제거: 초기 무선택(전 박스 선명), 클릭 토글로 포커스 %>
+              drawable: true, zoom: true %><%# 줌 활성(세 아트워크 뷰 일관) · autofocus 제거: 초기 무선택(전 박스 선명), 클릭 토글로 포커스 %>
       <% else %>
-        <div class="flex h-full items-center justify-center rounded-xl border border-line bg-tint-2 text-line">이 구성요소는 아트워크 이미지가 없습니다.</div>
+        <div class="flex h-full items-center justify-center rounded-xl border border-line bg-tint-2 text-muted">이 구성요소는 아트워크 이미지가 없습니다.</div>
       <% end %>
     </div>
 
     <%# 우: 피드백 목록 / 상세 / 새 박스 %>
-    <aside class="flex w-full shrink-0 flex-col border-t border-line bg-white xl:w-[360px] xl:border-l xl:border-t-0">
+    <aside data-comparison-target="aside" class="flex w-full shrink-0 flex-col border-t border-line bg-white lg:w-[360px] lg:border-l lg:border-t-0">
       <%# 목록 %>
       <div data-comparison-target="list" class="flex min-h-0 flex-1 flex-col">
         <div class="border-b border-line-soft p-3">
-          <h3 class="text-base font-bold text-ink">피드백 <span class="text-line">(<%= @annotations.size %>)</span></h3>
-          <p class="text-xs text-line"><%= @from.vlabel %>에서 제기 · <%= @to.vlabel %> 반영 검토 · <b style="color:#5f8f2e"><%= @annotations.count(&:resolved?) %> 해결</b> / <b style="color:#8e0300"><%= @annotations.count(&:open?) %> 미해결</b></p>
+          <h3 class="text-section font-bold text-ink">피드백 <span class="text-muted">(<%= @annotations.size %>)</span></h3>
+          <p class="text-meta text-muted"><%= @from.vlabel %>에서 제기 · <%= @to.vlabel %> 반영 검토 · <b class="text-ok-strong"><%= @annotations.count(&:resolved?) %> 반영</b> / <b class="text-cooa"><%= @annotations.count(&:open?) %> 미반영</b></p>
         </div>
         <div class="min-h-0 flex-1 space-y-2 overflow-auto p-3">
           <% @annotations.each do |a| %>
@@ -50,12 +57,12 @@
                     class="block w-full rounded-lg border border-line-soft p-2.5 text-left transition hover:border-cooa">
               <div class="flex items-center justify-between">
                 <span class="flex items-center gap-2">
-                  <span class="flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold text-white" style="background:<%= a.box_color %>"><%= a.seq %></span>
-                  <span class="rounded bg-tint px-1.5 py-0.5 text-[11px] text-ink/70"><%= a.category %></span>
+                  <span class="flex h-5 w-5 items-center justify-center rounded-full text-caption font-bold text-white" style="background:<%= a.box_color %>"><%= a.seq %></span>
+                  <span class="rounded bg-tint px-1.5 py-0.5 text-caption text-ink/70"><%= a.category %></span>
                 </span>
-                <span class="rounded-full px-2 py-0.5 text-[11px] font-bold" style="color:<%= a.status_meta[:color] %>;background:<%= a.status_meta[:bg] %>"><%= a.status_meta[:label] %></span>
+                <%= annotation_status_pill(a) %>
               </div>
-              <p class="mt-1 line-clamp-2 text-[12.5px] text-ink/80"><%= a.comments.first&.body %></p>
+              <p class="mt-1 line-clamp-2 text-meta text-ink/80"><%= a.comments.first&.body %></p>
             </button>
           <% end %>
         </div>
@@ -65,43 +72,43 @@
       <% @annotations.each do |a| %>
         <div data-comparison-target="detail" data-seq="<%= a.seq %>" class="hidden min-h-0 flex-1 flex-col">
           <div class="flex items-center gap-2 border-b border-line-soft p-3">
-            <button type="button" data-action="comparison#backToList" class="text-sm text-line hover:text-cooa">← 목록</button>
-            <span class="flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold text-white" style="background:<%= a.box_color %>"><%= a.seq %></span>
-            <span class="rounded bg-tint px-1.5 py-0.5 text-[11px] text-ink/70"><%= a.category %></span>
-            <span class="ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold" style="color:<%= a.status_meta[:color] %>;background:<%= a.status_meta[:bg] %>"><%= a.status_meta[:label] %></span>
+            <button type="button" data-action="comparison#backToList" class="text-note text-muted hover:text-cooa">← 목록</button>
+            <span class="flex h-5 w-5 items-center justify-center rounded-full text-caption font-bold text-white" style="background:<%= a.box_color %>"><%= a.seq %></span>
+            <span class="rounded bg-tint px-1.5 py-0.5 text-caption text-ink/70"><%= a.category %></span>
+            <%= annotation_status_pill(a, extra: "ml-auto") %>
           </div>
           <div class="min-h-0 flex-1 overflow-auto p-3">
-            <p class="mb-2 text-[11px] text-line">← 좌(이전)·우(현재) 캔버스에서 이 영역이 확대됩니다.</p>
+            <p class="mb-2 text-caption text-muted">← 좌(이전)·우(현재) 캔버스에서 이 영역이 확대됩니다.</p>
             <% if a.before_text.present? %>
-              <div class="mt-2 rounded-lg bg-tint px-2 py-1.5 text-xs">
-                <span class="text-line line-through"><%= a.before_text %></span><span class="px-1 text-line">→</span><span class="font-bold text-ink"><%= a.after_text %></span>
+              <div class="mt-2 rounded-lg bg-tint px-2 py-1.5 text-meta">
+                <span class="text-muted line-through"><%= a.before_text %></span><span class="px-1 text-muted">→</span><span class="font-bold text-ink"><%= a.after_text %></span>
               </div>
             <% end %>
             <%# 코멘트 스레드 %>
             <div class="mt-3 space-y-2">
               <% a.comments.each do |c| %>
                 <div class="rounded-lg border border-line-soft p-2">
-                  <div class="flex items-center gap-1.5"><%= avatar(c.author, size: 20) %><span class="text-xs font-bold text-ink"><%= c.author.name %></span><span class="text-[10px] text-line"><%= c.author.role_short %></span></div>
-                  <p class="mt-1 text-[12.5px] text-ink/85"><%= c.body %></p>
-                  <% if c.attachment_name.present? %><div class="mt-1 inline-flex items-center gap-1 rounded bg-[#cadfff] px-1.5 py-0.5 text-[11px]"><%= ui_icon "external", size: 11 %><%= c.attachment_name %></div><% end %>
+                  <div class="flex items-center gap-1.5"><%= avatar(c.author, size: 20) %><span class="text-meta font-bold text-ink"><%= c.author.name %></span><span class="text-caption text-muted"><%= c.author.role_short %></span></div>
+                  <p class="mt-1 text-meta text-ink/85"><%= c.body %></p>
+                  <% if c.attachment_name.present? %><div class="mt-1 inline-flex items-center gap-1 rounded bg-tint text-muted px-1.5 py-0.5 text-caption"><%= ui_icon "external", size: 11 %><%= c.attachment_name %></div><% end %>
                 </div>
               <% end %>
             </div>
             <%= form_with url: annotation_comments_path(a), class: "mt-2 flex gap-1" do %>
-              <%= text_field_tag :body, nil, placeholder: "코멘트 추가", class: "min-w-0 flex-1 rounded border border-line-soft px-2 py-1 text-xs" %>
-              <%= submit_tag "등록", class: "cursor-pointer rounded bg-cooa px-2 py-1 text-xs font-bold text-white" %>
+              <%= text_field_tag :body, nil, placeholder: "코멘트 추가", class: "min-w-0 flex-1 rounded border border-line-soft px-2 py-1 text-meta" %>
+              <%= ui_button "등록", size: :sm, type: "submit" %>
             <% end %>
           </div>
           <%# 반영 확인 %>
           <div class="border-t border-line-soft p-3">
             <% if a.resolved? %>
-              <div class="flex items-center justify-between text-xs">
-                <span class="font-bold" style="color:#5f8f2e">✓ <%= a.resolved_in_version&.vlabel %>에서 반영 확인</span>
-                <%= button_to "다시 열기", reopen_annotation_path(a), method: :patch, class: "cursor-pointer rounded border border-line px-2 py-1 text-line" %>
+              <div class="flex items-center justify-between text-meta">
+                <span class="inline-flex items-center gap-1 font-bold text-ok-strong"><%= ui_icon "check", size: 13, stroke: 2.4 %><%= a.resolved_in_version&.vlabel %>에서 반영 확인</span>
+                <%= button_to "다시 열기", reopen_annotation_path(a), method: :patch, class: ui_button_classes(variant: :ghost, size: :sm) %>
               </div>
             <% else %>
-              <%= button_to "✓ #{@to.vlabel}에서 반영됨으로 표시", resolve_annotation_path(a, resolved_in_version_id: @to.id), method: :patch,
-                    class: "w-full cursor-pointer rounded-lg py-2 text-[13px] font-bold text-white", style: "background:#5f8f2e" %>
+              <%= button_to resolve_annotation_path(a, resolved_in_version_id: @to.id), method: :patch,
+                    class: "inline-flex w-full items-center justify-center gap-1.5 cursor-pointer rounded-lg bg-ok-strong py-2 text-body font-bold text-white" do %><%= ui_icon "check", size: 15, stroke: 2.4 %><%= @to.vlabel %>에서 반영됨으로 표시<% end %>
             <% end %>
           </div>
         </div>
@@ -110,19 +117,19 @@
       <%# 새 피드백 (Shift+드래그 시 표시) %>
       <div data-comparison-target="newForm" class="hidden flex-1 flex-col border-t border-line-soft p-3">
         <div class="mb-2 flex items-center justify-between">
-          <h4 class="text-sm font-bold text-ink">새 피드백 (<%= @to.vlabel %>)</h4>
-          <button type="button" data-action="comparison#backToList" class="text-xs text-line">취소</button>
+          <h4 class="text-note font-bold text-ink">새 피드백 (<%= @to.vlabel %>)</h4>
+          <button type="button" data-action="comparison#backToList" class="text-meta text-muted">취소</button>
         </div>
         <%= form_with url: component_version_annotations_path(@to), class: "space-y-2" do %>
           <%= hidden_field_tag :box_x, nil, data: { comparison_target: "newX" } %>
           <%= hidden_field_tag :box_y, nil, data: { comparison_target: "newY" } %>
           <%= hidden_field_tag :box_w, nil, data: { comparison_target: "newW" } %>
           <%= hidden_field_tag :box_h, nil, data: { comparison_target: "newH" } %>
-          <select name="category" class="w-full rounded border border-line-soft px-2 py-1 text-sm">
+          <select name="category" class="w-full rounded border border-line-soft px-2 py-1 text-note">
             <option>오탈자</option><option>인허가</option><option>디자인</option><option>기타</option>
           </select>
-          <%= text_area_tag :body, nil, rows: 3, placeholder: "수정 요청 내용", class: "w-full rounded border border-line-soft px-2 py-1 text-sm" %>
-          <%= submit_tag "피드백 추가", class: "w-full cursor-pointer rounded-lg bg-cooa py-2 text-[13px] font-bold text-white" %>
+          <%= text_area_tag :body, nil, rows: 3, placeholder: "수정 요청 내용", class: "w-full rounded border border-line-soft px-2 py-1 text-note" %>
+          <%= ui_button "피드백 추가", type: "submit", class: "w-full" %>
         <% end %>
       </div>
     </aside>

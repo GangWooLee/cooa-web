@@ -55,28 +55,19 @@ class DashboardController < ApplicationController
   def load_workspace_member_admin(workspace)
     subtree_ids = workspace_subtree_ids(workspace)
     @workspace_subtree_ids = subtree_ids.to_set # 뷰의 "이 작업실 소속 RA" 회수 필터에 재사용
-    # 이 작업실의 대기 초대 = 작업실-스코프 초대 ∪ 서브트리 제품/구성요소-스코프 초대(둘 다 이 작업실 소속).
+    # 이 작업실의 초대 관할 = 작업실-스코프 초대 ∪ 서브트리 제품/구성요소-스코프 초대(둘 다 이 작업실 소속).
+    # 대기 목록과 재초대 제안이 이 한 관계를 공유한다(서브트리 필터 단일 정의 — 두 데이터원 드리프트/노출 차단).
     comp_ids = Component.where(product_id: subtree_ids).select(:id)
-    @workspace_pending = Invitation.pending.where(
+    subtree_invitations = Invitation.where(
       "scope_workspace_id = :ws OR scope_product_id IN (:pids) OR scope_component_id IN (:cids)",
       ws: workspace.id, pids: subtree_ids, cids: comp_ids
-    ).order(created_at: :desc)
-    already = Authz::AdminScope.member_account_ids_for_workspace(workspace) # 이미 이 작업실 스코프인 계정(빈 작업실 포함)
-    @workspace_addable = addable_accounts(already)
-  end
-
-  # "이 작업실에 추가" 후보 — 관리자가 볼 수 있는 계정 중 이 작업실에 아직 스코프가 없고 tenant-wide도 아닌
-  # 계정(tenant-wide는 이미 전 작업실 접근이라 후보에서 제외). tenant-wide admin(:all)이면 전 조직 계정,
-  # scoped admin이면 자기 관리 서브트리의 스코프 멤버만(가시 범위 내 — 리크 없음). 서버가 grant를 재-인가.
-  def addable_accounts(already)
-    scope = Authz::AdminScope.for(current_account)
-    base = case scope
-    when :all   then Account.all
-    when Array  then Account.where(id: Authz::AdminScope.scoped_member_account_ids(Product.subtree_ids(scope.map(&:id))))
-    else return Account.none
-    end
-    exclude = already.to_set | RoleAssignment.active.tenant_wide.distinct.pluck(:account_id).to_set
-    base.includes(:user).where.not(id: exclude.to_a).order(:created_at)
+    )
+    @workspace_pending = subtree_invitations.pending.order(created_at: :desc)
+    # 모달 "사람 추가" 제안 = addable 동료(ⓐ · 즉시 추가) + 과거 초대 재발급 후보(ⓑ). addable 관계는
+    # membership 컨트롤러의 즉시추가 분기와 동일 규율(AdminScope.addable_accounts_for) — 표시·서버 판정 일치.
+    @workspace_addable = Authz::AdminScope.addable_accounts_for(current_account, workspace)
+    # 제안도 pending과 동일 서브트리 관할로 스코프 — 무-스코프면 스코프 admin에게 형제 브랜드 초대 이메일이 노출된다.
+    @workspace_invite_suggestions = Invitation.suggestion_emails(subtree_invitations)
   end
 
   # 진입 대상 작업실(가시) 또는 nil. /workspaces/:id(명시 진입 = 작업실 id) · root_path의 focus/rename/rename_side
