@@ -10,7 +10,17 @@ class ProductsController < ApplicationController
     return redirect_to root_path(focus: @product.id) if @product.folder? && !turbo_frame_request?
     @ancestors = @product.self_and_ancestors
     # 드로어(제품) 진입은 히스토리에 기록하지 않음 — 풀페이지 작업(버전/비교/스크리닝)만 기록
-    load_dashboard_rows unless turbo_frame_request? # 풀요청이면 셸의 트리 리스트도 렌더
+    # 풀요청이면 셸의 트리 리스트도 렌더하되 **그 리프의 작업실로 스코프**한다(F1). 스코프를 빼면 @rows가
+    # 가시 전체가 돼 사이드바(그 작업실)와 본문(전 작업실)이 분열한다 — dashboard#index의 focus 경로와 동일한
+    # 본문 스코프를 리프 상세 풀요청에도 부여(같은 load_dashboard_rows workspace: 계약).
+    unless turbo_frame_request?
+      ws = workspace_of_node(@product)
+      # fail-closed: 작업실 미도출이면 홈으로 — 현재는 도달 불가(뷰 인가 ⟺ 가시 서브트리 소속이라 항상
+      # 도출됨)지만, 인가/가시성 규칙이 분기하는 미래에 무필터 전체 렌더(F1 재발)로 퇴행하지 않게 잠근다.
+      return redirect_to root_path if ws.nil?
+
+      load_dashboard_rows(workspace: ws)
+    end
   end
 
   # 즉시 생성(폼 없음) — 선택 노드 기준 위치에 만들고 트리에서 인라인 명명(드로어 안 띄움)

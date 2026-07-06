@@ -21,9 +21,7 @@ class DashboardController < ApplicationController
       @workspace_members = workspace_member_accounts(@workspace)
       @can_manage_workspace = manage_members_on_workspace?(@workspace)
       load_workspace_member_admin(@workspace) if @can_manage_workspace # W3: 이 페이지에서 멤버 관리
-      session[:workspace_id] = @workspace.id
     else
-      session.delete(:workspace_id) # 홈 복귀 = 컨텍스트 해제
       @workspace_cards = build_workspace_cards(visible)
       @can_manage_workspaces = policy(current_organization).manage_product? # tenant-wide 관리자 = 새 작업실 생성·이름변경·삭제
       @workspace_member_candidates = workspace_member_candidates if @can_manage_workspaces

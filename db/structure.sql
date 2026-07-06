@@ -34,6 +34,46 @@ CREATE FUNCTION public.audit_logs_immutable() RETURNS trigger
   BEGIN RAISE EXCEPTION 'audit_logs is append-only (% blocked)', TG_OP; END $$;
 
 
+--
+-- Name: auth_lookup_accounts(text, text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.auth_lookup_accounts(p_provider text, p_subject text, p_email text) RETURNS TABLE(account_id uuid, tenant_id uuid, status text, bound boolean, org_name text, org_region text)
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'pg_temp'
+    AS $$
+    SELECT a.id, a.tenant_id, a.status::text, true, o.name, o.region
+    FROM public.accounts a
+    JOIN public.organizations o ON o.id = a.tenant_id
+    WHERE a.idp_provider = p_provider AND a.idp_subject = p_subject
+    UNION
+    SELECT a.id, a.tenant_id, a.status::text, false, o.name, o.region
+    FROM public.accounts a
+    JOIN public.organizations o ON o.id = a.tenant_id
+    WHERE a.idp_subject IS NULL
+      AND a.status = 'active'
+      AND p_email IS NOT NULL AND p_email <> ''
+      AND lower(a.email) = lower(p_email);
+  $$;
+
+
+--
+-- Name: auth_lookup_invitation(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.auth_lookup_invitation(p_token_digest text) RETURNS TABLE(invitation_id uuid, tenant_id uuid)
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'pg_temp'
+    AS $$
+    SELECT i.id, i.tenant_id
+    FROM public.invitations i
+    WHERE i.token_digest = p_token_digest
+      AND i.accepted_at IS NULL
+      AND i.revoked_at IS NULL
+      AND i.expires_at > now();
+  $$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -2561,6 +2601,7 @@ ALTER TABLE public.workspaces ENABLE ROW LEVEL SECURITY;
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260706000001'),
 ('20260705000007'),
 ('20260705000006'),
 ('20260705000005'),

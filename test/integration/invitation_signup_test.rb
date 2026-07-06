@@ -52,11 +52,11 @@ class InvitationSignupTest < ActionDispatch::IntegrationTest
     assert_response :success, "수락 직후 세션이 확립되어 대시보드 접근 가능해야"
   end
 
-  test "티켓 없이 미지 이메일 → reject(기존 정책 불변)" do
+  test "티켓 없이 미지 verified Google 이메일 → 셀프서브 온보딩(T3: 미초대 신규 가입)" do
     sign_out
-    google_login(uid: "g-x", email: "stranger@evil.test")
-    assert_redirected_to new_session_path
-    assert_nil Account.find_by(email: "stranger@evil.test")
+    google_login(uid: "g-x", email: "newcomer@startup.test")
+    assert_redirected_to new_onboarding_path, "미초대 verified 신원은 이제 거부 대신 자기 조직 온보딩으로(T3)"
+    assert_nil Account.find_by(email: "newcomer@startup.test"), "온보딩 화면 진입 시점엔 계정 미생성(POST에서 원자 생성)"
   end
 
   test "unverified 이메일 → reject·초대 미소비" do
@@ -86,32 +86,37 @@ class InvitationSignupTest < ActionDispatch::IntegrationTest
     assert_nil Account.find_by(email: "thief@evil.test")
   end
 
-  test "만료 티켓 → 랜딩부터 무효 + 콜백도 reject" do
+  # 죽은 티켓(만료·회수·선클레임)은 랜딩이 무효 판정 → session[:invite_token] 미스태시. 콜백엔 초대 컨텍스트가
+  # 없으니 검증 google 신원은 "미초대"와 구별 불가 → 셀프서브 온보딩으로 분기(T3). 핵심 불변식은 유지된다:
+  # 죽은 티켓으로 **초대 조직에 편입되지 않는다**(그 조직에 계정 미생성·티켓 미소비). 온보딩은 별도 새 조직이다.
+  test "만료 티켓 → 랜딩은 무효 안내 + 콜백은 셀프서브 온보딩(초대 조직 미가입·미소비)" do
     inv, raw = invite!
     inv.update!(expires_at: 1.minute.ago)
     sign_out
     get invite_path(raw)
     assert_response :success
-    assert_match "유효하지 않은 초대", response.body
+    assert_match "유효하지 않은 초대", response.body # 만료 티켓은 랜딩부터 무효(토큰 미스태시)
     google_login(uid: "g-late", email: "new@partner.dev")
-    assert_redirected_to new_session_path
+    assert_redirected_to new_onboarding_path
+    assert_nil inv.reload.accepted_account_id, "만료 티켓은 소비되지 않는다(초대 조직 편입 아님)"
   end
 
-  test "회수된 티켓 → reject" do
+  test "회수된 티켓 → 셀프서브 온보딩(초대 조직 미가입·미소비)" do
     inv, raw = invite!
     inv.revoke!
     visit_invite_then_login(raw, uid: "g-revoked", email: "new@partner.dev")
-    assert_redirected_to new_session_path
-    assert_nil Account.find_by(email: "new@partner.dev")
+    assert_redirected_to new_onboarding_path
+    assert_nil Account.find_by(email: "new@partner.dev"), "온보딩 진입 시점엔 계정 미생성(초대 조직 편입 아님)"
+    assert_nil inv.reload.accepted_account_id, "회수 티켓은 소비되지 않는다"
   end
 
-  test "동시 수락 레이스: 선클레임 승자 1명 — 패자는 reject·레코드 미생성" do
+  test "동시 수락 레이스: 선클레임되면 그 티켓은 무효 → 패자는 초대 조직 미가입(자기 조직 온보딩)" do
     inv, raw = invite!
     assert inv.claim!, "선클레임(승자 시뮬)"
-    assert_no_difference [ "User.count", "Account.count" ] do
+    assert_no_difference [ "User.count", "Account.count" ] do # 콜백은 온보딩 화면으로만 — 레코드 미생성(POST에서 생성)
       visit_invite_then_login(raw, uid: "g-loser", email: "new@partner.dev")
     end
-    assert_redirected_to new_session_path
+    assert_redirected_to new_onboarding_path # 이미 클레임된 티켓은 미스태시 → 패자는 초대 조직에 못 들어간다
   end
 
   test "수락자 재로그인은 재방문 매칭으로 성공(티켓 불필요)" do

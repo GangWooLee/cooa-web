@@ -62,15 +62,26 @@ namespace :rls do
     invitations
   ].freeze
   READ_ONLY_TABLES = %w[
-    ingredient_limits label_requirements ad_risk_expressions users
+    ingredient_limits label_requirements ad_risk_expressions
     schema_migrations ar_internal_metadata
   ].freeze
+  # `users` = the global domain-PERSON table (Strategy B): NOT tenant-scoped (no RLS — in rls:audit's
+  # PERMANENT_EXEMPT), referenced by the tenant-scoped accounts.user_id. Runtime onboarding creates a person
+  # row under cooa_app (InvitationAcceptance + OrganizationBootstrap → User.create!), so cooa_app needs
+  # SELECT+INSERT — but NO UPDATE/DELETE (mutating/removing a person is an owner/admin op, not a runtime path).
+  # grant_audit enforces both the under-grant (needs INSERT) and the over-grant (no UPDATE/DELETE) edges.
+  PERSON_TABLES = %w[users].freeze
   ATTACHMENT_TABLES = %w[
     active_storage_blobs active_storage_attachments active_storage_variant_records
   ].freeze
   # Append-only (ADR-002 §5.4): cooa_app gets SELECT+INSERT only — no UPDATE/DELETE (a trigger enforces
   # immutability even for the owner). RLS still applies (these ARE tenant-scoped).
   APPEND_ONLY_TABLES = %w[audit_logs].freeze
+  # SECURITY DEFINER auth-lookup bridges (T2 · migration 20260706000001). structure.sql strips GRANTs
+  # (pg_dump -x) → re-apply the PUBLIC lockdown + cooa_app EXECUTE after every schema load, same as tables.
+  # R8: these are the ONLY cross-tenant bypass in the app — they must be executable by cooa_app and by
+  # nothing else. grant_audit re-checks the EXECUTE below (under-grant = login broken; over-grant = leak).
+  SECURITY_DEFINER_FUNCTIONS = [ "auth_lookup_accounts(text,text,text)", "auth_lookup_invitation(text)" ].freeze
 
   desc "Grant the non-owner app role (cooa_app) privileges (structure.sql strips GRANTs — re-apply after schema load)"
   task grant_app: :environment do
@@ -80,6 +91,7 @@ namespace :rls do
     conn.execute("GRANT USAGE ON SCHEMA public TO cooa_app")
     conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON #{RLS_TABLES.join(', ')} TO cooa_app")
     conn.execute("GRANT SELECT ON #{READ_ONLY_TABLES.join(', ')} TO cooa_app")
+    conn.execute("GRANT SELECT, INSERT ON #{PERSON_TABLES.join(', ')} TO cooa_app") # global person table: onboarding INSERTs, no update/delete
     conn.execute("GRANT SELECT, INSERT ON #{APPEND_ONLY_TABLES.join(', ')} TO cooa_app") # append-only: no update/delete
     # ActiveStorage 런타임 경로: attach=INSERT / analyze=UPDATE(metadata) / purge=DELETE / preview·variant=INSERT.
     # [리스크 등재] AS 3종은 tenant 컬럼·RLS가 없어(blob=인프라) 이 DML로 DB 백스톱 없이 앱 계층
@@ -89,7 +101,12 @@ namespace :rls do
     # Domain bigserial PKs need sequence USAGE for INSERT (else "permission denied for sequence").
     conn.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO cooa_app")
     conn.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO cooa_app")
-    puts "Granted cooa_app on #{db} (#{RLS_TABLES.size} RLS + #{READ_ONLY_TABLES.size} read-only + #{ATTACHMENT_TABLES.size} attachment DML + #{APPEND_ONLY_TABLES.size} append-only + sequences)."
+    # SECURITY DEFINER auth bridges: lock out PUBLIC, grant EXECUTE only to the runtime role (T2 · R8).
+    SECURITY_DEFINER_FUNCTIONS.each do |sig|
+      conn.execute("REVOKE ALL ON FUNCTION public.#{sig} FROM PUBLIC")
+      conn.execute("GRANT EXECUTE ON FUNCTION public.#{sig} TO cooa_app")
+    end
+    puts "Granted cooa_app on #{db} (#{RLS_TABLES.size} RLS + #{READ_ONLY_TABLES.size} read-only + #{PERSON_TABLES.size} person + #{ATTACHMENT_TABLES.size} attachment DML + #{APPEND_ONLY_TABLES.size} append-only + #{SECURITY_DEFINER_FUNCTIONS.size} secdef fn + sequences)."
   end
 
   # 부족부여(under-grant) 감사 — rls:audit의 사각지대를 메움(R8 · docs/dev-discipline.md).
@@ -104,6 +121,7 @@ namespace :rls do
     RLS_TABLES.each        { |t| expected[t] = %w[SELECT INSERT UPDATE DELETE] }
     ATTACHMENT_TABLES.each { |t| expected[t] = %w[SELECT INSERT UPDATE DELETE] }
     READ_ONLY_TABLES.each  { |t| expected[t] = %w[SELECT] }
+    PERSON_TABLES.each     { |t| expected[t] = %w[SELECT INSERT] }
     APPEND_ONLY_TABLES.each { |t| expected[t] = %w[SELECT INSERT] }
 
     all_tables = conn.select_values(<<~SQL)
@@ -132,6 +150,15 @@ namespace :rls do
         leaked << "#{table}:#{verb}" if ActiveModel::Type::Boolean.new.cast(bad)
       end
     end
+    # person 테이블은 INSERT는 허용하되 UPDATE/DELETE 과다부여를 막는다(런타임은 온보딩 생성만 — 변경/삭제는
+    # owner/admin 경로). append-only가 아니라(트리거·감사 불요) 여기서 verb 상한만 검사한다.
+    PERSON_TABLES.each do |table|
+      next unless all_tables.include?(table)
+      %w[UPDATE DELETE].each do |verb|
+        bad = conn.select_value("SELECT has_table_privilege('cooa_app', #{conn.quote(table)}, #{conn.quote(verb)})")
+        leaked << "#{table}:#{verb}" if ActiveModel::Type::Boolean.new.cast(bad)
+      end
+    end
     # 시퀀스 대표 검사(ALL SEQUENCES + 기본권한이 유지되는지)
     seq = conn.select_value("SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='S' LIMIT 1")
     if seq
@@ -139,8 +166,27 @@ namespace :rls do
       missing << "sequence #{seq}:USAGE" unless ActiveModel::Type::Boolean.new.cast(ok)
     end
 
+    # SECURITY DEFINER auth bridges (T2 · R8): cooa_app MUST have EXECUTE (else the login lookup 500s) and
+    # PUBLIC must NOT (the bypass is the only cross-tenant read path — an open grant widens the blast radius).
+    fn_leaked = []
+    SECURITY_DEFINER_FUNCTIONS.each do |sig|
+      fn = "public.#{sig}"
+      ok = conn.select_value("SELECT has_function_privilege('cooa_app', #{conn.quote(fn)}, 'EXECUTE')")
+      missing << "function #{sig}:EXECUTE" unless ActiveModel::Type::Boolean.new.cast(ok)
+      # A default (NULL) proacl = EXECUTE to PUBLIC → not locked down; an aclitem whose grantee is empty
+      # ('=X/owner') = PUBLIC still holds EXECUTE. Either means grant_app's REVOKE FROM PUBLIC did not run.
+      pub = conn.select_value(<<~SQL)
+        SELECT proacl IS NULL OR EXISTS (
+          SELECT 1 FROM unnest(proacl) acl WHERE acl::text LIKE '=%'
+        )
+        FROM pg_proc WHERE oid = 'public.#{sig}'::regprocedure
+      SQL
+      fn_leaked << "function #{sig}:EXECUTE(PUBLIC)" if ActiveModel::Type::Boolean.new.cast(pub)
+    end
+
     abort "grant audit FAILED — 부족부여: #{missing.join(', ')}" if missing.any?
     abort "grant audit FAILED — 읽기전용 테이블 과다부여: #{leaked.join(', ')}" if leaked.any?
+    abort "grant audit FAILED — SECURITY DEFINER 함수 PUBLIC 과다부여: #{fn_leaked.join(', ')}" if fn_leaked.any?
     puts "Grant audit OK — #{expected.size} table(s) classified · under-grant 0 · read-only leak 0. (solid_* 별도 DB는 prod 컷오버 체크리스트로 — docs/prod-cutover.md §7)"
   end
 end

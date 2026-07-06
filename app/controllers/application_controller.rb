@@ -6,7 +6,8 @@ class ApplicationController < ActionController::Base
   stale_when_importmap_changes
 
   include Pundit::Authorization
-  # Auth (ADR-003): resolve_account → set_current_tenant → scope_to_tenant(RLS tx) → verify_revocation.
+  # Auth (ADR-003 · T2 identity-based tenant): scope_to_tenant(open the session-tenant RLS tx) → resolve_account
+  # (load + re-check the account belongs to the session tenant + revocation/idle). See concerns/authentication.
   include Authentication
 
   helper_method :header_tabs, :pending_review_count, :overdue_review_count, :visible_product_id_set, :can_view_members?,
@@ -100,8 +101,12 @@ class ApplicationController < ActionController::Base
   # 작업실 = Workspace 엔티티(복수 루트를 담는 상위 컨테이너). 사이드바가 매 페이지 렌더하므로 컨텍스트는
   # **렌더 시점 lazy**로 도출한다(header_tabs와 동일 이유). 진실원천 1곳: 홈 카드(W1)·컨텍스트 사이드바(W2) 공용.
   #
-  # current_workspace = (dashboard#index가 세팅한 @workspace) ?? (@product 등 리소스에서 도출한 가시 작업실)
-  #                  ?? (session[:workspace_id]가 가리키는 가시 작업실 — 비가시/삭제면 nil·세션 정화) ?? nil.
+  # 계약(2026-07-05 F1): current_workspace = (dashboard#index가 세팅한 @workspace)
+  #                    ?? (@product 등 **현재 화면 리소스**에서 도출한 가시 작업실) ?? nil.
+  # 컨텍스트는 오직 현재 화면의 리소스에서 도출한다 — 직전 작업실을 세션에 저장했다가 리소스 없는 글로벌
+  # 화면(인박스·전사관리)에서 되살리지 않는다. 되살리면 사이드바는 떠난 작업실 트리를, 본문(셸)은 그 작업실
+  # 데이터를 표시해 "리소스↔컨텍스트 분열"이 난다(F1 결함의 잔여 축). 글로벌 화면 = 항상 컨텍스트 해제(nil).
+  # 이 계약은 shared/_sidebar 헤더 주석(컨텍스트 안=리소스 있음 / 밖=홈·인박스·전사관리)과 삼위일치한다.
   def current_workspace
     return @current_workspace if defined?(@current_workspace)
 
@@ -112,24 +117,13 @@ class ApplicationController < ActionController::Base
     return nil unless nav_ready? && Current.tenant_id
 
     # 1) dashboard#index가 세팅한 Workspace 엔티티 우선.
-    if defined?(@workspace) && @workspace
-      session[:workspace_id] = @workspace.id unless session[:workspace_id] == @workspace.id
-      return @workspace
-    end
+    return @workspace if defined?(@workspace) && @workspace
 
-    # 2) 리소스 도출 — 상세/버전/스크리닝/비교가 세팅하는 @product의 가시 작업실.
-    if defined?(@product) && @product && (ws = workspace_of_node(@product))
-      session[:workspace_id] = ws.id unless session[:workspace_id] == ws.id # 컨텍스트 유지(인박스 등 폴백)
-      return ws
-    end
+    # 2) 리소스 도출 — 상세/버전/스크리닝/비교가 세팅하는 @product의 가시 작업실(비가시면 nil).
+    return workspace_of_node(@product) if defined?(@product) && @product
 
-    # 3) 세션 폴백 — 리소스 없는 화면(인박스 등)에서 마지막 작업실 유지. 비가시/삭제면 정화.
-    if (sid = session[:workspace_id])
-      ws = visible_workspace_by_id(sid)
-      return ws if ws
-
-      session.delete(:workspace_id)
-    end
+    # 3) 그 외(인박스·전사관리 등 리소스 없는 글로벌 화면) = 컨텍스트 해제. 세션에 직전 작업실을 저장·복원하지
+    #    않는다(위 계약) — 컨텍스트는 오직 위 두 리소스 축에서만 산다.
     nil
   end
 
@@ -154,11 +148,6 @@ class ApplicationController < ActionController::Base
   # (같은 테넌트라 RLS로 조상 로드 가능 — 스코프 격리는 policy 레이어 담당). N+1은 컨트롤러가 루트만 배치.
   def workspace_of_root(root)
     root.parent_id.nil? ? root.workspace : root.brand_root.workspace
-  end
-
-  # 세션에 저장된 작업실 id를 가시 작업실로 정규화(가시 작업실 목록에 있을 때만 · 비가시/삭제면 nil).
-  def visible_workspace_by_id(id)
-    visible_workspaces.find { |w| w.id.to_s == id.to_s }
   end
 
   # 가시 표시 루트(가시 제품 중 부모가 비가시/nil) — 작업실 목록·라벨의 단일 소스(요청당 1회 로드).

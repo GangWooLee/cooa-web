@@ -20,9 +20,15 @@ Rails.application.routes.draw do
 
   # 로컬 account-picker 로그인 (dev/test; production은 Keycloak OIDC=Phase 2b). 비밀번호 없음.
   resource :session, only: [ :new, :create, :destroy ]
+  # 조직 선택(T2) — 동일 신원이 여러 조직 멤버일 때 콜백이 렌더한 목록에서 하나를 고른 POST(재발견 재확인).
+  post "/session/organization", to: "sessions#select_organization", as: :select_organization
   # Keycloak OIDC (Phase 2b). The request phase /auth/openid_connect is handled by the OmniAuth middleware.
   match "/auth/:provider/callback", to: "sessions#omniauth_callback", via: %i[get post]
   get "/auth/failure", to: "sessions#auth_failure"
+  # 셀프서브 가입 온보딩(T3) — 미초대 verified 신원이 콜백에서 심어진 pending_signup으로 자기 조직을 신설.
+  # GET = "첫 작업실 이름" 1화면 · POST = OrganizationBootstrap 원자 실행 후 로그인.
+  get  "/onboarding", to: "onboarding#new",    as: :new_onboarding
+  post "/onboarding", to: "onboarding#create", as: :onboarding
 
   resources :products, only: [ :show, :create, :update, :destroy ] do  # ② 제품 트리 CRUD (생성=즉시·편집=인라인)
     patch :move, on: :member                                                      # 드래그앤드롭 트리 이동

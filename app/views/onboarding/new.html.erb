@@ -1,0 +1,19 @@
+<% content_for :title, "작업실 만들기" %>
+<%# T3 self-serve onboarding — the one screen a brand-new verified Google identity sees after the callback
+    stashed session[:pending_signup]. Naming the first workspace is the ONLY input; POST → OrganizationBootstrap
+    mints org + owner + this workspace atomically. COOA tokens only (border-line, tint, cooa, ink). %>
+<div class="w-full max-w-md rounded-2xl border border-line bg-white p-8 shadow-sm">
+  <div class="text-[22px] font-bold text-ink">COOA</div>
+  <p class="mb-1 mt-3 text-[16px] font-semibold text-ink">첫 작업실 이름을 지어주세요</p>
+  <p class="mb-6 text-[13px] text-line">작업실은 제품 검토를 담는 공간이에요 — 나중에 언제든 이름을 바꿀 수 있어요.</p>
+
+  <%= form_with url: onboarding_path, method: :post, class: "flex flex-col gap-3" do |f| %>
+    <%= f.text_field :workspace_name, value: @suggested_name, autofocus: true, required: true, maxlength: 200,
+          placeholder: "예: 레티놀 라인",
+          class: "w-full rounded-xl border border-line bg-white px-4 py-3 text-[15px] text-ink placeholder:text-line focus:border-cooa focus:outline-none focus:ring-1 focus:ring-cooa" %>
+    <%= f.submit "작업실 만들고 시작하기",
+          class: "w-full cursor-pointer rounded-xl bg-cooa px-4 py-3 text-[14px] font-semibold text-white transition hover:bg-cooa-dark" %>
+  <% end %>
+
+  <p class="mt-4 text-[11px] text-line">계속하면 이 Google 계정이 새 조직의 소유자(owner)가 됩니다.</p>
+</div>

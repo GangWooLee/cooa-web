@@ -1,6 +1,4 @@
 <% current = (current_id && current_id == node.id) %>
-<% root = local_assigns.fetch(:root, false) %>
-<% context = local_assigns.fetch(:context, false) %>
 <% if node.folder? %>
   <details <%= "open" if active_ids.include?(node.id) %>>
     <summary class="group/brand flex cursor-pointer list-none items-center gap-1 rounded-md px-2 py-1.5 hover:bg-tint <%= 'bg-accent/60' if active_ids.include?(node.id) %>"
@@ -19,15 +17,6 @@
                 class: "w-full rounded border border-cooa px-1 py-0.5 text-[14px] font-semibold focus:outline-none" %>
         <% end %>
       </span>
-      <%# 루트(작업실) 노드 → 작업실 페이지 진입(T4). 트리 토글 관례 훼손 없이 이름 옆 아이콘 링크
-          (hover 시 노출). turbo:false 전체 이동이라 details 토글 side-effect는 무의미(페이지 전환).
-          컨텍스트 사이드바에선 상단 헤더가 그 진입을 대체하므로 그리드 아이콘 생략. %>
-      <% if root && !context %>
-        <%= link_to workspace_path(node.derived_workspace), title: "작업실 페이지", data: { turbo: false },
-              class: "shrink-0 rounded p-0.5 text-line/50 opacity-0 transition hover:bg-white hover:text-cooa group-hover/brand:opacity-100" do %>
-          <%= ui_icon "grid", size: 13 %>
-        <% end %>
-      <% end %>
     </summary>
     <div class="ml-3 border-l border-line-soft pl-1">
       <% node.children.each do |child| %>

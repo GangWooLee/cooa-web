@@ -85,12 +85,15 @@ class OidcCallbackTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
   end
 
-  test "provider 네임스페이스 격리: KC에 바인딩된 subject를 Google이 재사용해도 매칭·재바인딩 불가" do
+  test "provider 네임스페이스 격리: KC 바인딩 subject를 Google이 재사용해도 그 계정은 재바인딩 불가" do
     Account.find_by!(email: "lee@cooa.dev").update!(idp_provider: "openid_connect", idp_subject: "shared-sub")
     auth_callback(:google_oauth2, uid: "shared-sub", email: "lee@cooa.dev") # 같은 uid, 다른 provider
-    assert_redirected_to new_session_path # (google, shared-sub) 미존재 + 이미 바인딩된 계정은 재바인딩 거부
+    # (google, shared-sub)는 미존재 + KC 바인딩 계정은 google 바인드 후보가 아니다(0 후보). google 검증 신원이라
+    # 기존 계정을 건드리지 않고 T3 셀프서브 온보딩으로 분기 — 핵심 불변식(KC 바인딩 보존·재바인딩 없음)은 유지된다.
+    assert_redirected_to new_onboarding_path
     lee = Account.find_by!(email: "lee@cooa.dev")
-    assert_equal "openid_connect", lee.idp_provider, "KC 바인딩이 보존되어야"
+    assert_equal "openid_connect", lee.idp_provider, "KC 바인딩이 보존되어야(google이 재바인딩 못 함)"
+    assert_equal "shared-sub", lee.idp_subject
   end
 
   test "Google unverified email은 거부 — 게이트 공유" do
