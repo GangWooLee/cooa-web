@@ -2,6 +2,10 @@ require "test_helper"
 
 class ScreeningServiceTest < ActiveSupport::TestCase
   setup do
+    # 전역 규제 KB(비-RLS)는 committed_state_cleanup 범위 밖 — 비트랜잭션 RLS 스위트가 커밋한 시드 잔여물이
+    # 남으면 아래 bare create!가 UniqueViolation(예: JP/RETINOL)·판정 오염을 일으킨다(W1·D2 워커 2회 실측).
+    # 트랜잭션 내 선삭제로 결정론 격리 — 테스트 롤백이 원복하므로 공유 커밋 상태는 불변.
+    [ IngredientLimit, AdRiskExpression, LabelRequirement ].each { |m| m.where(country: "JP").delete_all }
     @user    = User.create!(name: "RA", role: "ra")
     @product = Product.create!(code: "T1", name: "t", country: "JP", channel: "x", owner: @user)
     @comp    = @product.components.create!(component_type: "outer_box")
