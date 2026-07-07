@@ -62,6 +62,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: poppler-utils 설치 (PdfProbe CI 게이트 필수 — pdfinfo 부재 시 silent-skip 금지 테스트가 fail)
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends poppler-utils
+
       - name: Ruby + bundle (.ruby-version 자동)
         uses: ruby/setup-ruby@v1
         with:
@@ -135,6 +138,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: poppler-utils 설치 (PdfProbe CI 게이트 필수 — pdfinfo 부재 시 silent-skip 금지 테스트가 fail)
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends poppler-utils
 
       - name: Ruby + bundle (.ruby-version 자동)
         uses: ruby/setup-ruby@v1

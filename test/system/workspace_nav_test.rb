@@ -51,9 +51,16 @@ class WorkspaceNavTest < ApplicationSystemTestCase
 
     # 드로어 버전 타임라인의 버전 칩 클릭 → Turbo.visit로 풀페이지 버전 뷰.
     find("#detail button[data-version-select-target='version']", match: :first).click
+    assert_current_path %r{/versions/\d+}, wait: 6 # 풀페이지 전환 완료 앵커 — 저속 CI 러너의 find↔click 사이 재렌더 레이스 방지
 
-    # 버전 페이지 로드 = 브레드크럼의 제품(리프) 링크(복귀 트리거) 등장 → 클릭(product_path 풀 내비 복귀).
-    find("a[href='#{product_path(co0001)}']", match: :first).click
+    # 버전 페이지 브레드크럼의 제품(리프) 링크(복귀 트리거) 클릭. Turbo 최종 재렌더와의 detach 레이스(GHA
+    # 첫 실행 실측 — 로컬 항상 green)는 1회 재탐색으로 흡수: 캐시 노드가 아니라 셀렉터를 다시 푼다.
+    breadcrumb = "a[href='#{product_path(co0001)}']"
+    begin
+      find(breadcrumb, match: :first).click
+    rescue Playwright::Error
+      find(breadcrumb, match: :first).click
+    end
 
     # 복귀 후 본문(main) = 진입 작업실(레티놀) 행만, 타 작업실(비타민C·시카) 부재 — 컨텍스트-본문 정합.
     within "main" do
