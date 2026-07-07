@@ -15,15 +15,17 @@ class ReviewCandidatesTest < ActiveSupport::TestCase
 
   def emails(users) = users.map { |u| u.account&.email || u.email }.sort
 
-  # ── 인원 동일성: CO0001(레티놀 브랜드) — 신·구 후보 집합이 동일(4인 tenant-wide) ──
-  test "CO0001 후보 = 신·구 동일(tenant-wide 4인) — 기존 리뷰 플로 무회귀 근거" do
+  # ── CO0001(레티놀 브랜드): 스코프 grant가 없어 후보 = tenant-wide 연결계정 전원 ──
+  # 표시 명부(product_member) 4인(kim·song·lee·park)은 전원 tenant-wide → 후보에 포함(무회귀). 팀 밖
+  # tenant-wide 신원(유뷰어 viewer·한담당 assignee)도 tenant-wide grant 근거로 후보에 등장(권한 평면).
+  test "CO0001 후보 = tenant-wide 연결계정 전원(표시 명부 4인 무회귀 포함)" do
     v = cv("CO0001")
     old_users = v.product.product_members.select(&:user).map(&:user).uniq
     new_users = ReviewCandidates.users_for(v)
 
-    assert_equal old_users.map(&:id).sort, new_users.map(&:id).sort,
-                 "레티놀 체인엔 스코프 grant가 없어 신·구 후보 인원이 동일해야 함"
-    assert_equal %w[kim@cooa.dev lee@cooa.dev park@cooa.dev song@cooa.dev], emails(new_users)
+    assert_empty old_users.map(&:id) - new_users.map(&:id),
+                 "표시 명부 4인은 전원 tenant-wide → 후보에 포함되어야(무회귀)"
+    assert_equal %w[han@cooa.dev kim@cooa.dev lee@cooa.dev park@cooa.dev song@cooa.dev yu@cooa.dev], emails(new_users)
   end
 
   # ── 제출자 제외 ──
@@ -81,8 +83,8 @@ class ReviewCandidatesTest < ActiveSupport::TestCase
 
     users = ReviewCandidates.users_for(v)
     assert users.all?(&:present?), "후보는 연결 User만 — nil 없음"
-    # bare 계정엔 연결 User가 없으므로 후보 수는 tenant-wide 연결계정 수 그대로.
-    assert_equal 4, users.size
+    # bare 계정엔 연결 User가 없으므로 후보 수는 tenant-wide 연결계정 수 그대로(kim·song·lee·park·yu·han = 6).
+    assert_equal 6, users.size
   end
 
   test "user_ids_for는 후보 User id 배열(화이트리스트 소스)" do

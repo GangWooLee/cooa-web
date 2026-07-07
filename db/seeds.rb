@@ -202,6 +202,17 @@ jung_acc = Account.create!(tenant_id: demo_org.id, user: jung, email: jung.email
 RoleAssignment.create!(account: jung_acc, tenant_id: demo_org.id, role_key: "brand_admin",
                        scope_type: "workspace", scope_workspace_id: vitc.workspace_id)
 
+# 7·8번째 페르소나 — 유뷰어(viewer·tenant-wide)·한담당(assignee·tenant-wide). 순수 단일역할 신원: 인가
+# 매트릭스 저니(W2)와 데모의 읽기전용/담당 편집 시연용. TEAM(assign_team 제품 팀 멤버십)에는 넣지 않는다 —
+# tenant-wide role_assignment만 부여(기존 팀 멤버 수 어서션 불변). 뷰어=읽기 전용, 담당=편집(승인 불가).
+yu = User.create!(name: "유뷰어", role: "pm", avatar_color: "#8a8f98", email: "yu@cooa.dev")
+yu_acc = Account.create!(tenant_id: demo_org.id, user: yu, email: yu.email, status: "active")
+RoleAssignment.create!(account: yu_acc, tenant_id: demo_org.id, role_key: "viewer", scope_type: "tenant")
+
+han = User.create!(name: "한담당", role: "pm", avatar_color: "#c07a3e", email: "han@cooa.dev")
+han_acc = Account.create!(tenant_id: demo_org.id, user: han, email: han.email, status: "active")
+RoleAssignment.create!(account: han_acc, tenant_id: demo_org.id, role_key: "assignee", scope_type: "tenant")
+
 # 리프(SKU)에 팀 + 구성요소
 [ co0000, co0000l, co0001, co0100, co0200 ].each { |p| assign_team(p, TEAM) }
 
