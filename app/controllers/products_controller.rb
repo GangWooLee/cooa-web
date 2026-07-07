@@ -1,6 +1,10 @@
 class ProductsController < ApplicationController
   include Positionable
 
+  # 파괴는 감사(allow)를 남기므로 도메인 액터 가드 선행(E4) — 미브리지 계정은 AuditLog.record!의 fail-closed
+  # raise(500)에 닿기 전 403으로 막는다(workspaces#destroy와 동일 규약). 다른 액션은 감사 미기록이라 대상 아님.
+  before_action :require_domain_actor, only: :destroy
+
   # ② 데이터 매핑 = 제품 클릭 상세보기 (허브) — 트리 노드
   def show
     @product = Product.includes(:owner, :parent, :children, product_members: :user,
@@ -60,7 +64,9 @@ class ProductsController < ApplicationController
     product = Product.find(params[:id])
     authorize product, :manage_product?
     workspace = workspace_of_node(product) # 삭제 전 작업실(Workspace 엔티티) 포착
+    summary = destruction_summary(product) # 삭제 전 하위 개수(연쇄 삭제 대상) 수집 — 파괴 후엔 셀 수 없음
     product.destroy # children·components·versions·annotations 연쇄 삭제
+    audit_destroy!(product, summary)
     # 작업실에 아직 (다른) 루트가 남아 있으면 그 작업실 트리로 복귀, 마지막 루트를 지웠으면 홈(작업실 카드)으로.
     redirect_to(workspace&.products&.exists? ? workspace_path(workspace) : root_path)
   end
@@ -162,5 +168,21 @@ class ProductsController < ApplicationController
       product.product_members.destroy_all
       pairs.each { |attrs| product.product_members.create!(attrs) }
     end
+  end
+
+  # 파괴 전 하위 개수 요약(감사 after). destroy가 subtree(자기+자손) 제품과 그 구성요소·버전을 연쇄 삭제하므로
+  # "무엇이 함께 사라졌는지"를 남긴다 — subtree_ids로 자손 제품 수를, 그 제품들의 구성요소·버전을 집계.
+  def destruction_summary(product)
+    subtree = Product.subtree_ids(product.id)
+    component_ids = Component.where(product_id: subtree).pluck(:id)
+    versions = component_ids.empty? ? 0 : ComponentVersion.where(component_id: component_ids).count
+    { name: product.name, descendants: subtree.size - 1, components: component_ids.size, versions: versions }
+  end
+
+  # 파괴 감사(allow) — workspaces#audit_workspace! 패턴. resource_id = 파괴된 제품 id(객체는 destroy 후에도 id 보유).
+  def audit_destroy!(product, summary)
+    AuditLog.record!(action: "product.destroy", resource_type: "Product", resource_id: product.id, outcome: "allow",
+                     after: summary, request_id: request.request_id, source_ip: request.remote_ip,
+                     user_agent: request.user_agent)
   end
 end

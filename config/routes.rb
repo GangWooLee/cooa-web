@@ -5,6 +5,10 @@ Rails.application.routes.draw do
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
 
+  # Deep readiness probe. /up (above) stays the SHALLOW LB/liveness probe (did the process boot). /ready is
+  # the DEEP dependency check: DB reachable (503 pulls the node out of rotation) + worker liveness (informational).
+  get "ready" => "health#ready", as: :readiness_check
+
   # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
   # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
   # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker

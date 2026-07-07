@@ -41,6 +41,14 @@ CREATE ROLE cooa_app LOGIN PASSWORD '<COOA_APP_PASSWORD>'
 
 > ⚠️ **[P0 컷오버 게이트] auth_lookup 브리지 함수 소유자 = BYPASSRLS 필수**: `accounts`·`organizations`는 **FORCE ROW LEVEL SECURITY**라 테이블 소유자도 RLS 대상(owner-bypass 무효). 로그인 전 크로스테넌트 발견을 담당하는 `auth_lookup_accounts`/`auth_lookup_invitation`(SECURITY DEFINER)은 **소유자가 superuser 또는 BYPASSRLS 보유 role일 때만** 후보를 반환한다. `structure.sql`을 적재하는 role(=함수 소유자)이 평범한 테이블 소유자면 브리지가 **0행 반환 → 전원 로그인 fail-CLOSED(보안 누출 아닌 전면 로그인 장애·컷오버 정지)**. 따라서 **migrator/owner role을 BYPASSRLS 속성으로 생성**하거나 superuser로 structure.sql을 적재하라. `rls:audit`는 cooa_app 관점만 검증하고 이 소유자 속성은 검증하지 않으므로 §8 스모크의 브리지 실효성 확인이 별도 게이트다.
 
+> **[검증 스텝 — owner 프로비저닝(structure.sql 적재) 직후 즉시]** 함수 소유자의 BYPASSRLS 속성을 **직접 조회**한다. §8의 함수 호출 스모크는 실효성을 사후·간접 확인(known subject·verified email 필요)하지만, 아래 introspection은 **데이터·GUC 없이** 소유자 속성만으로 미스컨피그를 더 이르게 잡는다:
+> ```sql
+> SELECT p.proname, r.rolname, r.rolsuper, r.rolbypassrls
+>   FROM pg_proc p JOIN pg_roles r ON r.oid = p.proowner
+>  WHERE p.proname LIKE 'auth_lookup%';   -- auth_lookup_accounts / auth_lookup_invitation
+> ```
+> 각 행의 `rolbypassrls`(또는 `rolsuper`)가 **`t`가 아니면** 브리지가 0행을 반환해 **전 사용자 로그인 전면 정지**(보안 누출 아닌 인증 장애·컷오버 중단)가 발생한다. 미충족 시 `ALTER ROLE <owner> BYPASSRLS` 부여 후 재검증하거나 superuser로 structure.sql을 재적재하라.
+
 ---
 
 ## 4. 환경변수

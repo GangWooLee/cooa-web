@@ -1,0 +1,173 @@
+name: ci
+
+# 서버측 블로킹 CI — 로컬 bin/ci(config/ci.rb)의 GHA 이식(준비도 지도 P1 "배포 파이프라인").
+# 시크릿 없이 자립(audit-scan.yml과 달리 preflight 스킵 가드 불요): Postgres는 서비스 컨테이너,
+# 자격은 러너 로컬(postgres 슈퍼유저 + trust auth). prod DB엔 닿지 않는다.
+#
+# ── DB 자격 배선 (config/database.yml 실측) ─────────────────────────────────
+#  · development/app_role 블록(줄 13-15): COOA_DB_USER 설정 시 username=그 값(owner=postgres),
+#    password=COOA_DB_PASSWORD. → db:prepare·rls:grant_app·rls:audit·grant_audit·audit:verify가
+#    owner 연결로 dev DB를 본다(bin/ci가 `env COOA_DB_USER=$USER`로 거는 것과 동일).
+#  · test 블록(줄 22-26): app_role을 **안** 물려받음 → username=ENV["USER"], password="" 하드코딩.
+#    따라서 test DB 연결은 USER=postgres + **서비스 trust auth**로만 성립(빈 비번을 env로 주입할 seam 없음).
+#  · default 앵커(줄 9): host=COOA_DB_HOST → 두 블록 모두 127.0.0.1(서비스 컨테이너)로 향함.
+# ── bin/smoke 제외 ──────────────────────────────────────────────────────────
+#  · bin/smoke는 로컬 DoD 전용(실앱 cooa_app 부팅 + dev DB 쓰기 왕복). 러너에선 시드/부팅 왕복이
+#    이득 대비 취약하고 RLS 실집행은 test 스위트 밖 별개 경로라 CI에서 제외한다(config/ci.rb:29-31).
+
+on:
+  push:
+    branches: [ "feat/**", "web-demo" ]
+  pull_request:
+  workflow_dispatch: {}
+
+# 같은 ref의 이전 실행을 취소(중복 러너 절약).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# DB 연결 env(database.yml seam) — 두 잡의 모든 스텝에 상속. RAILS_ENV는 의도적으로 미설정:
+# 미설정 = development(bin/ci의 owner 게이트 대상). test 스텝만 RAILS_ENV=test로 test DB를 본다.
+env:
+  COOA_DB_USER: postgres        # app_role username=owner(postgres)로 오버라이드(database.yml:14)
+  COOA_DB_PASSWORD: postgres    # COOA_DB_USER 설정 시 password 소스(database.yml:15)
+  COOA_DB_HOST: 127.0.0.1       # default 앵커 host(database.yml:9) — dev+test 공통
+  USER: postgres                # test 블록 username=ENV["USER"](database.yml:25) — 스위트는 owner로 도는 규율
+
+jobs:
+  # ── job 1: 스타일·보안·자세 게이트 + 회귀 스위트 ────────────────────────────
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          # trust: test 블록의 빈 비번 연결을 TCP로 허용(위 배선 주석 참조). 러너 로컬이라 안전.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ruby + bundle (.ruby-version 자동)
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: cooa_app 런타임 역할 생성 (멱등 · docs/prod-cutover.md §3)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'cooa_app') THEN
+              CREATE ROLE cooa_app LOGIN PASSWORD 'cooa_dev_pw'
+                NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+            END IF;
+          END
+          $$;
+          SQL
+
+      - name: dev DB 준비 + cooa_app grant (owner)
+        # structure.sql 로드는 GRANT를 strip → grant_app 재부여 필수(bin/setup 동일 순서, R8).
+        run: |
+          bin/rails db:prepare
+          bin/rails rls:grant_app
+
+      - name: test DB 준비 (owner)
+        run: bin/rails db:test:prepare
+
+      - name: Style — Rubocop
+        run: bin/rubocop
+
+      - name: Security — gem/importmap/brakeman
+        run: |
+          bin/bundler-audit
+          bin/importmap audit
+          bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error
+
+      - name: Posture gates — RLS·grant·audit chain (owner)
+        # owner 연결로 dev DB 검증: 테넌트 RLS 자세 · cooa_app grant 자세 · 감사 해시체인 무결.
+        run: |
+          bin/rails rls:audit
+          bin/rails rls:grant_audit
+          bin/rails audit:verify
+
+      - name: Tests — Rails (owner · 직렬)
+        # PARALLEL_WORKERS=1: pg 드라이버 fork segfault 회피 + 단일 cooa_test 재사용(dev-discipline R2).
+        env:
+          PARALLEL_WORKERS: "1"
+        run: bin/rails test
+
+  # ── job 2: 시스템(E2E) 스위트 — checks와 병렬(needs 없음) ─────────────────────
+  system:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ruby + bundle (.ruby-version 자동)
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Node 20 + npm 캐시
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Playwright 버전 해석 (package.json 핀 존중)
+        id: pw
+        run: echo "version=$(node -p "require('./package.json').devDependencies.playwright")" >> "$GITHUB_OUTPUT"
+
+      - name: Playwright 브라우저 캐시
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Playwright(chromium) + OS deps 설치
+        run: npx playwright install --with-deps chromium
+
+      - name: test DB 준비 (owner)
+        # 시스템 스위트는 RAILS_ENV=test로 실서버를 부팅 → test DB만 필요(seed는 테스트가 자체 로드).
+        run: bin/rails db:test:prepare
+
+      - name: Tests — System (E2E · 직렬)
+        env:
+          PARALLEL_WORKERS: "1"
+        run: bin/rails test:system

@@ -1,6 +1,10 @@
 class ComponentsController < ApplicationController
   include Positionable
 
+  # 파괴는 감사(allow)를 남기므로 도메인 액터 가드 선행(E4) — 미브리지 계정은 AuditLog.record!의 fail-closed
+  # raise(500)에 닿기 전 403으로 막는다(products/workspaces#destroy와 동일 규약).
+  before_action :require_domain_actor, only: :destroy
+
   # 항목(제품)에 구성요소 즉시 추가 — 기본 이름 후 인라인 명명
   def create
     product = Product.find(params[:product_id])
@@ -44,7 +48,19 @@ class ComponentsController < ApplicationController
     component = Component.find(params[:id])
     authorize component, :upload_version?
     product_id = component.product_id
+    versions = component.component_versions.count # 삭제 전 — 연쇄 삭제될 버전 수(파괴 후엔 셀 수 없음)
     component.destroy
+    audit_destroy!(component, versions)
     redirect_to product_path(product_id)
+  end
+
+  private
+
+  # 파괴 감사(allow) — workspaces#audit_workspace! 패턴. resource_id = 파괴된 구성요소 id(객체는 destroy 후에도
+  # id 보유). after = 파괴 요약(이름 + 연쇄 삭제된 버전 수).
+  def audit_destroy!(component, versions)
+    AuditLog.record!(action: "component.destroy", resource_type: "Component", resource_id: component.id,
+                     outcome: "allow", after: { name: component.name, versions: versions },
+                     request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
   end
 end

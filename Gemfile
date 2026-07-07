@@ -13,6 +13,9 @@ gem "strong_migrations", "~> 2.0"
 gem "sqlite3", ">= 2.1"
 # Use the Puma web server [https://github.com/puma/puma]
 gem "puma", ">= 5.0"
+# 레이트리밋 — 로그인/온보딩/초대 등 미인증 크리덴셜 표면의 무차별 대입·남용을 미들웨어에서 throttle
+# (config/initializers/rack_attack.rb). prod에서만 활성(dev/test off), 카운터 저장소는 초기 단일 프로세스라 MemoryStore.
+gem "rack-attack", "~> 6.7"
 # Use JavaScript with ESM import maps [https://github.com/rails/importmap-rails]
 gem "importmap-rails"
 # Hotwire's SPA-like page accelerator [https://turbo.hotwired.dev]
