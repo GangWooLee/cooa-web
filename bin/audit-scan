@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# bin/audit-scan — owner(BYPASSRLS) 야간 감사 스캔. 전 테넌트 해시체인 무결(audit:verify)과
+# BOLA 급증(audit:detect_bola)을 owner 연결로 순회한다.
+#
+# ⚠️ recurring.yml 직등록 절대 금지: SolidQueue 워커는 cooa_app(FORCE RLS)로 잡을 디스패치해
+#    타 테넌트 행을 은폐 → verify/detect_bola가 1개(또는 0) 테넌트만 보고 "이상 없음" 위양성을
+#    반환한다(은폐된 무점검). 그래서 owner로 **스케줄 밖**(GHA/host cron)에서 이 스크립트를 실행한다.
+#    근거: DESIGN-운영-07 §1.1 함정 · DESIGN-운영-02 §5.2 · dev-discipline R8(권한축).
+#
+# 산출: audit.rake 원본 출력(🟢 tenant/actor/denies 형식) + (선택) AUDIT_WEBHOOK_URL로 얇은 JSON POST.
+#   audit:verify exit≠0        = 체인 tamper·시퀀스 갭 → SEV1 (감사 무결 위협)
+#   audit:detect_bola exit≠0   = deny 급증 → SEV2 (BOLA 신호 · 야간 창 MINUTES=1440)
+# 페이로드는 🟢 녹색만(uuid·카운트·상태 — PII 없음, 02 §5.3).
+#
+# 호출:  COOA_DB_USER=<owner> [AUDIT_WEBHOOK_URL=...] bin/audit-scan
+# ⚠️ set -e 함정: rake의 `abort`(비영 exit)에 스크립트가 죽으면 웹훅이 발화 못 한다. 각 실행을
+#    `|| rc=$?`로 감싸 rc만 수집하고, 종합·알림 뒤에 백스톱 exit 한다.
+set -euo pipefail
+cd "$(dirname "$0")/.." || exit 1
+
+# ── owner 가드(먼저 — 은폐 원천 차단) ────────────────────────────────────────
+# cooa_app(NOBYPASSRLS)로 돌면 RLS가 타 테넌트를 가려 위양성 "OK"가 최악의 결과다. 접속 role의
+# pg_roles 속성이 BYPASSRLS(또는 SUPERUSER)일 때만 통과.
+require_owner() {
+  bin/rails runner - <<'RUBY'
+row = ActiveRecord::Base.connection.select_value(
+  "SELECT rolbypassrls OR rolsuper FROM pg_roles WHERE rolname = current_user"
+)
+exit(ActiveModel::Type::Boolean.new.cast(row) ? 0 : 1)
+RUBY
+}
+
+if ! require_owner; then
+  echo "audit-scan은 owner(BYPASSRLS)로 실행 — cooa_app이면 RLS가 타 테넌트를 은폐(위양성 OK). COOA_DB_USER=owner 붙여라" >&2
+  exit 1
+fi
+
+echo "▶ audit-scan (owner 야간 스캔) — $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
+# [1] 체인 무결(전 테넌트). abort=SEV1. set -e에 죽지 않게 rc만 수집(2>&1 — rake abort는 stderr).
+verify_rc=0
+verify_out=$(bin/rails audit:verify 2>&1) || verify_rc=$?
+printf '%s\n' "$verify_out"
+
+# [2] BOLA 급증(야간 창 1440분). abort=SEV2. 동일하게 rc 수집.
+bola_rc=0
+bola_out=$(MINUTES=1440 bin/rails audit:detect_bola 2>&1) || bola_rc=$?
+printf '%s\n' "$bola_out"
+
+# ── 종합 판정 ────────────────────────────────────────────────────────────────
+# 체인 파손(SEV1)이 BOLA(SEV2)보다 우선.
+if [ "$verify_rc" -ne 0 ]; then
+  sev="SEV1"
+elif [ "$bola_rc" -ne 0 ]; then
+  sev="SEV2"
+else
+  sev="OK"
+fi
+
+if [ "$verify_rc" -eq 0 ]; then verify_state="OK"; else verify_state="FAILED"; fi
+if [ "$bola_rc" -eq 0 ]; then bola_state="OK"; else bola_state="HOT"; fi
+
+# 요약(🟢 녹색만). 실패 probe의 요지 라인만 추출 → 개행 제거·따옴표/백슬래시 제거로 JSON 안전.
+detail=$(printf '%s\n' "$verify_out" "$bola_out" | grep -E 'FAILED|BOLA\?' | tr '\n' ';' | tr -d '"\\' || true)
+summary="audit:verify=${verify_state} audit:detect_bola=${bola_state} ${detail}"
+
+echo "── 종합: sev=${sev} · ${summary}"
+
+# ── 알림 싱크(02 §5.3) ───────────────────────────────────────────────────────
+# 미설정이면 로그만. best-effort — 웹훅 실패가 스캔 결과(exit)를 가리지 않게 한다.
+if [ -n "${AUDIT_WEBHOOK_URL:-}" ]; then
+  payload=$(printf '{"sev":"%s","summary":"%s"}' "$sev" "$summary")
+  if curl -fsS -m 10 -X POST -H 'Content-Type: application/json' -d "$payload" "$AUDIT_WEBHOOK_URL" >/dev/null; then
+    echo "  → webhook posted (sev=${sev})"
+  else
+    echo "  → webhook POST 실패(non-fatal)" >&2
+  fi
+else
+  echo "  → AUDIT_WEBHOOK_URL 미설정 — 로그만(sev=${sev})"
+fi
+
+# GHA/cron 백스톱: 웹훅 발화 후 finding 있으면 비영 exit로 job도 red(웹훅 미설정/실패 대비 2차 신호).
+if [ "$verify_rc" -ne 0 ] || [ "$bola_rc" -ne 0 ]; then
+  exit 1
+fi
+echo "✔ audit-scan OK — 체인 무결 · BOLA 없음."

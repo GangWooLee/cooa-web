@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# bin/release-migrate — owner(BYPASSRLS) 권한 릴리스 스텝. 앱(cooa_app) 스왑 **전에** 별도
+# owner-크레덴셜 one-off로 실행한다. prod-cutover.md §7의 1~3단계를 스크립트화(재발명 아님 ·
+# 사람 누락 방지)한 것으로, DESIGN-운영-06-신뢰성 §2.2 게이트 체인을 코드로 강제한다:
+#   [1] db:migrate     ⚠️ db:prepare 금지 — fresh DB서 db:seed 자동실행(데모 org를 prod에 주입)
+#   [2] rls:grant_app  structure.sql가 GRANT를 strip → 스키마 로드 후 매 릴리스 필수 · 멱등
+#   [3] rls:audit      하드 배포 게이트 — RLS 누락·audit_logs UPDATE/DELETE 권한 있으면 abort=배포 차단
+#   + solid_* 별도 DB grant 안내(§7-2 — primary와 별개 · 미자동화)
+#
+# 호출:  COOA_DB_USER=<owner> RAILS_ENV=production bin/release-migrate
+#        (Kamal pre-deploy 훅 또는 CI migrate-job이 owner 시크릿과 함께 — 배선은 실 배포 대상 확정 시)
+# set -e: 어느 스텝이든 실패하면 즉시 중단 → 앱 스왑 안 함(1 성공→2, 3 abort 없어야→앱 스왑).
+set -euo pipefail
+cd "$(dirname "$0")/.." || exit 1
+
+# ── owner 가드(먼저) ─────────────────────────────────────────────────────────
+# 접속 role이 BYPASSRLS(또는 SUPERUSER)가 아니면 중단. cooa_app(NOBYPASSRLS)로 마이그하면 DDL이
+# 거부되고(테이블 소유자 아님·크래시), grant/audit도 무의미하다. current_user의 pg_roles 속성 조회.
+require_owner() {
+  bin/rails runner - <<'RUBY'
+row = ActiveRecord::Base.connection.select_value(
+  "SELECT rolbypassrls OR rolsuper FROM pg_roles WHERE rolname = current_user"
+)
+exit(ActiveModel::Type::Boolean.new.cast(row) ? 0 : 1)
+RUBY
+}
+
+if ! require_owner; then
+  echo "release-migrate는 owner(BYPASSRLS)로 실행 — COOA_DB_USER=owner 붙여라" >&2
+  exit 1
+fi
+
+echo "▶ release-migrate (owner 권한 릴리스 스텝) — prod-cutover §7 / DESIGN-운영-06 §2.2"
+
+# [1] 스키마+마이그 (owner). db:prepare 금지(seed 자동실행 차단).
+echo "  [1/3] db:migrate  (⚠️ db:prepare 금지)"
+bin/rails db:migrate
+
+# [2] grant 재적용 (멱등). structure.sql가 GRANT를 strip → 스키마 로드 후 매번 필수.
+echo "  [2/3] rls:grant_app  (structure.sql GRANT strip 보정 · 멱등)"
+bin/rails rls:grant_app
+
+# [3] 배포 게이트: RLS 자세 + append-only 권한. 실패 시 set -e로 즉시 abort → 앱 스왑 차단.
+echo "  [3/3] rls:audit  (하드 배포 게이트)"
+bin/rails rls:audit
+
+# solid_* 별도 DB(queue/cache/cable) grant는 primary와 별개 — rls:grant_app이 커버 못 함(§7-2).
+echo "  ℹ solid_* 별도 DB(queue/cache/cable) grant는 primary와 별개 · 미자동화(§7-2):"
+echo "    (a) 세 DB를 소유자=cooa_app으로 생성(권장 · 이후 solid 마이그 자동) 또는"
+echo "    (b) 각 DB에 SELECT,INSERT,UPDATE,DELETE + 시퀀스 USAGE 수동 grant(매 릴리스 재-grant)."
+echo "    앱 컨테이너엔 owner 시크릿(COOA_DB_USER/COOA_DB_PASSWORD) 미주입 — RLS 우회 방지(§10)."
+
+echo "✔ release-migrate 완료 — 이제 앱(cooa_app) 스왑 진행 가능."

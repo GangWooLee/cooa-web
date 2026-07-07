@@ -1,8 +1,14 @@
 #!/bin/bash -e
 
-# If running the rails server then create or migrate existing database
+# db:prepare는 non-prod에서만(로컬/CI 편의). production에서는 마이그를 owner 권한 릴리스 스텝
+# (bin/release-migrate)이 선실행하고, 앱(cooa_app)은 이미 마이그된 스키마 위에서 부팅만 한다.
+# cooa_app은 DDL 불가(크래시루프)이고 fresh DB면 prod seed 가드로 abort → prod db:prepare 금지.
+# 초기 부트스트랩(빈 인프라 최초 스키마 적재) 등 예외는 RUN_DB_PREPARE=1 옵트인 — 그때도 owner
+# 크레덴셜을 넣어야 성공한다(cooa_app로는 여전히 실패). 근거: DESIGN-운영-06-신뢰성 §1.2a · prod-cutover §7.
 if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
-  ./bin/rails db:prepare
+  if [ "$RAILS_ENV" != "production" ] || [ "$RUN_DB_PREPARE" == "1" ]; then
+    ./bin/rails db:prepare
+  fi
 fi
 
 exec "${@}"

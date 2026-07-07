@@ -1,0 +1,58 @@
+name: audit-scan
+
+# owner(BYPASSRLS) 야간 감사 스캔 — 전 테넌트 해시체인 무결(audit:verify) + BOLA 급증(detect_bola).
+# recurring.yml에 넣지 않는다: SolidQueue는 cooa_app(FORCE RLS)로 잡을 돌려 타 테넌트를 은폐하고
+# "이상 없음" 위양성을 낸다(DESIGN-운영-07 §1.1). owner로 **스케줄 밖** 실행이 정본 → 이 워크플로.
+#
+# ⚠️ secrets 주입(COOA_DB_*·AUDIT_WEBHOOK_URL·prod 부팅 시크릿)과 prod DB에 닿는 러너(self-hosted 등)
+#    배선은 **실 배포 대상 확정 후**. 그 전까지 아래 preflight 가드가 스킵해 빈 리포가 red 되지 않게 한다.
+
+on:
+  schedule:
+    - cron: "0 18 * * *"   # 매일 18:00 UTC = 03:00 KST 야간 창(스크립트가 MINUTES=1440으로 하루치 훑음)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  audit-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Preflight — owner DB 시크릿 미설정이면 스킵(리포 green 유지)
+        id: preflight
+        env:
+          COOA_DB_USER: ${{ secrets.COOA_DB_USER }}
+        run: |
+          if [ -z "${COOA_DB_USER}" ]; then
+            echo "::notice::COOA_DB_USER secret 미설정 — 배포 대상 미배선. audit-scan 스킵."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.preflight.outputs.run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Ruby + bundle
+        if: steps.preflight.outputs.run == 'true'
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: 야간 owner 감사 스캔
+        if: steps.preflight.outputs.run == 'true'
+        env:
+          RAILS_ENV: production
+          # owner(BYPASSRLS) 크레덴셜 — database.yml app_role seam을 owner로 오버라이드(COOA_DB_USER가 이김).
+          COOA_DB_USER: ${{ secrets.COOA_DB_USER }}
+          COOA_DB_PASSWORD: ${{ secrets.COOA_DB_PASSWORD }}
+          COOA_DB_HOST: ${{ secrets.COOA_DB_HOST }}
+          # 알림 싱크(02 §5.3) — 미설정이면 스크립트가 로그만 남김.
+          AUDIT_WEBHOOK_URL: ${{ secrets.AUDIT_WEBHOOK_URL }}
+          # prod 부팅 시크릿(러너가 prod DB에 접근 가능해질 때 함께 주입):
+          #   SECRET_KEY_BASE(세션) · omniauth 부팅 가드(KC 사용 시 KC_ISSUER, 아니면 GOOGLE_CLIENT_*).
+          SECRET_KEY_BASE: ${{ secrets.SECRET_KEY_BASE }}
+        run: bin/audit-scan
