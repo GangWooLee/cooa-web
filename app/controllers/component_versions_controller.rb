@@ -1,8 +1,9 @@
 class ComponentVersionsController < ApplicationController
   # 특정 버전의 실제 파일 보기 (전체 페이지 — 드로어 아님)
   def show
-    @version = ComponentVersion.includes(:created_by, :ingredients, :annotations,
-                                         component: { product: { product_members: :user } }).find(params[:id])
+    # created_by/pm.user는 저작권·담당자 뷰에서 표시 리졸버(account-우선)를 타므로 :account까지 프리로드(R5).
+    @version = ComponentVersion.includes({ created_by: :account }, :ingredients, :annotations,
+                                         component: { product: { product_members: { user: :account } } }).find(params[:id])
     authorize @version, :view_component_version?
     @component = @version.component
     @product   = @version.product
@@ -10,10 +11,13 @@ class ComponentVersionsController < ApplicationController
     idx        = @siblings.index { |v| v.id == @version.id }
     @prev      = idx&.positive? ? @siblings[idx - 1] : nil
     @next      = idx && idx < @siblings.size - 1 ? @siblings[idx + 1] : nil
-    @annotations = @version.annotations.ordered.includes(:created_by, comments: :author)
+    # 어노테이션 created_by·댓글 author는 표시 리졸버(account-우선)를 타므로 :account까지 프리로드(R5).
+    @annotations = @version.annotations.ordered.includes({ created_by: :account }, comments: { author: :account })
     # 버전 리뷰 패널: 리뷰는 버전에 앵커(스크리닝 비의존) — RA가 검토 중 스크리닝 수행. 스크리닝 링크는
     # 무조건 렌더되므로 latest_run 프리로드 불요(죽은 쿼리 제거).
-    @approval_request = ApprovalRequest.includes(:requested_reviewers).find_by(component_version_id: @version.id)
+    # 요청자(submitter)·지정 리뷰어는 리뷰 패널에서 표시 리졸버(account-우선)를 타므로 :account까지 프리로드(R5).
+    @approval_request = ApprovalRequest.includes({ requested_reviewers: :account }, submitter: :account)
+                                       .find_by(component_version_id: @version.id)
     @review = ReviewPanelPresenter.new(version: @version, request: @approval_request,
                                        open_feedback_count: @annotations.count(&:open?))
     TabHistory.track(session, "v", @version.id) # 헤더 히스토리 — 버전 파일 보기

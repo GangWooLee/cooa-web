@@ -13,15 +13,20 @@ class SettingsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "update persists profile prefs to the ACCOUNT columns (not the locked users table)" do
-    user_name_before = kim.user.name
+    # 원 컬럼 기준(리졸버 아님) — 개명은 accounts에만 저장되고 users 컬럼은 불변임을 검증하므로 self[:name]을 본다.
+    # (User#name은 이제 account-우선 리졸버라 개명 후엔 새 이름을 돌려준다 — F4. 그건 저작권 뷰 일관 반영이 목적이고,
+    # 여기 검증 대상인 "users 테이블 잠금"은 원 컬럼으로 봐야 의미가 산다.)
+    user_name_before = kim.user[:name]
     patch settings_path, params: { account: { display_name: "쿠아 김", avatar_color: "#2d5a8e", job_title: "ra" } }
     assert_redirected_to settings_path
     acct = kim
     assert_equal "쿠아 김", acct[:display_name]
     assert_equal "#2d5a8e", acct[:avatar_color]
     assert_equal "ra", acct[:job_title]
-    # 전역 users(person)는 잠금 — 프로필 편집이 절대 건드리지 않는다.
-    assert_equal user_name_before, acct.user.reload.name
+    # 전역 users(person) 컬럼은 잠금 — 프로필 편집이 절대 건드리지 않는다(원 컬럼으로 확인).
+    assert_equal user_name_before, acct.user.reload[:name]
+    # 표시 리졸버는 account-우선 — User#name(저작권 뷰 경로)도 개명을 반영한다(F4).
+    assert_equal "쿠아 김", acct.user.name
     # 표시 해석은 account 우선.
     assert_equal "쿠아 김", acct.name
     assert_equal "#2d5a8e", acct.avatar_color

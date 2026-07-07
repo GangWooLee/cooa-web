@@ -27,7 +27,9 @@ module ReviewCandidates
     # grant 중 external_collaborator 외의 것이 하나라도 있는 계정만 후보(external + 다른 역할 병존은 다른 역할 근거로
     # 포함, external뿐인 계정만 제외 — 자기 스코프 체인에서도). 로스터/멤버 요약(표시 평면)은 이와 무관하게 불변.
     account_ids = rel.where.not(role_key: "external_collaborator").select(:account_id)
-    users = User.where(id: Account.where(id: account_ids).where.not(user_id: nil).select(:user_id))
+    # 후보는 리뷰 패널 체크박스에서 u.name/u.role_short(표시 리졸버 account-우선)로 렌더되므로 :account를 프리로드해
+    # 후보 루프의 N+1을 차단한다(R5). user_ids_for(id만 소비) 경로엔 배치 1쿼리 오버헤드뿐 — N+1 아님.
+    users = User.includes(:account).where(id: Account.where(id: account_ids).where.not(user_id: nil).select(:user_id))
     users = users.where.not(id: exclude_user_id) if exclude_user_id
     users.to_a
   end

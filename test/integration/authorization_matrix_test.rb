@@ -23,7 +23,8 @@ require "test_helper"
 #   component_versions#create upload_version           app/controllers/component_versions_controller.rb:34
 #   screenings#run_screening run_screening             app/controllers/screenings_controller.rb:13
 #   annotations#create       leave_feedback            app/controllers/annotations_controller.rb:9
-#   approval_requests#create submit_for_approval       app/controllers/approval_requests_controller.rb:13
+#   approval_requests#create submit_for_approval ∨ route_for_review (ComponentVersionPolicy 오버라이드로 OR — 외부
+#     협력자 검토 요청 활성화) app/controllers/approval_requests_controller.rb:12 / app/policies/component_version_policy.rb
 #   approval_requests#confirm approve*  (손-핀: confirm_review? = 비-리뷰어 순수계정에선 can?(:approve)로 환원) app/controllers/approval_requests_controller.rb:28 / app/policies/approval_request_policy.rb:6
 #   approval_requests#claim  approve*  (손-핀: claim? = can?(:approve) + 미배정)                  app/controllers/approval_requests_controller.rb:47 / app/policies/approval_request_policy.rb:13
 #   invitations#create       manage_members            app/controllers/invitations_controller.rb (MemberAdministration#authorize_member_write!:26)
@@ -65,7 +66,9 @@ class AuthorizationMatrixTest < ActionDispatch::IntegrationTest
     { name: "annotations#create", verb: "leave_feedback",
       request: -> { post component_version_annotations_path(hero_v5),
                     params: { box_x: 10, box_y: 10, box_w: 5, box_h: 5, category: "오탈자", body: "mx feedback" } } },
-    { name: "approval_requests#create", verb: "submit_for_approval",
+    # 리뷰 요청 게이트 = submit_for_approval ∨ route_for_review(ComponentVersionPolicy#submit_for_approval? OR).
+    # verbs(OR)로 도출 → external_collaborator·approver·brand_admin(route_for_review 보유)이 deny→allow로 플립.
+    { name: "approval_requests#create", verbs: %w[submit_for_approval route_for_review],
       request: -> { post approval_requests_path, params: { component_version_id: hero_v5.id } } },
     # 손-핀: confirm_review? = 비-리뷰어·비-제출자 순수계정에선 can?(:approve)로 환원(정책 approval_request_policy.rb:6).
     { name: "approval_requests#confirm", verb: "approve",
@@ -170,9 +173,11 @@ class AuthorizationMatrixTest < ActionDispatch::IntegrationTest
     acc
   end
 
+  # verb(단일) 또는 verbs(OR 집합 — 예: 리뷰 요청 = submit_for_approval ∨ route_for_review). 어느 verb라도
+  # 매트릭스가 허용하면 allow(정책의 OR 술어와 도출을 일치시킨다).
   def endpoint_allows?(ep, role_key)
     return true if ep[:all_allow]
-    Authz::PermissionMatrix.allows?(role_key, ep[:verb])
+    (ep[:verbs] || [ ep[:verb] ]).any? { |v| Authz::PermissionMatrix.allows?(role_key, v) }
   end
 
   # 파괴/부작용 엔드포인트의 전용 일회용 타깃(공유 시드 불변 유지). 매 테스트 reseed 후 새로 만든다.

@@ -13,7 +13,7 @@
         <label class="block text-caption font-bold text-muted">이름</label>
         <%# 원 컬럼 기준 — 폴백 해석값을 그대로 영속하지 않는다(리뷰 F1). 비우고 저장 = 기본값으로 복귀. %>
         <input type="text" name="account[display_name]" value="<%= current_account[:display_name] %>" maxlength="80"
-               placeholder="<%= current_account.user&.name || "이름" %>"
+               placeholder="<%= current_account.user&.[](:name) || "이름" %>"
                class="mt-1 w-full rounded-lg border border-line-soft px-3 py-2 text-body focus:border-cooa focus:outline-none focus:ring-1 focus:ring-cooa">
         <p class="mt-1 text-caption text-muted">비워 두면 기본 이름을 사용합니다.</p>
       </div>

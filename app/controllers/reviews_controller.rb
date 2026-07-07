@@ -10,7 +10,7 @@ class ReviewsController < ApplicationController
                   .where(status: "pending")
                   .joins(:approval_request_reviewers)
                   .where(approval_request_reviewers: { reviewer_id: current_user.id })
-                  .includes(:submitter, component_version: { component: :product })
+                  .includes({ submitter: :account }, component_version: { component: :product })
 
     # 가시 제품(정책 스코프) — Segment A 브랜드 필터·Segment B 교차에 공용(같은 관계 객체라 로드 1회 캐시).
     visible_products = policy_scope(Product.all)
@@ -29,7 +29,7 @@ class ReviewsController < ApplicationController
                    .where.not(submitter_id: current_user.id)
                    .where.missing(:approval_request_reviewers)
                    .where(component_version_id: ComponentVersion.where(component_id: Component.where(product_id: visible_products.select(:id))))
-                   .includes(:submitter, component_version: { component: :product })
+                   .includes({ submitter: :account }, component_version: { component: :product })
                    .order(requested_at: :asc)
     @inbox = ReviewInboxPresenter.new(unassigned: unassigned,
                                       products: visible_products, brand_filter: params[:brand])

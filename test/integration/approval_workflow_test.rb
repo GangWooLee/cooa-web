@@ -138,4 +138,34 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
     assert_match "리뷰 대기", response.body # pending; 김쿠아=요청자 → SoD note
     assert_match "SoD", response.body
   end
+
+  # D2-A(리뷰 F4): 개명(Account display_name)이 저작권 뷰까지 일관 반영되는지 — hero v5는 kim이 created_by이고
+  # a3 댓글 author이며 리뷰 요청 시 submitter라, 세 저작권 채널이 모두 kim으로 겹친다(개명=한 번에 검증).
+  test "D2 개명 일관: kim 개명 후 버전 created_by·댓글 author·리뷰 요청자 표기가 새 이름" do
+    kim_acct = Account.find_by!(email: "kim@cooa.dev")
+    kim_user = kim_acct.user
+    old_name = kim_user[:name] # 도메인 원값(김쿠아)
+
+    patch settings_path, params: { account: { display_name: "쿠아 김대표" } } # accounts 컬럼 저장
+    submit! # 리뷰 요청(요청자=kim)
+
+    get component_version_path(@v)
+    assert_response :success
+    # created_by(kim)·댓글 author(kim, a3 두 번째 코멘트)·리뷰 요청자(kim) 모두 새 이름으로.
+    assert_includes response.body, "쿠아 김대표"
+    # 옛 이름(김쿠아)은 kim 저작권 표기에서 잔존하지 않는다(다른 인물 song/lee/park은 원 이름 유지 — "쿠아" 접미 공유하나
+    # "김쿠아"는 kim 전용). 개명 리졸버가 저작권 뷰까지 관통했다는 음성 증거.
+    refute_includes response.body, old_name
+
+    # 리졸버는 읽기 전용 — users 컬럼(도메인 원값)은 불변.
+    assert_equal old_name, kim_user.reload[:name]
+  end
+
+  # D2-A(R5): 비교 화면은 from 버전 어노테이션의 author를 다수 렌더(hero v5=5건, author song/lee/kim/park).
+  # 표시 리졸버가 account-우선이 되며 author→account 프리로드가 없으면 N+1 → prosopite raise. 게이트로 고정.
+  test "D2 비교 화면 렌더는 N+1 없음 (author→account 프리로드 게이트)" do
+    v6 = @v.component.component_versions.find_by!(version_number: 6)
+    assert_no_n_plus_one { get comparison_path(from_id: @v.id, to_id: v6.id) }
+    assert_response :success
+  end
 end

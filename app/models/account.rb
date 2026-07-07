@@ -31,10 +31,14 @@ class Account < ApplicationRecord
 
   # Display identity — account-first, user-fallback. Self-service profile edits (display_name/avatar_color/
   # job_title, tenant-scoped on accounts) win over the global User person. account-subject views (sidebar,
-  # member lists) render via these resolvers; content-authorship views still show the underlying User.
-  def name = self[:display_name].presence || user&.name
-  def avatar_color = self[:avatar_color].presence || user&.avatar_color || DEFAULT_AVATAR_COLOR
-  def job_key = self[:job_title].presence || user&.role
+  # member lists) render via these resolvers; content-authorship views resolve the SAME preference via
+  # User's reverse resolver (User#name etc, reflecting this account under RLS).
+  # 순환 금지(단방향 의존): 폴백은 User의 원컬럼(user&.[](:col))만 읽는다 — user&.name/#avatar_color(리졸버)를
+  # 부르면 그쪽이 다시 account를 봐 상호재귀가 된다(같은 값 수렴이라 무한루프는 아니나 비효율). User 쪽 리졸버도
+  # account 원컬럼만 읽어 대칭을 이룬다.
+  def name = self[:display_name].presence || user&.[](:name)
+  def avatar_color = self[:avatar_color].presence || user&.[](:avatar_color) || DEFAULT_AVATAR_COLOR
+  def job_key = self[:job_title].presence || user&.[](:role)
   def role_label = job_key && (User::ROLE_LABELS[job_key] || job_key)
   def role_short = job_key && (User::ROLE_SHORT[job_key] || job_key)
 

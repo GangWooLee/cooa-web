@@ -271,7 +271,8 @@ class ApplicationController < ActionController::Base
   # workspace(WS-track /workspaces/:id): 가시집합을 그 작업실의 모든 루트 서브트리로 좁혀 작업실 페이지 트리를
   # 만든다(가시성과 교집합이라 스코프 계정도 안전). 반환값 = 필터 전 가시 배열(작업실 가시성 판정용 — dashboard#index).
   def load_dashboard_rows(workspace: nil)
-    visible = policy_scope(Product.includes(:parent, :owner, :workspace, { product_members: :user },
+    # 트리 행의 담당자 아바타(pm.user)는 표시 리졸버(account-우선)를 타므로 :account까지 프리로드(R5).
+    visible = policy_scope(Product.includes(:parent, :owner, :workspace, { product_members: { user: :account } },
                                             { components: :component_versions })).to_a
     rows_source = visible
     if workspace

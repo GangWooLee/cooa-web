@@ -2,15 +2,15 @@ require "test_helper"
 
 # W2 페르소나 저니 — 순수-단일역할 신원의 능력 체인(han/yu/choi). 단발 allow/deny 전수는 authorization_matrix
 # 소관이라, 여기선 "생성물이 다음 스텝 입력"인 체인·기존 저니가 안 다룬 축만 잡는다.
-#   J3 external(choi): 자기 스코프 제품(CO0200)에 열람·업로드·피드백 O · 조상/타제품 비가시 · run_screening·리뷰요청
-#      은 external 상한 밖 → deny. (scoped_access는 choi 읽기 + 타제품 쓰기-deny만 — 여기는 choi의 자기제품 쓰기 능력.)
+#   J3 external(choi): 자기 스코프 제품(CO0200)에 열람·업로드·피드백 O · 조상/타제품 비가시 · run_screening deny · 리뷰요청 O
+#      (run_screening=external 상한 밖 → deny · 리뷰요청 route_for_review=상한 안 → 요청 생성, SoD로 본인 확인은 deny). (scoped_access는 choi 읽기 + 타제품 쓰기-deny만 — 여기는 choi의 자기제품 쓰기 능력.)
 #   J4 viewer(yu): 대시보드→작업실→제품→버전→스크리닝→비교 읽기 순회 전부 200 · 대표 쓰기 2건 deny.
 #   J5 assignee(han): 트리 편집(manage_product/upload_version) O · 멤버 관리 deny · 리뷰 라운드트립 참여(요청받음=확인).
 class JourneysRolesTest < ActionDispatch::IntegrationTest
   def fresh_artwork = fixture_file_upload("box.jpg", "image/jpeg")
 
   # ── J3: external_collaborator(choi @ CO0200) ────────────────────────────────
-  test "J3 external(choi): CO0200 열람·업로드·피드백 O · 조상/타제품 비가시 · 스크리닝·리뷰요청 deny" do
+  test "J3 external(choi): CO0200 열람·업로드·피드백 O · 조상/타제품 비가시 · 스크리닝 deny · 리뷰요청 O(route_for_review)" do
     choi   = Account.find_by!(email: "choi@partner.example")
     co0200 = Product.find_by!(code: "CO0200")
     cica   = Product.find_by!(name: "시카 수딩 크림") # CO0200의 (비가시) 조상 브랜드 루트
@@ -43,13 +43,23 @@ class JourneysRolesTest < ActionDispatch::IntegrationTest
     get product_path(co0001)
     assert_redirected_to root_path
 
-    # run_screening·리뷰요청은 external 상한(matrix) 밖 → 비-GET deny=403, 부작용 없음
+    # run_screening은 external 상한(matrix) 밖 → 비-GET deny=403, 부작용 없음
     post run_screening_component_version_path(v)
     assert_response :forbidden
-    assert_no_difference "ApprovalRequest.count" do
+
+    # 리뷰 요청(route_for_review)은 external 상한 안 — "다 올렸으니 검토해 주세요" 루프를 제품 안으로
+    # (ComponentVersionPolicy#submit_for_approval? = submit_for_approval ∨ route_for_review). ApprovalRequest 생성.
+    assert_difference "ApprovalRequest.count", 1 do
       post approval_requests_path, params: { component_version_id: v.id }
     end
+    assert_response :see_other # redirect_back → 303(see_other)
+    req = ApprovalRequest.find_by!(component_version_id: v.id)
+    assert_equal "pending", req.status
+
+    # SoD 불변: choi는 approve verb 없고 본인이 요청자(submitter)라 본인 요청을 확인할 수 없다(confirm_review? deny).
+    post confirm_approval_request_path(req)
     assert_response :forbidden
+    assert_equal "pending", req.reload.status, "SoD: 요청자 본인 확인 불가 — 여전히 pending"
   end
 
   # ── J4: viewer(yu, tenant-wide) 읽기 순회 ───────────────────────────────────

@@ -7,8 +7,9 @@ class ProductsController < ApplicationController
 
   # ② 데이터 매핑 = 제품 클릭 상세보기 (허브) — 트리 노드
   def show
-    @product = Product.includes(:owner, :parent, :children, product_members: :user,
-                                components: { component_versions: [ :ingredients, { annotations: [ :created_by, :comments ] } ] }).find(params[:id])
+    # pm.user·어노테이션 created_by는 상세/구성요소 뷰에서 표시 리졸버(account-우선)를 타므로 :account까지 프리로드(R5).
+    @product = Product.includes(:owner, :parent, :children, product_members: { user: :account },
+                                components: { component_versions: [ :ingredients, { annotations: [ { created_by: :account }, :comments ] } ] }).find(params[:id])
     authorize @product, :view_product?
     # 폴더는 드로어 대상 아님 — 풀요청이면 대시보드(해당 폴더 펼침)로(브레드크럼/직접 URL 방어)
     return redirect_to root_path(focus: @product.id) if @product.folder? && !turbo_frame_request?

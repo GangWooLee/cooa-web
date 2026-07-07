@@ -5,7 +5,9 @@ class ComparisonsController < ApplicationController
   def show
     authorize @from, :view_component_version?
     authorize @to, :view_component_version? # m-3 (P2): the comparison target needs authz too, not just @from
-    @annotations = @from.annotations.ordered.includes(:created_by, :resolved_by, comments: :author)
+    # created_by·댓글 author는 비교 화면에서 표시 리졸버(account-우선)를 타므로 :account까지 프리로드(R5).
+    # resolved_by는 이 뷰에서 이름 렌더 없음(상태 로직만) — 확장 불요.
+    @annotations = @from.annotations.ordered.includes({ created_by: :account }, :resolved_by, comments: { author: :account })
     @versions    = @component.versions_asc
     TabHistory.track(session, "c", "#{@from.id}-#{@to.id}") # 헤더 히스토리 — 버전 비교
   end
