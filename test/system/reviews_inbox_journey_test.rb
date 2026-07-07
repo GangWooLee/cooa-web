@@ -2,7 +2,7 @@ require "application_system_test_case"
 
 # 리프레임 후속 E2E — "내게 요청된 리뷰" 수신함: 지정 리뷰어에게 실제로 도달하고 거기서 확인까지.
 # kim이 lee 지정 요청 → lee 로그인 → 사이드바 수신함 → 행 클릭 → 검토 확인. + park(비요청) 빈 수신함.
-class ReviewsInboxTest < ApplicationSystemTestCase
+class ReviewsInboxJourneyTest < ApplicationSystemTestCase
   def hero_v5
     Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box")
            .component_versions.find_by(version_number: 5)

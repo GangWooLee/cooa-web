@@ -2,7 +2,7 @@ require "application_system_test_case"
 
 # 시나리오 ⑤ (D3 · 시스템): 홈 "새 작업실" 모달(이름 + 멤버 4종) → 빈 작업실 진입(빈 상태) → 툴바로 첫 폴더
 # 생성(이 작업실 귀속 = JS workspace_id 스레딩) → 카드 우클릭 이름 변경(prompt→PATCH). 기본 로그인 = kim(owner).
-class WorkspaceLifecycleTest < ApplicationSystemTestCase
+class WorkspaceLifecycleJourneyTest < ApplicationSystemTestCase
   test "홈 새 작업실 모달(이름+멤버 4종) → 빈 상태 → 첫 폴더(작업실 귀속) → 카드 우클릭 이름변경" do
     choi = Account.find_by!(email: "choi@partner.example") # 비-전역 멤버 후보
     page.current_window.resize_to(1440, 900)

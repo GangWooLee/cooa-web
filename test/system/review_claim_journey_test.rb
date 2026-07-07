@@ -2,7 +2,7 @@ require "application_system_test_case"
 
 # Stage 1 E2E: park(contributor)가 리뷰어 미지정으로 리뷰 요청 → lee(approver)가 인박스 Segment B(미배정)에서
 # "내가 맡기"로 자기배정 → 행이 Segment A로 이동 → 버전에서 검토 확인. system_sign_in 재호출 = 신원 전환.
-class ReviewClaimTest < ApplicationSystemTestCase
+class ReviewClaimJourneyTest < ApplicationSystemTestCase
   def hero_v5
     Product.find_by(code: "CO0001").components.find_by(component_type: "outer_box")
            .component_versions.find_by(version_number: 5)
