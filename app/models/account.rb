@@ -2,6 +2,9 @@
 # Email is unique PER TENANT (see migration) — never global.
 class Account < ApplicationRecord
   STATUSES = %w[invited active suspended deprovisioned].freeze
+  DEFAULT_AVATAR_COLOR = "#8e0300".freeze
+  # 셀프 프로필 편집 UI가 제공하는 큐레이션 스와치(브랜드 정합). 저장은 hex 문자열.
+  AVATAR_SWATCHES = %w[#8e0300 #b23a2e #c9822b #5f8f2e #2f6f6b #2d5a8e #5b3f8e #3d3d3d].freeze
 
   belongs_to :organization, foreign_key: :tenant_id, inverse_of: :accounts
   # Strategy B (Phase 2a-1): the linked User is the domain "person" (owner_id / *_by_id FK target) and
@@ -14,14 +17,26 @@ class Account < ApplicationRecord
 
   validates :email, presence: true
   validates :status, inclusion: { in: STATUSES }
+  # 프로필 폼의 "비움 = 기본값 사용" 의미론: 빈 문자열을 nil로 정규화해 폴백 해석(display resolver)이 살아난다.
+  normalizes :display_name, :avatar_color, :job_title, with: ->(v) { v.presence }
+  # 셀프 프로필 편집분(계정 설정) — 전부 선택(nil=폴백). hex 6자리 · 직무는 User 역할 enum 키 · 이름 상한.
+  validates :avatar_color, format: { with: /\A#[0-9a-fA-F]{6}\z/, message: "색상 형식이 올바르지 않습니다" }, allow_blank: true
+  validates :job_title, inclusion: { in: User.roles.keys, message: "직무 값이 올바르지 않습니다" }, allow_blank: true
+  validates :display_name, length: { maximum: 80, message: "이름은 80자 이내여야 합니다" }, allow_blank: true
   # 바인딩 불변식: subject는 provider 네임스페이스 안에서만 의미(Google sub ≠ KC sub). 쌍으로만 세팅.
   validates :idp_provider, presence: true, if: -> { idp_subject.present? }
   validates :idp_subject,  presence: true, if: -> { idp_provider.present? }
 
   scope :active, -> { where(status: "active") }
 
-  # Display delegation — views/helpers keep calling .name/.avatar_color/.role_* on the principal.
-  delegate :name, :initial, :role_label, :role_short, :avatar_color, to: :user, allow_nil: true
+  # Display identity — account-first, user-fallback. Self-service profile edits (display_name/avatar_color/
+  # job_title, tenant-scoped on accounts) win over the global User person. account-subject views (sidebar,
+  # member lists) render via these resolvers; content-authorship views still show the underlying User.
+  def name = self[:display_name].presence || user&.name
+  def avatar_color = self[:avatar_color].presence || user&.avatar_color || DEFAULT_AVATAR_COLOR
+  def job_key = self[:job_title].presence || user&.role
+  def role_label = job_key && (User::ROLE_LABELS[job_key] || job_key)
+  def role_short = job_key && (User::ROLE_SHORT[job_key] || job_key)
 
   def active? = status == "active"
 

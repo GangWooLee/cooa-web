@@ -74,6 +74,10 @@ Rails.application.routes.draw do
   # "내게 요청된 리뷰" 수신함(내가 지정 리뷰어인 pending 요청)
   resources :reviews, only: [ :index ]
 
+  # 계정 설정(셀프 프로필 · 계정 정보 읽기 · 보안) — 항상 current_account 자기 자신만 대상(param id 없음)
+  resource :settings, only: [ :show, :update ]
+  post "/settings/sign_out_all", to: "settings#sign_out_all", as: :sign_out_all
+
   # 조직 멤버십(Phase 3) — 로스터 / 초대 생성·회수 / 초대 랜딩(티켓 → 소셜 로그인 유도)
   resources :members, only: [ :index ]
   resources :invitations, only: [ :create, :destroy ]

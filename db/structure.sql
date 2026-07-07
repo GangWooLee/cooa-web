@@ -97,6 +97,8 @@ CREATE TABLE public.accounts (
     updated_at timestamp(6) without time zone NOT NULL,
     user_id bigint,
     idp_provider character varying,
+    avatar_color character varying,
+    job_title character varying,
     CONSTRAINT accounts_status_check CHECK (((status)::text = ANY ((ARRAY['invited'::character varying, 'active'::character varying, 'suspended'::character varying, 'deprovisioned'::character varying])::text[])))
 );
 
@@ -2601,6 +2603,7 @@ ALTER TABLE public.workspaces ENABLE ROW LEVEL SECURITY;
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260707000001'),
 ('20260706000001'),
 ('20260705000007'),
 ('20260705000006'),

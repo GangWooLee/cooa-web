@@ -30,7 +30,8 @@ module UiHelper
     "pencil"       => '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
     "trash"        => '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>',
     "dots"         => '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
-    "panel-left"   => '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>'
+    "panel-left"   => '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>',
+    "logout"       => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>'
   }.freeze
 
   def ui_icon(name, size: 20, stroke: 1.7, klass: nil)
@@ -51,13 +52,15 @@ module UiHelper
                 style: "width:#{size}px;height:#{size}px;font-size:#{(size * 0.46).round}px"
   end
 
-  # 담당자 아바타 (이름 첫 글자 + 브랜드 컬러)
+  # 담당자 아바타 (이름 첫 글자 + 브랜드 컬러). User·Account 다형(name/avatar_color/role_short 리졸버).
+  # 표시 정체성이 없으면(이름 blank — 예: user 미연결 계정) 구 semantics대로 아무것도 렌더하지 않는다(리뷰 F3).
   def avatar(user, size: 26, ring: true)
-    return "".html_safe unless user
-    content_tag :span, user.name.to_s.first,
+    initial = user&.name.to_s.first
+    return "".html_safe if initial.blank?
+    content_tag :span, initial,
                 class: "inline-flex items-center justify-center rounded-full font-bold text-white #{'ring-2 ring-white' if ring}",
                 style: "width:#{size}px;height:#{size}px;font-size:#{(size * 0.42).round}px;background:#{user.avatar_color}",
-                title: "#{user.name} #{user.role_short}"
+                title: [ user.name, user.role_short ].compact.join(" ")
   end
 
   # 가시 조상 체인 (Stage 2 D3 브랜드명 유출 차단): 스코프 한정 계정에는 policy-가시 조상만 남긴다.

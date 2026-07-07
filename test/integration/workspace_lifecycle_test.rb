@@ -123,13 +123,16 @@ class WorkspaceLifecycleTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
   end
 
-  test "4종 라벨 렌더 — 작업실 사람 추가 폼 role select는 팀 4종(한글 라벨)만" do
+  test "4종 렌더 — 작업실 사람 추가 폼 role 라디오-카드는 팀 4종(한글 라벨)만" do
     sign_in_as(@kim)
     ws = Product.find_by!(name: "비타민C 브라이트닝 앰플").workspace
     get workspace_path(ws)
     assert_response :success
-    # V2: 모달 "사람 추가" 폼은 통합 엔드포인트(/workspace_memberships)로 POST(동료 즉시추가/미지 초대 자동 분기).
-    opts = css_select("form[action='#{workspace_memberships_path}'] select[name='role_key'] option").map { |o| o.text.strip }
-    assert_equal [ "관리자", "멤버", "뷰어", "외부 협력" ], opts, "작업실 사람 추가 폼 = 팀 4종 한글 라벨(전사 전용 역할 부재)"
+    # V2: 모달 "사람 추가" 폼은 통합 엔드포인트(/workspace_memberships)로 POST. 역할=라디오-카드 피커(3-tier 명확화).
+    form = "form[action='#{workspace_memberships_path}']"
+    values = css_select("#{form} input[name='role_key']").map { |i| i["value"] }
+    assert_equal %w[brand_admin contributor viewer external_collaborator], values, "작업실 폼 = 팀 4종(전사 전용 역할 부재)"
+    labels = css_select("#{form} fieldset label span.font-semibold").map { |o| o.text.strip }
+    assert_equal [ "관리자", "멤버", "뷰어", "외부 협력" ], labels
   end
 end

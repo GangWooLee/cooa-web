@@ -60,7 +60,7 @@
       <% active_ras = acc.role_assignments.select(&:active?) %>
       <div class="px-3 py-2.5 text-body">
         <div class="flex items-center gap-3">
-          <%= avatar(acc.user, size: 26, ring: false) %>
+          <%= avatar(acc, size: 26, ring: false) %>
           <span class="min-w-0 flex-1 truncate">
             <span class="font-medium text-ink"><%= acc.name || acc.email %></span>
             <span class="ml-1 text-meta text-muted"><%= acc.email %></span>

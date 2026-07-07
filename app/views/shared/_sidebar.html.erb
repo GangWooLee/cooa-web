@@ -3,16 +3,34 @@
      · 작업실 안(current_workspace) → 작업실 헤더 + "← 모든 작업실" + 그 작업실 서브트리 트리 + 검색 + 새 폴더.
      · 작업실 밖(홈·인박스·전사관리) → 작업실 목록(이름만·클릭=진입). 트리·검색 미렌더. %>
 <aside id="app-sidebar" class="hidden w-[281px] min-w-0 shrink-0 flex-col border-r border-line bg-white lg:flex">
-  <%# 사용자 (접기/펼치기는 상단바 토글로 통일) %>
-  <div class="flex min-w-0 items-center gap-2 px-3 pb-3 pt-4">
-    <%= ui_icon "user", size: 24, klass: "shrink-0 text-ink" %>
-    <span class="truncate text-[18px] font-bold text-ink"><%= current_user&.name %></span>
-    <span class="ml-auto flex shrink-0 items-center gap-1.5">
-      <span class="rounded bg-tint px-1.5 py-0.5 text-caption text-muted">데모</span>
-      <%= button_to "로그아웃", session_path, method: :delete, form: { class: "inline" },
-            class: "rounded px-1.5 py-0.5 text-caption text-muted transition hover:bg-tint hover:text-cooa" %>
-    </span>
-  </div>
+  <%# 사용자 → 계정 메뉴. 네이티브 <details>(JS 무의존 — 리뷰 F2: 로그아웃·설정 진입은 Stimulus 실패에도
+      살아야 한다. 로그인 페이지 데모 피커와 동일 선례). 트리거=아바타+이름+caret · 패널=헤더→설정→로그아웃. %>
+  <details class="relative px-3 pb-3 pt-4">
+    <summary aria-haspopup="true"
+             class="flex w-full min-w-0 cursor-pointer list-none items-center gap-2 rounded-lg px-1.5 py-1 transition hover:bg-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/50 [&::-webkit-details-marker]:hidden">
+      <%= avatar(current_account, size: 28, ring: false) %>
+      <span class="truncate text-[18px] font-bold text-ink"><%= current_account&.name %></span>
+      <span class="ml-auto flex shrink-0 items-center gap-1.5">
+        <span class="rounded bg-tint px-1.5 py-0.5 text-caption text-muted">데모</span>
+        <%= ui_icon "caret", size: 16, klass: "text-muted" %>
+      </span>
+    </summary>
+    <div role="menu"
+         class="absolute inset-x-3 top-full z-30 mt-1 overflow-hidden rounded-lg border border-line bg-white shadow-lg">
+      <div class="border-b border-line-soft px-3 py-2">
+        <div class="truncate text-body font-bold text-ink"><%= current_account&.name %></div>
+        <div class="truncate text-caption text-muted"><%= current_account&.email %></div>
+      </div>
+      <%= link_to settings_path, role: "menuitem", data: { turbo: false },
+            class: "flex items-center gap-2 px-3 py-2 text-body text-ink transition hover:bg-tint" do %>
+        <%= ui_icon "settings", size: 16, klass: "text-muted" %><span>계정 설정</span>
+      <% end %>
+      <%= button_to session_path, method: :delete, form: { class: "block", role: "menuitem" },
+            class: "flex w-full items-center gap-2 px-3 py-2 text-left text-body text-ink transition hover:bg-tint hover:text-cooa" do %>
+        <%= ui_icon "logout", size: 16, klass: "text-muted" %><span>로그아웃</span>
+      <% end %>
+    </div>
+  </details>
 
   <%# 내게 요청된 리뷰 수신함(내가 지정 리뷰어인 pending 요청) — 배지 정책 불변 %>
   <%= link_to reviews_path, data: { turbo: false },

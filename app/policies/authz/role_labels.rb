@@ -16,12 +16,14 @@ module Authz
       "assignee" => "담당 편집자"
     }.freeze
 
+    # 능력-우선 문구(D4·3-tier 명확화): 초대자가 뷰어=읽기/멤버=편집/관리자=초대 를 한눈에 구분.
+    # value(role_key)는 불변 — 라벨/설명만 표시용.
     DESCRIPTIONS = {
       "owner" => "회사 전체 관리",
-      "brand_admin" => "작업실·멤버 관리",
-      "contributor" => "업로드·피드백·리뷰 요청",
-      "viewer" => "열람만",
-      "external_collaborator" => "업로드·피드백, 승인 불가",
+      "brand_admin" => "초대·구성원 관리",
+      "contributor" => "편집 가능 — 업로드·피드백·리뷰 요청",
+      "viewer" => "볼 수만 있음 (읽기 전용)",
+      "external_collaborator" => "편집 가능·승인 불가",
       "ra_reviewer" => "검토(RA)",
       "approver" => "승인",
       "assignee" => "담당 편집"

@@ -52,7 +52,7 @@
               <% members = card[:members] %>
               <% if members.any? %>
                 <div class="flex -space-x-1.5">
-                  <% members.first(4).each do |acc| %><%= avatar(acc.user, size: 22) %><% end %>
+                  <% members.first(4).each do |acc| %><%= avatar(acc, size: 22) %><% end %>
                   <% if members.size > 4 %>
                     <span class="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-tint px-1 text-caption font-bold text-muted ring-2 ring-white">+<%= members.size - 4 %></span>
                   <% end %>

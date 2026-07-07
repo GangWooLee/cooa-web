@@ -1,6 +1,31 @@
 --- !ruby/object:ActiveRecord::ConnectionAdapters::SchemaCache
 columns:
   accounts:
+  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: avatar_color
+    cast_type: &3 !ruby/object:ActiveModel::Type::String
+      true: t
+      false: f
+      precision:
+      scale:
+      limit:
+    sql_type_metadata: &4 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::TypeMetadata
+      delegate_dc_obj: !ruby/object:ActiveRecord::ConnectionAdapters::SqlTypeMetadata
+        sql_type: character varying
+        type: :string
+        limit:
+        precision:
+        scale:
+      oid: 1043
+      fmod: -1
+    'null': true
+    default:
+    default_function:
+    collation:
+    comment:
   - &9 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
     serial:
     identity:
@@ -42,21 +67,8 @@ columns:
     identity:
     generated: ''
     name: display_name
-    cast_type: &3 !ruby/object:ActiveModel::Type::String
-      true: t
-      false: f
-      precision:
-      scale:
-      limit:
-    sql_type_metadata: &4 !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::TypeMetadata
-      delegate_dc_obj: !ruby/object:ActiveRecord::ConnectionAdapters::SqlTypeMetadata
-        sql_type: character varying
-        type: :string
-        limit:
-        precision:
-        scale:
-      oid: 1043
-      fmod: -1
+    cast_type: *3
+    sql_type_metadata: *4
     'null': true
     default:
     default_function:
@@ -141,6 +153,18 @@ columns:
       fmod: -1
     'null': false
     default: false
+    default_function:
+    collation:
+    comment:
+  - !ruby/object:ActiveRecord::ConnectionAdapters::PostgreSQL::Column
+    serial:
+    identity:
+    generated: ''
+    name: job_title
+    cast_type: *3
+    sql_type_metadata: *4
+    'null': true
+    default:
     default_function:
     collation:
     comment:
@@ -3821,4 +3845,4 @@ indexes:
     nulls_not_distinct: false
     comment:
     valid: true
-version: 20260706000001
+version: 20260707000001

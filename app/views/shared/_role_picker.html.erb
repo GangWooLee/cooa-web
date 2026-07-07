@@ -1,0 +1,16 @@
+<%# 역할 라디오-카드 피커(초대·직접 추가 공용). locals: keys(노출 역할키 배열), selected(기본 선택).
+    각 카드 = 라벨(굵게) + 능력 설명(muted) → read-only/편집/관리자를 한눈에. 네이티브 radio(JS 불필요).
+    value(role_key)는 불변 — 서버 화이트리스트(MemberAdministration#scoped_role_permitted?)가 최종 강제. %>
+<fieldset class="space-y-1.5">
+  <legend class="mb-1.5 text-caption font-bold text-muted">권한</legend>
+  <% keys.each do |rk| %>
+    <label class="flex cursor-pointer items-start gap-2.5 rounded-lg border border-line-soft px-3 py-2 transition hover:bg-tint has-[:checked]:border-cooa has-[:checked]:bg-accent">
+      <input type="radio" name="role_key" value="<%= rk %>" <%= "checked" if rk.to_s == selected.to_s %>
+             class="mt-0.5 accent-cooa">
+      <span class="min-w-0">
+        <span class="block text-body font-semibold text-ink"><%= role_label(rk) %></span>
+        <% if (desc = role_description(rk)) %><span class="block text-caption text-muted"><%= desc %></span><% end %>
+      </span>
+    </label>
+  <% end %>
+</fieldset>

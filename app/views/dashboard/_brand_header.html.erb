@@ -9,7 +9,7 @@
           class="flex min-h-[36px] cursor-pointer items-center gap-2 rounded-lg border border-line-soft bg-white px-2.5 py-1 transition hover:border-cooa/40 hover:bg-tint">
     <% if @workspace_members.any? %>
       <div class="flex -space-x-1.5">
-        <% @workspace_members.first(3).each do |acc| %><%= avatar(acc.user, size: 24) %><% end %>
+        <% @workspace_members.first(3).each do |acc| %><%= avatar(acc, size: 24) %><% end %>
       </div>
       <span class="text-meta font-medium text-ink"><%= @workspace_members.size %>명</span>
     <% else %>

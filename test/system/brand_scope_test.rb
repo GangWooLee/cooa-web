@@ -20,7 +20,7 @@ class BrandScopeTest < ApplicationSystemTestCase
     within "dialog[open]" do
       assert_no_selector "select[name='scope_product_id']", visible: :all
       fill_in "email", with: "brand-agency@vitc.dev"   # 미지 이메일(addable 아님) → 초대 분기
-      select "외부 협력", from: "role_key"               # external_collaborator(D4 라벨) — 작업실 폼은 4종만
+      find("label", text: "외부 협력").click              # external_collaborator — 라디오-카드 피커(작업실 폼 4종)
       click_button "추가"
     end
 
@@ -59,7 +59,7 @@ class BrandScopeTest < ApplicationSystemTestCase
     within "dialog[open]" do
       fill_in "email", with: "choi"                     # 부분일치 → 제안 필터
       find("li[role='option']", text: "최디자").click     # 동료 선택 → 이메일 자동 채움
-      select "멤버", from: "role_key"
+      find("label", text: "멤버").click                   # contributor — 라디오-카드 피커
       click_button "추가"
     end
 
