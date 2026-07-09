@@ -1,9 +1,9 @@
-<% content_for :title, "#{@component.display_name} #{@version.vlabel.upcase} · #{@product.code}" %>
+<% content_for :title, "#{@component.display_name} #{@version.vlabel} · #{@product.code}" %>
 <div class="flex h-full flex-col">
   <%# 헤더: 브레드크럼 + 버전 스위처 + 이전/다음 %>
   <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft px-6 py-3">
     <div class="flex items-center gap-2 text-note">
-      <%= node_breadcrumb(@product, trailing: "#{@component.display_name} #{@version.vlabel.upcase}") %>
+      <%= node_breadcrumb(@product, trailing: "#{@component.display_name} #{@version.vlabel}") %>
       <% if @version.current? %>
         <span class="rounded bg-tint px-1.5 py-0.5 text-caption font-bold text-muted">현재 버전</span>
       <% end %>
@@ -12,9 +12,9 @@
       <%# 형제 버전 스위처 (클릭 = 해당 버전 파일 보기) %>
       <div class="flex items-center gap-1">
         <% @siblings.each do |sib| %>
-          <%= link_to component_version_path(sib), title: "#{sib.vlabel.upcase} 보기",
+          <%= link_to component_version_path(sib), title: "#{sib.vlabel} 보기",
                 class: "shrink-0 rounded-lg p-0.5 transition hover:bg-accent hover:ring-2 hover:ring-cooa/40 #{'ring-2 ring-cooa' if sib.id == @version.id}" do %>
-            <%= version_chip(sib.vlabel.upcase, size: 28, active: sib.id == @version.id) %>
+            <%= version_chip(sib.vlabel, size: 28, active: sib.id == @version.id) %>
           <% end %>
         <% end %>
       </div>
@@ -37,7 +37,7 @@
       <% else %>
         <div class="flex h-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-line bg-tint-2 text-muted">
           <%= ui_icon "doc", size: 32, klass: "text-muted" %>
-          <p>아트워크 이미지 없음 · <%= @component.display_name %> <%= @version.vlabel.upcase %></p>
+          <p>아트워크 이미지 없음 · <%= @component.display_name %> <%= @version.vlabel %></p>
           <%= ui_button "파일 추가", size: :sm, href: edit_component_version_path(@version) %>
         </div>
       <% end %>
@@ -64,9 +64,9 @@
       <div id="pane-info" role="tabpanel" data-pane-switch-target="pane" data-pane="info" class="hidden min-h-0 flex-1 overflow-auto">
       <div class="border-b border-line-soft p-4">
         <div class="flex items-center gap-2">
-          <%= version_chip(@version.vlabel.upcase, size: 34, active: @version.current?) %>
+          <%= version_chip(@version.vlabel, size: 34, active: @version.current?) %>
           <div class="min-w-0">
-            <div class="text-section font-bold text-ink"><%= @component.display_name %> <%= @version.vlabel.upcase %></div>
+            <div class="text-section font-bold text-ink"><%= @component.display_name %> <%= @version.vlabel %></div>
             <div class="text-meta text-muted"><%= @product.code %> · <%= @product.name %></div>
           </div>
         </div>
@@ -200,7 +200,7 @@
     <% end %>
     <% if @prev %>
       <%= ui_button variant: :secondary, href: comparison_path(from_id: @prev.id, to_id: @version.id) do %>
-        <%= ui_icon "layers", size: 15 %> <%= @prev.vlabel.upcase %>와 비교
+        <%= ui_icon "layers", size: 15 %> <%= @prev.vlabel %>와 비교
       <% end %>
     <% end %>
     <%= ui_button variant: (show_confirm ? :secondary : :primary), href: screening_component_version_path(@version) do %>

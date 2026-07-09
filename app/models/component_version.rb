@@ -31,7 +31,8 @@ class ComponentVersion < ApplicationRecord
   validates :change_reason, length: { maximum: 500, message: "— 500자를 넘을 수 없습니다" }
   validate :artwork_format_and_size, if: -> { artwork.attached? }
 
-  def vlabel = "v#{version_number}"
+  # 버전 라벨 표시 정본(대문자 V) — 뷰는 이 값을 그대로 렌더한다(.upcase 재가공 금지, typography-2).
+  def vlabel = "V#{version_number}"
   def product = component.product
   def latest_screening = screening_runs.order(:created_at, :id).last # id 동률 보정(결정성)
 

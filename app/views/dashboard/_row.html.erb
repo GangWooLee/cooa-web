@@ -84,7 +84,7 @@
           <span class="inline-flex items-center gap-1">
             <span class="text-meta text-ink/80"><%= comp.display_name %></span>
             <% if (v = comp.current_version) %>
-              <%= link_to component_version_path(v), title: "#{v.vlabel.upcase} 파일 보기",
+              <%= link_to component_version_path(v), title: "#{v.vlabel} 파일 보기",
                     class: "inline-block rounded-md transition hover:ring-2 hover:ring-cooa/40" do %><%= version_chip(v.vlabel, size: 22) %><% end %>
             <% end %>
           </span>

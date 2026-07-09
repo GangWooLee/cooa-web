@@ -41,8 +41,8 @@
                             data-action="version-timeline#toggle" data-version-timeline-index-param="<%= i %>"
                             data-version-timeline-target="dot" data-index="<%= i %>"
                             aria-expanded="false" aria-controls="reason-<%= component.id %>-<%= i %>"
-                            aria-label="<%= versions[i - 1].vlabel.upcase %>→<%= v.vlabel.upcase %> 변경사유 펼치기"
-                            title="<%= versions[i - 1].vlabel.upcase %>→<%= v.vlabel.upcase %> 변경사유 펼치기"
+                            aria-label="<%= versions[i - 1].vlabel %>→<%= v.vlabel %> 변경사유 펼치기"
+                            title="<%= versions[i - 1].vlabel %>→<%= v.vlabel %> 변경사유 펼치기"
                             class="flex h-6 w-6 items-center justify-center rounded-full border border-line-soft bg-white text-muted transition hover:border-cooa hover:text-cooa focus-visible:border-cooa focus-visible:text-cooa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/40">
                       <%= ui_icon "caret", size: 14 %>
                     </button>
@@ -55,14 +55,14 @@
               <%# 버전 노드 = 클릭: 파일 보기 / 드래그: 슬롯 채우기. hover 담기(+) = 클릭으로 다음 빈 비교 슬롯 채움(터치패드 폴백·드래그 병존) %>
               <span class="group/vchip relative shrink-0">
                 <button type="button" draggable="true" data-version-select-target="version"
-                        data-vid="<%= v.id %>" data-vlabel="<%= v.vlabel.upcase %>" data-comp="<%= component.id %>"
+                        data-vid="<%= v.id %>" data-vlabel="<%= v.vlabel %>" data-comp="<%= component.id %>"
                         data-action="dragstart->version-select#dragstart click->version-select#view"
-                        title="<%= v.vlabel.upcase %> — 클릭: 파일 보기 · 드래그: 슬롯 채우기"
+                        title="<%= v.vlabel %> — 클릭: 파일 보기 · 드래그: 슬롯 채우기"
                         class="block cursor-pointer rounded-lg p-0.5 transition hover:bg-accent hover:ring-2 hover:ring-cooa/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/40 active:cursor-grabbing">
-                  <%= version_chip(v.vlabel.upcase, size: 30, active: v.current?) %>
+                  <%= version_chip(v.vlabel, size: 30, active: v.current?) %>
                 </button>
-                <button type="button" data-vid="<%= v.id %>" data-vlabel="<%= v.vlabel.upcase %>" data-comp="<%= component.id %>"
-                        data-action="version-select#quickFill" title="<%= v.vlabel.upcase %> 비교 슬롯에 담기" aria-label="<%= v.vlabel.upcase %> 비교 슬롯에 담기"
+                <button type="button" data-vid="<%= v.id %>" data-vlabel="<%= v.vlabel %>" data-comp="<%= component.id %>"
+                        data-action="version-select#quickFill" title="<%= v.vlabel %> 비교 슬롯에 담기" aria-label="<%= v.vlabel %> 비교 슬롯에 담기"
                         class="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-cooa text-white opacity-0 shadow transition-opacity group-hover/vchip:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/40">
                   <%= ui_icon "plus", size: 11, stroke: 2.4 %>
                 </button>
@@ -103,7 +103,7 @@
         <div data-version-timeline-target="panel" data-index="<%= i %>" id="reason-<%= component.id %>-<%= i %>" class="hidden">
           <div class="ml-1 mt-3 max-w-xl rounded-xl border border-cooa/30 bg-accent p-3">
             <div class="flex items-center gap-2">
-              <span class="rounded-md bg-cooa px-1.5 py-0.5 text-caption font-bold text-white"><%= versions[i - 1].vlabel.upcase %> → <%= v.vlabel.upcase %></span>
+              <span class="rounded-md bg-cooa px-1.5 py-0.5 text-caption font-bold text-white"><%= versions[i - 1].vlabel %> → <%= v.vlabel %></span>
               <span class="text-caption font-bold text-cooa">변경사유</span>
             </div>
             <% if anns.any? %>
