@@ -14,9 +14,13 @@
         <span class="text-meta font-medium text-muted">미요청</span>
       <% when :pending %>
         <span class="text-meta font-medium text-muted">리뷰 대기</span>
-        <span class="rounded-full bg-warn-strong px-2 py-0.5 text-caption font-bold text-white">요청됨</span>
+        <span class="inline-flex items-center gap-1 rounded-full bg-warn-soft px-2 py-0.5 text-caption font-bold text-ink">
+          <%= ui_icon "clock", size: 11, stroke: 2.4, klass: "text-warn" %>요청됨
+        </span>
       <% when :reviewed %>
-        <span class="inline-flex items-center gap-1 rounded-full bg-ok-soft px-2 py-0.5 text-caption font-bold text-ok-strong"><%= ui_icon "check", size: 12, stroke: 2.4 %>검토 확인됨</span>
+        <span class="inline-flex items-center gap-1 rounded-full bg-ok-soft px-2 py-0.5 text-caption font-bold text-ink">
+          <%= ui_icon "check", size: 12, stroke: 2.4, klass: "text-ok-strong" %>검토 확인됨
+        </span>
       <% end %>
     </span>
   </summary>
@@ -78,8 +82,8 @@
       </div>
     <% when :reviewed %>
       <% step = @review.confirmed_step %>
-      <div class="flex items-center gap-1.5 rounded-lg bg-ok-soft p-2.5 text-body font-bold text-ok-strong">
-        <%= ui_icon "check", size: 15, stroke: 2.4 %><span>검토 확인됨<% if step&.approver %> · <%= step.approver.name %><% end %><% if step&.acted_at %> · <%= step.acted_at.strftime("%Y.%m.%d %H:%M") %><% end %></span>
+      <div class="flex items-center gap-1.5 rounded-lg bg-ok-soft p-2.5 text-body font-bold text-ink">
+        <%= ui_icon "check", size: 15, stroke: 2.4, klass: "text-ok-strong" %><span>검토 확인됨<% if step&.approver %> · <%= step.approver.name %><% end %><% if step&.acted_at %> · <%= step.acted_at.strftime("%Y.%m.%d %H:%M") %><% end %></span>
       </div>
     <% end %>
   </div>

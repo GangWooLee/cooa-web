@@ -107,9 +107,10 @@ module UiHelper
   # 4-enum 판정 알약
   def decision_pill(decision)
     m = Decidable::DECISIONS[decision] || Decidable::DECISIONS["unable"]
-    content_tag :span, class: "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-body font-bold",
-                       style: "color:#{m[:color]};background:#{m[:bg]}" do
-      concat ui_icon(m[:icon], size: 15, stroke: 2.2)
+    text_color = m[:text] || m[:color]
+    content_tag :span, class: "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-body font-bold",
+                       style: "color:#{text_color};background:#{m[:bg]};border-color:#{m[:color]}" do
+      concat content_tag(:span, ui_icon(m[:icon], size: 15, stroke: 2.2), style: "color:#{m[:color]}")
       concat m[:label]
     end
   end
@@ -117,9 +118,10 @@ module UiHelper
   # 피드백 상태 알약 (3중 신호: 아이콘 + 라벨 + 색). decision_pill과 동형. extra로 정렬 유틸(ml-auto 등) 흡수.
   def annotation_status_pill(annotation, extra: nil)
     m = annotation.status_meta
-    content_tag :span, class: [ "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-bold", extra ].compact.join(" "),
-                       style: "color:#{m[:color]};background:#{m[:bg]}" do
-      concat ui_icon(m[:icon], size: 11, stroke: 2.4)
+    text_color = m[:text] || m[:color]
+    content_tag :span, class: [ "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-bold", extra ].compact.join(" "),
+                       style: "color:#{text_color};background:#{m[:bg]};border-color:#{m[:color]}" do
+      concat content_tag(:span, ui_icon(m[:icon], size: 11, stroke: 2.4), style: "color:#{m[:color]}")
       concat m[:label]
     end
   end
@@ -183,13 +185,18 @@ module UiHelper
 
   # 어노테이션 → 아트워크 뷰어 박스 배열
   def annotation_boxes(annotations)
-    annotations.map { |a| { seq: a.seq, x: a.box_x, y: a.box_y, w: a.box_w, h: a.box_h, color: a.box_color, label: a.seq } }
+    annotations.map do |a|
+      { seq: a.seq, x: a.box_x, y: a.box_y, w: a.box_w, h: a.box_h, color: a.box_color,
+        fill: "color-mix(in srgb, #{a.box_color} 12%, transparent)", label: a.seq }
+    end
   end
 
   # 스크리닝 finding → 박스 배열 (박스 지정된 것만)
   def finding_boxes(findings)
     findings.select(&:boxed?).each_with_index.map do |f, i|
-      { seq: i + 1, finding_id: f.id, x: f.box_x, y: f.box_y, w: f.box_w, h: f.box_h, color: f.decision_meta[:color], label: i + 1 }
+      color = f.decision_meta[:color]
+      { seq: i + 1, finding_id: f.id, x: f.box_x, y: f.box_y, w: f.box_w, h: f.box_h,
+        color:, fill: "color-mix(in srgb, #{color} 12%, transparent)", label: i + 1 }
     end
   end
 

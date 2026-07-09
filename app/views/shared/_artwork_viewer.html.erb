@@ -48,7 +48,7 @@
           <% all_boxes.each do |b| %>
             <button type="button" data-seq="<%= b[:seq] %>" data-action="artwork-viewer#focusSeq"
                     class="av-seq flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-body font-bold transition"
-                    style="border-color:<%= b[:color] %>;color:<%= b[:color] %>"><%= b[:label] || b[:seq] %></button>
+                    style="border-color:<%= b[:color] %>;color:var(--color-ink)"><%= b[:label] || b[:seq] %></button>
           <% end %>
         </div>
       </div>
@@ -83,12 +83,13 @@
                 <img data-artwork-viewer-target="image" src="<%= pn[:image_src] %>" class="block max-w-none" draggable="false" alt="아트워크">
               <% end %>
               <% (pn[:boxes] || []).each do |b| %>
+                <% box_fill = b[:fill] || "color-mix(in srgb, #{b[:color]} 12%, transparent)" %>
                 <button type="button" data-artwork-viewer-target="box"
                         data-seq="<%= b[:seq] %>" data-x="<%= b[:x] %>" data-y="<%= b[:y] %>" data-w="<%= b[:w] %>" data-h="<%= b[:h] %>"
                         data-action="click->artwork-viewer#focusBox"
                         class="absolute rounded-[3px] border-2 transition-[opacity,box-shadow]"
-                        style="left:<%= b[:x] %>%;top:<%= b[:y] %>%;width:<%= b[:w] %>%;height:<%= b[:h] %>%;border-color:<%= b[:color] %>;background:<%= b[:color] %>1f">
-                  <span class="absolute -left-2.5 -top-2.5 flex h-5 w-5 items-center justify-center rounded-full text-caption font-bold leading-none text-white shadow" style="background:<%= b[:color] %>"><%= b[:label] || b[:seq] %></span>
+                        style="left:<%= b[:x] %>%;top:<%= b[:y] %>%;width:<%= b[:w] %>%;height:<%= b[:h] %>%;border-color:<%= b[:color] %>;background:<%= box_fill %>">
+                  <span class="absolute -left-2.5 -top-2.5 flex h-5 w-5 items-center justify-center rounded-full border-2 bg-white text-caption font-bold leading-none text-ink shadow" style="border-color:<%= b[:color] %>"><%= b[:label] || b[:seq] %></span>
                 </button>
               <% end %>
               <% if drawable && pi == panes.size - 1 %>
@@ -134,7 +135,7 @@
                   class="av-thumb relative shrink-0 overflow-hidden rounded border-2 transition"
                   style="height:54px;aspect-ratio:<%= box_aspect(b[:w], b[:h]) %>;border-color:<%= b[:color] %>;<%= crop_bg(mini[:thumb_src], b[:x], b[:y], b[:w], b[:h]) %>"
                   title="피드백 <%= b[:label] || b[:seq] %>">
-            <span class="absolute left-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full text-caption font-bold leading-none text-white shadow" style="background:<%= b[:color] %>"><%= b[:label] || b[:seq] %></span>
+            <span class="absolute left-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full border bg-white text-caption font-bold leading-none text-ink shadow" style="border-color:<%= b[:color] %>"><%= b[:label] || b[:seq] %></span>
           </button>
         <% end %>
       </div>

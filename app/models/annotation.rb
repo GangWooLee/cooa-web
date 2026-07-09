@@ -10,18 +10,19 @@ class Annotation < ApplicationRecord
   enum :status, { open: "open", resolved: "resolved", dismissed: "dismissed" }, default: "open"
 
   CATEGORY_COLORS = {
-    "오탈자" => "#e6a700", "인허가" => "#8e0300", "디자인" => "#4f74e3", "기타" => "#6b7280"
+    "오탈자" => "var(--color-warn)", "인허가" => "var(--color-cooa)",
+    "디자인" => "var(--color-ink)", "기타" => "var(--color-muted)"
   }.freeze
   # 상태 알약(3중 신호: 색+라벨+아이콘). 라벨은 액션 동사(반영됨으로 표시·반영 확인)와 정합하는 반영/미반영으로 통일.
   STATUS_META = {
-    "open"      => { label: "미반영", color: "#8e0300", bg: "#fdeceb", icon: "clock" },
-    "resolved"  => { label: "반영",   color: "#5f8f2e", bg: "#eef6e3", icon: "check" },
-    "dismissed" => { label: "보류",   color: "#6b7280", bg: "#f1f1f1", icon: "x" }
+    "open"      => { label: "미반영", color: "var(--color-cooa)", bg: "var(--color-accent)", icon: "clock", text: "var(--color-cooa)" },
+    "resolved"  => { label: "반영",   color: "var(--color-ok-strong)", bg: "var(--color-ok-soft)", icon: "check", text: "var(--color-ink)" },
+    "dismissed" => { label: "보류",   color: "var(--color-muted)", bg: "var(--color-tint)", icon: "x", text: "var(--color-ink)" }
   }.freeze
 
   scope :ordered, -> { order(:seq, :position, :id) }
 
   def status_meta = STATUS_META[status] || STATUS_META["open"]
-  def box_color   = resolved? ? "#5f8f2e" : (CATEGORY_COLORS[category] || "#8e0300")
+  def box_color   = resolved? ? "var(--color-ok-strong)" : (CATEGORY_COLORS[category] || "var(--color-cooa)")
   def author_name = created_by&.name
 end

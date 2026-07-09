@@ -13,6 +13,7 @@
   --color-tint-3: #d3d3d3;      /* 탭 배경 */
   --color-accent: #ffeeee;      /* 강조 연틴트(#fee) */
   --color-warn: #e6a700;        /* 위험신호 */
+  --color-warn-soft: #fff7e0;   /* 주의 연틴트 배경(warn은 텍스트 대비 미달 → ink 라벨과 짝) */
   --color-ok: #84b733;          /* 적합 */
   --color-ok-strong: #5f8f2e;   /* 반영/해결 강조 그린(확인 버튼·상태) — 기존 인라인색 토큰화. white 대비 3.85:1(AA large 3:1 통과·normal 미달) */
   --color-ok-soft: #eef6e3;     /* 적합/확인 연틴트 배경(ok-strong 텍스트와 짝) — 기존 인라인색 토큰화 */
@@ -116,4 +117,3 @@ html.sidebar-collapsed #app-sidebar { margin-left: -282px; opacity: 0; pointer-e
   .spinner { animation: none; }
   .scan-line { animation: none; } /* 스크리닝 스캔 빔 무효(컨트롤러도 reduced-motion 시 스캐너 미표시 — 이중 못박기) */
 }
-

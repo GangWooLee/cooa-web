@@ -72,7 +72,13 @@
               <% if (d = role_description(rk)).present? %><span class="hidden text-caption text-muted sm:inline"><%= d %></span><% end %>
             </span>
           <% end %>
-          <span class="rounded-full px-2 py-0.5 text-caption font-bold <%= acc.active? ? "text-white bg-ok-strong" : "text-muted bg-tint" %>"><%= acc.status %></span>
+          <% if acc.active? %>
+            <span class="inline-flex items-center gap-1 rounded-full bg-ok-soft px-2 py-0.5 text-caption font-bold text-ink">
+              <%= ui_icon "check", size: 11, stroke: 2.4, klass: "text-ok-strong" %><%= acc.status %>
+            </span>
+          <% else %>
+            <span class="rounded-full bg-tint px-2 py-0.5 text-caption font-bold text-muted"><%= acc.status %></span>
+          <% end %>
         </div>
 
         <%# 소속 작업실 배지(스코프 grant) — 읽기전용 + 작업실 링크. 회수·추가는 각 작업실 페이지에서(D5). %>
