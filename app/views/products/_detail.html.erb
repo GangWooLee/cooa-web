@@ -104,17 +104,17 @@
             </button>
           <% end %>
           <button type="button" data-version-select-target="compareBtn" data-action="version-select#compare" disabled
-                  class="shrink-0 rounded-lg bg-cooa px-3 py-1.5 text-meta font-bold text-white transition disabled:bg-line-soft disabled:opacity-70">비교 열기</button>
+                  class="<%= ui_button_classes(variant: :primary, size: :sm, extra: "shrink-0") %>">비교 열기</button>
         </div>
-        <%# 인허가 스크리닝 (슬롯 1) %>
-        <div class="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5" style="background:#f1ecfb">
-          <span class="flex shrink-0 items-center gap-1 text-meta font-bold" style="color:#6b4ea8"><%= ui_icon "spark", size: 14 %> 인허가 스크리닝</span>
+        <%# 인허가 스크리닝 (슬롯 1) — 결정 A(§9-A): 보라 제거·버건디 수렴. AI 구분은 spark 아이콘+라벨. %>
+        <div class="flex items-center gap-1.5 rounded-xl bg-accent px-2.5 py-1.5">
+          <span class="flex shrink-0 items-center gap-1 text-meta font-bold text-cooa"><%= ui_icon "spark", size: 14 %> 인허가 스크리닝</span>
           <button type="button" data-version-select-target="slot" data-slot="c" data-action="click->version-select#clear dragover->version-select#dragover dragleave->version-select#dragleave drop->version-select#drop"
                   class="flex h-7 min-w-[34px] cursor-pointer items-center justify-center rounded-md border border-dashed border-line bg-white px-1.5 text-meta font-bold text-muted transition hover:border-cooa">
             <span data-label>+</span>
           </button>
           <button type="button" data-version-select-target="screenBtn" data-action="version-select#screen" disabled
-                  class="shrink-0 rounded-lg px-3 py-1.5 text-meta font-bold text-white transition disabled:bg-line-soft disabled:opacity-70" style="background:#6b4ea8">스크리닝</button>
+                  class="<%= ui_button_classes(variant: :primary, size: :sm, extra: "shrink-0") %>">스크리닝</button>
         </div>
         <span class="text-caption text-muted">버전 칩의 <b>담기(+)</b> 또는 드래그로 슬롯 채우기 · 슬롯 클릭 시 비움</span>
       </div>

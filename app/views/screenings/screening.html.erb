@@ -114,11 +114,14 @@
         <%= ui_icon "warn", size: 16 %> 국가가 지정되지 않아 스크리닝을 실행할 수 없습니다 — 드로어에서 국가를 먼저 지정하세요.
       </span>
     <% else %>
-      <%# 제출 시 버튼 로딩(스피너 + "스크리닝 중…") — 중복 실행 방지. 리다이렉트(?ran=1)로 새 버튼 렌더 = 리셋. %>
-      <%= button_to (@run ? "인허가 스크리닝 다시 실행" : "인허가 스크리닝"), run_screening_component_version_path(@version),
+      <%# 제출 시 버튼 로딩(스피너 + "스크리닝 중…") — 중복 실행 방지. 리다이렉트(?ran=1)로 새 버튼 렌더 = 리셋.
+          결정 A(§9-A): 핑크-보라 그라데이션 제거·primary 버건디 수렴, AI 구분은 spark 아이콘+라벨. %>
+      <%= button_to run_screening_component_version_path(@version),
             form: { data: { controller: "submit-loading", action: "submit->submit-loading#onSubmit submit->screening#onRerun", submit_loading_label_value: "스크리닝 중…" } },
             data: { submit_loading_target: "button" },
-            class: "rounded-lg px-6 py-2.5 text-lead font-bold text-ink", style: "background-image:linear-gradient(to right,#fdd5d4,#e6caff)" %>
+            class: ui_button_classes(variant: :primary) do %>
+        <%= ui_icon "spark", size: 15 %><%= @run ? "인허가 스크리닝 다시 실행" : "인허가 스크리닝" %>
+      <% end %>
     <% end %>
   </div>
 </div>
