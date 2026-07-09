@@ -3,7 +3,7 @@
     stashed session[:pending_signup]. Naming the first workspace is the ONLY input; POST → OrganizationBootstrap
     mints org + owner + this workspace atomically. COOA tokens only (border-line, tint, cooa, ink). %>
 <div class="w-full max-w-md rounded-2xl border border-line bg-white p-8 shadow-sm">
-  <div class="text-[22px] font-bold text-ink">COOA</div>
+  <%= image_tag "cooa/logo.png", class: "h-7 w-auto", alt: "COOA" %>
   <p class="mb-1 mt-3 text-section font-semibold text-ink">첫 작업실 이름을 지어주세요</p>
   <p class="mb-6 text-body text-ink">작업실은 제품 검토를 담는 공간이에요 — 나중에 언제든 이름을 바꿀 수 있어요.</p>
 
@@ -11,7 +11,7 @@
     <%= f.text_field :workspace_name, value: @suggested_name, autofocus: true, required: true, maxlength: 200,
           placeholder: "예: 레티놀 라인",
           data: { controller: "autoselect", action: "focus->autoselect#reselect" },
-          class: "w-full rounded-xl border border-line bg-white px-4 py-3 text-[15px] text-ink placeholder:text-muted focus:border-cooa focus:outline-none focus:ring-1 focus:ring-cooa" %>
+          class: "w-full rounded-xl border border-line bg-white px-4 py-3 text-lead text-ink placeholder:text-muted focus:border-cooa focus:outline-none focus:ring-1 focus:ring-cooa" %>
     <%= ui_button "작업실 만들고 시작하기", type: "submit", class: "w-full" %>
   <% end %>
 

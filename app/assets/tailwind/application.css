@@ -19,13 +19,16 @@
   --color-warn-strong: #d99a00; /* 대기/요청 강조 앰버(pill 채움) — 기존 인라인색 토큰화. warn(#e6a700)보다 어두워 white 캡션 가독 우위 */
   --font-sans: "Pretendard Variable", Pretendard, ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-  /* 타이포 스케일 (6단계). line-height는 컨텍스트 상속 — 기존 text-[Npx] 거동과 동일해 무회귀 치환. */
+  /* 타이포 스케일 (9단계). line-height는 컨텍스트 상속 — 기존 text-[Npx] 거동과 동일해 무회귀 치환. */
   --text-caption: 0.6875rem;    /* 11px — 캡션·뱃지·태그(최소 하한) */
   --text-meta: 0.75rem;         /* 12px — 메타·보조 라벨 */
   --text-body: 0.8125rem;       /* 13px — 본문 기본 */
   --text-note: 0.875rem;        /* 14px — 강조 라벨·소제목 */
+  --text-lead: 0.9375rem;       /* 15px — 리드 문장·계정 카드명 */
   --text-section: 1rem;         /* 16px — 섹션 제목 */
+  --text-title: 1.125rem;       /* 18px — 페이지 부제·사용자명 */
   --text-display: 1.25rem;      /* 20px — 큰 제목 */
+  --text-brand: 1.375rem;       /* 22px — 워드마크·히어로 */
 }
 
 /* 여백 규약(화면 간 일관성): 페이지/패널 좌우 = px-6 · 헤더줄과 하단 액션바는 상하 대칭 패딩(py-*)으로 정렬 ·

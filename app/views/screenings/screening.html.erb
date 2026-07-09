@@ -95,7 +95,7 @@
           <% end %>
         <% elsif @run %>
           <div class="py-12 text-center text-note">
-            <span class="inline-flex items-center gap-1.5 text-[15px] font-bold text-ok-strong"><%= ui_icon "check", size: 16, stroke: 2.4 %>위반·주의 사항 없음</span><br>
+            <span class="inline-flex items-center gap-1.5 text-lead font-bold text-ok-strong"><%= ui_icon "check", size: 16, stroke: 2.4 %>위반·주의 사항 없음</span><br>
             <span class="text-muted">검토 기준을 통과했습니다.</span>
           </div>
         <% else %>
@@ -118,7 +118,7 @@
       <%= button_to (@run ? "인허가 스크리닝 다시 실행" : "인허가 스크리닝"), run_screening_component_version_path(@version),
             form: { data: { controller: "submit-loading", action: "submit->submit-loading#onSubmit submit->screening#onRerun", submit_loading_label_value: "스크리닝 중…" } },
             data: { submit_loading_target: "button" },
-            class: "rounded-lg px-6 py-2.5 text-[15px] font-bold text-ink", style: "background-image:linear-gradient(to right,#fdd5d4,#e6caff)" %>
+            class: "rounded-lg px-6 py-2.5 text-lead font-bold text-ink", style: "background-image:linear-gradient(to right,#fdd5d4,#e6caff)" %>
     <% end %>
   </div>
 </div>

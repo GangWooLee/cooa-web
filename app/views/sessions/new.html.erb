@@ -1,7 +1,7 @@
 <% content_for :title, "COOA 로그인" %>
 <% google = ENV["GOOGLE_CLIENT_ID"].present? %>
 <div class="w-full max-w-md rounded-2xl border border-line bg-white p-8 shadow-sm">
-  <div class="text-[22px] font-bold text-ink">COOA</div>
+  <%= image_tag "cooa/logo.png", class: "h-7 w-auto", alt: "COOA" %>
   <p class="mb-6 mt-1 text-note text-muted">검토·결재 워크스페이스에 로그인하세요</p>
 
   <%# flash[:alert]는 auth 레이아웃이 렌더(중복 방지). %>
@@ -41,7 +41,7 @@
             <span class="flex size-9 shrink-0 items-center justify-center rounded-full text-body font-bold text-white"
                   style="background: <%= account.avatar_color || "#888" %>"><%= account.role_short %></span>
             <span class="min-w-0">
-              <span class="block truncate text-[15px] font-semibold text-ink"><%= account.name %></span>
+              <span class="block truncate text-lead font-semibold text-ink"><%= account.name %></span>
               <span class="block truncate text-meta text-muted"><%= account.role_label %> · <%= account.email %></span>
             </span>
           <% end %>
