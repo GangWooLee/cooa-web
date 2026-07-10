@@ -17,7 +17,7 @@ name: ci
 
 on:
   push:
-    branches: [ "feat/**", "web-demo" ]
+    branches: [ "main", "feat/**", "web-demo" ]  # main = 포트폴리오 repo(cooa-web) 기본 브랜치
   pull_request:
   workflow_dispatch: {}
 
