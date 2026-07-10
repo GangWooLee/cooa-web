@@ -1,0 +1,87 @@
+<%# 피드백 패널(목록 + 상세) 공용 — 버전 뷰(version-feedback)·비교 뷰(comparison) 공유(M4).
+    렌더 결과는 각 화면의 기존 마크업과 selector 수준에서 동일. 화면 차이는 전부 locals로 파라미터화:
+      controller       Stimulus 컨트롤러명("version-feedback" | "comparison") — data-target·data-action 접두
+      annotations      표시할 어노테이션
+      list_subtitle    목록 헤더 보조문(html_safe) — 화면별 상이(제기/반영 요약 vs 남기기 안내)
+      empty_state      목록이 비었을 때 안내문 표시 여부
+      focus_hint       상세 상단 안내(캔버스 확대 문구)
+      thread_class     코멘트 스레드 상단 여백 유틸(비교=mt-3 · 버전=mt-1)
+      show_diff        before→after 변경 텍스트 블록 표시(비교 전용)
+      show_attachment  코멘트 첨부명 표시(비교 전용)
+      resolve_gated    true면 policy(a).resolve_feedback? 게이트(버전) · false면 항상 표시(비교)
+      resolve_version  '반영됨' 표시가 귀속되는 버전(resolved_in_version_id)
+      resolve_label    반영 버튼 문구
+      resolved_fallback  반영 확인 라벨의 폴백 버전(nil 허용) %>
+<div data-<%= controller %>-target="list" class="flex min-h-0 flex-1 flex-col">
+  <div class="border-b border-line-soft p-3">
+    <h3 class="text-section font-bold text-ink">피드백 <span class="text-muted">(<%= annotations.size %>)</span></h3>
+    <p class="text-meta text-muted"><%= list_subtitle %></p>
+  </div>
+  <div class="min-h-0 flex-1 space-y-2 overflow-auto p-3">
+    <% if annotations.any? %>
+      <% annotations.each do |a| %>
+        <button type="button" data-seq="<%= a.seq %>" data-action="<%= controller %>#focusFromList"
+                class="block w-full rounded-lg border border-line-soft p-2.5 text-left transition hover:border-cooa">
+          <div class="flex items-center justify-between">
+            <span class="flex items-center gap-2">
+              <span class="flex h-5 w-5 items-center justify-center rounded-full border-2 bg-white text-caption font-bold text-ink" style="border-color:<%= a.box_color %>"><%= a.seq %></span>
+              <span class="rounded bg-tint px-1.5 py-0.5 text-caption text-muted"><%= a.category %></span>
+            </span>
+            <%= annotation_status_pill(a) %>
+          </div>
+          <p class="mt-1 line-clamp-2 text-meta text-ink/80"><%= a.comments.first&.body %></p>
+        </button>
+      <% end %>
+    <% elsif empty_state %>
+      <p class="py-8 text-center text-body text-muted">아직 피드백이 없습니다.</p>
+    <% end %>
+  </div>
+</div>
+
+<%# 상세 패널 (어노테이션별, 기본 숨김) %>
+<% annotations.each do |a| %>
+  <div data-<%= controller %>-target="detail" data-seq="<%= a.seq %>" class="hidden min-h-0 flex-1 flex-col">
+    <div class="flex items-center gap-2 border-b border-line-soft p-3">
+      <button type="button" data-action="<%= controller %>#backToList" class="text-note text-muted hover:text-cooa">← 목록</button>
+      <span class="flex h-5 w-5 items-center justify-center rounded-full border-2 bg-white text-caption font-bold text-ink" style="border-color:<%= a.box_color %>"><%= a.seq %></span>
+      <span class="rounded bg-tint px-1.5 py-0.5 text-caption text-muted"><%= a.category %></span>
+      <%= annotation_status_pill(a, extra: "ml-auto") %>
+    </div>
+    <div class="min-h-0 flex-1 overflow-auto p-3">
+      <p class="mb-2 text-caption text-muted"><%= focus_hint %></p>
+      <% if show_diff && a.before_text.present? %>
+        <div class="mt-2 rounded-lg bg-tint px-2 py-1.5 text-meta">
+          <span class="text-muted line-through"><%= a.before_text %></span><span class="px-1 text-muted">→</span><span class="font-bold text-ink"><%= a.after_text %></span>
+        </div>
+      <% end %>
+      <%# 코멘트 스레드 %>
+      <div class="<%= thread_class %> space-y-2">
+        <% a.comments.each do |c| %>
+          <div class="rounded-lg border border-line-soft p-2">
+            <div class="flex items-center gap-1.5"><%= avatar(c.author, size: 20) %><span class="text-meta font-bold text-ink"><%= c.author&.name %></span><span class="text-caption text-muted"><%= c.author&.role_short %></span></div>
+            <p class="mt-1 text-meta text-ink/85"><%= c.body %></p>
+            <% if show_attachment && c.attachment_name.present? %><div class="mt-1 inline-flex items-center gap-1 rounded bg-tint text-muted px-1.5 py-0.5 text-caption"><%= ui_icon "external", size: 11 %><%= c.attachment_name %></div><% end %>
+          </div>
+        <% end %>
+      </div>
+      <%= form_with url: annotation_comments_path(a), class: "mt-2 flex gap-1" do %>
+        <%= text_field_tag :body, nil, placeholder: "코멘트 추가", class: "min-w-0 flex-1 rounded border border-line-soft px-2 py-1 text-meta" %>
+        <%= ui_button "등록", size: :sm, type: "submit" %>
+      <% end %>
+    </div>
+    <%# 반영 확인 %>
+    <% if !resolve_gated || policy(a).resolve_feedback? %>
+      <div class="border-t border-line-soft p-3">
+        <% if a.resolved? %>
+          <div class="flex items-center justify-between text-meta">
+            <span class="inline-flex items-center gap-1 font-bold text-ink"><%= ui_icon "check", size: 13, stroke: 2.4, klass: "text-ok-strong" %><%= a.resolved_in_version&.vlabel || resolved_fallback&.vlabel %>에서 반영 확인</span>
+            <%= button_to "다시 열기", reopen_annotation_path(a), method: :patch, class: ui_button_classes(variant: :ghost, size: :sm) %>
+          </div>
+        <% else %>
+          <%= button_to resolve_annotation_path(a, resolved_in_version_id: resolve_version.id), method: :patch,
+                class: ui_button_classes(variant: :ok, extra: "w-full") do %><%= ui_icon "check", size: 15, stroke: 2.4, klass: "text-ok-strong" %><%= resolve_label %><% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>
