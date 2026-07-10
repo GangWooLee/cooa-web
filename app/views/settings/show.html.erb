@@ -7,8 +7,9 @@
   <%= form_with url: settings_path, method: :patch, class: "mb-6 rounded-xl border border-line p-4" do %>
     <div class="mb-3 text-section font-bold text-ink">프로필</div>
 
-    <div class="flex items-center gap-4">
-      <%= avatar(current_account, size: 56, ring: false) %>
+    <%# 정렬축 단일화(layout-1): 이름·아바타 색·직무 라벨이 모두 카드 좌측 edge에서 시작하도록 이름 필드를
+        전체 폭으로 두고, 아바타는 정렬축 밖(우측 프리뷰)으로 뺀다. %>
+    <div class="flex items-start justify-between gap-4">
       <div class="min-w-0 flex-1">
         <label class="block text-caption font-bold text-muted">이름</label>
         <%# 원 컬럼 기준 — 폴백 해석값을 그대로 영속하지 않는다(리뷰 F1). 비우고 저장 = 기본값으로 복귀. %>
@@ -17,6 +18,7 @@
                class="mt-1 w-full rounded-lg border border-line-soft px-3 py-2 text-body focus:border-cooa focus:outline-none focus:ring-1 focus:ring-cooa">
         <p class="mt-1 text-caption text-muted">비워 두면 기본 이름을 사용합니다.</p>
       </div>
+      <%= avatar(current_account, size: 56, ring: false) %>
     </div>
 
     <%# 아바타 색 — fieldset/legend로 라디오 그룹 이름 부여 + 각 스와치에 한글 색 이름(aria-label·title). AVATAR_SWATCHES 순서. %>
@@ -41,8 +43,7 @@
       <label class="block text-caption font-bold text-muted">직무 <span class="font-normal">(표시용 — 권한과 무관)</span></label>
       <%# 원 컬럼 기준 + 빈 옵션(리뷰 F1): 미선택 상태에서 저장해도 첫 옵션이 자의로 영속되지 않고,
           "기본값 사용"으로 언제든 원복 가능. 빈 문자열은 모델 normalizes가 nil로 정규화. %>
-      <select name="account[job_title]"
-              class="mt-1 rounded-lg border border-line-soft px-3 py-2 text-body focus:border-cooa focus:outline-none focus:ring-1 focus:ring-cooa">
+      <select name="account[job_title]" class="<%= ui_select_classes(extra: "mt-1") %>">
         <%= options_for_select([ [ "— 기본값 사용 —", "" ] ] + User::ROLE_LABELS.map { |k, v| [ v, k ] }, current_account[:job_title]) %>
       </select>
     </div>
@@ -75,14 +76,15 @@
   <%# ── 보안 — 세션. ── %>
   <div class="rounded-xl border border-line p-4">
     <div class="mb-3 text-section font-bold text-ink">보안</div>
-    <div class="flex flex-wrap items-center justify-between gap-3 py-1">
+    <%# 두 보안 행의 수직 패딩을 py-3로 대칭(spacing-4) — 첫 행에도 상단 여백을 주고 border로만 구분(mt 제거). %>
+    <div class="flex flex-wrap items-center justify-between gap-3 py-3">
       <div>
         <div class="text-body font-medium text-ink">이 기기에서 로그아웃</div>
         <div class="text-caption text-muted">지금 이 브라우저 세션만 종료합니다.</div>
       </div>
       <%= button_to "로그아웃", session_path, method: :delete, class: ui_button_classes(variant: :secondary, size: :sm) %>
     </div>
-    <div class="mt-2 flex flex-wrap items-center justify-between gap-3 border-t border-line-soft py-3">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft py-3">
       <div>
         <div class="text-body font-medium text-ink">모든 기기에서 로그아웃</div>
         <div class="text-caption text-muted">다른 모든 브라우저·기기의 세션을 즉시 무효화합니다(이 기기 포함).</div>

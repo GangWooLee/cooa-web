@@ -10,12 +10,12 @@
     <div class="flex items-center gap-2">
       <div data-controller="version-picker" class="flex items-center gap-2 text-note">
         <span class="text-meta text-muted">기준</span>
-        <select data-role="from" data-action="change->version-picker#go" class="rounded-md border border-line-soft bg-white px-2 py-1">
+        <select data-role="from" data-action="change->version-picker#go" class="<%= ui_select_classes(extra: "py-1") %>">
           <% @versions.each do |v| %><option value="<%= v.id %>" <%= "selected" if v.id == @from.id %>><%= v.vlabel %></option><% end %>
         </select>
         <span class="text-muted">→</span>
         <span class="text-meta text-muted">검토</span>
-        <select data-role="to" data-action="change->version-picker#go" class="rounded-md border border-line-soft bg-white px-2 py-1">
+        <select data-role="to" data-action="change->version-picker#go" class="<%= ui_select_classes(extra: "py-1") %>">
           <% @versions.each do |v| %><option value="<%= v.id %>" <%= "selected" if v.id == @to.id %>><%= v.vlabel %></option><% end %>
         </select>
       </div>
@@ -47,7 +47,7 @@
     </div>
 
     <%# 우: 피드백 목록 / 상세 / 새 박스 %>
-    <aside data-comparison-target="aside" class="flex w-full shrink-0 flex-col border-t border-line bg-white lg:w-[360px] lg:border-l lg:border-t-0">
+    <aside data-comparison-target="aside" class="flex w-full shrink-0 flex-col border-t border-line bg-white lg:w-[380px] lg:border-l lg:border-t-0">
       <%# 목록 + 상세 — shared/_feedback_panel(M4 공용). 비교 뷰: 제기/반영 요약 헤더 · before→after diff ·
           첨부명 표시 · resolve 게이트 없음(리뷰 컨텍스트는 @to 기준). 새 피드백 폼은 화면 고유(아래). %>
       <% subtitle = capture do %><%= @from.vlabel %>에서 제기 · <%= @to.vlabel %> 반영 검토 · <b class="text-ink"><%= @annotations.count(&:resolved?) %> 반영</b> / <b class="text-cooa"><%= @annotations.count(&:open?) %> 미반영</b><% end %>

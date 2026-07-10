@@ -4,7 +4,8 @@
     <h1 class="text-display font-bold text-ink">내게 요청된 리뷰 <span class="text-muted">(<%= @assigned.size %>)</span></h1>
   </div>
 
-  <div class="min-h-0 flex-1 overflow-auto p-4">
+  <%# 본문 좌우 패딩을 헤더(px-6)와 정렬 — 좌측 기준선 통일(spacing-2). 세로 여백은 유지. %>
+  <div class="min-h-0 flex-1 overflow-auto px-6 py-4">
     <%# ── Segment A: 내게 요청된 리뷰(내가 지정 리뷰어) ── %>
     <% if @assigned.any? %>
       <%# 브랜드 필터(2개 이상일 때만) — Segment B와 동일 칩 패턴, A 전용 param :abrand %>

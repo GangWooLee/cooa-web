@@ -173,6 +173,13 @@ module UiHelper
     [ BTN_BASE, BTN_VARIANTS.fetch(variant), BTN_SIZES.fetch(size), extra ].compact.join(" ")
   end
 
+  # select 정본 클래스(forms-5) — .ui-select(appearance-none + caret 배경)와 인풋 동형 크롬(border-line-soft·
+  # rounded-lg·focus:border-cooa focus:ring-1). 전 화면 select를 이 한 벌로 통일. extra로 mt-* 등 흡수.
+  def ui_select_classes(extra: nil)
+    [ "ui-select cursor-pointer rounded-lg border border-line-soft bg-white px-3 py-2 text-body text-ink",
+      "focus:border-cooa focus:outline-none focus:ring-1 focus:ring-cooa", extra ].compact.join(" ")
+  end
+
   # 표준 버튼. href: → <a>(link_to) · 그 외 → <button>(기본 type="button"). 블록(아이콘+라벨) 지원.
   def ui_button(label = nil, variant: :primary, size: :md, **opts, &block)
     klass = ui_button_classes(variant:, size:, extra: opts.delete(:class))

@@ -7,7 +7,7 @@
 
   <%# 전사 초대 폼 — tenant-wide admin 전용. email + 역할(모든 작업실 접근). 작업실 한정 초대는 각 작업실 페이지. %>
   <% if @can_issue_tenant_wide %>
-    <%= form_with url: invitations_path, method: :post, class: "mb-6 rounded-xl border border-line p-3" do %>
+    <%= form_with url: invitations_path, method: :post, class: "mb-6 rounded-xl border border-line p-4" do %>
       <div class="mb-2 text-meta font-bold text-ink">모든 작업실 접근 멤버 초대 <span class="font-normal text-muted">— 회사 전체 역할로 참여합니다</span></div>
       <div class="flex flex-wrap items-end gap-2">
         <div class="min-w-0 flex-1">
@@ -17,7 +17,7 @@
         </div>
         <div>
           <label for="invite_role_key" class="block text-caption font-bold text-muted">역할</label>
-          <select id="invite_role_key" name="role_key" class="mt-1 rounded-lg border border-line-soft px-2 py-2 text-body">
+          <select id="invite_role_key" name="role_key" class="<%= ui_select_classes(extra: "mt-1") %>">
             <%= role_option_tags(Invitation::INVITABLE_ROLE_KEYS, selected: "contributor") %>
           </select>
         </div>
@@ -26,7 +26,7 @@
     <% end %>
   <% elsif @can_manage %>
     <%# scoped admin: 전사 초대 불가 — 작업실 단위 초대는 작업실 페이지에서. %>
-    <div class="mb-6 rounded-xl border border-line-soft bg-tint/40 p-3 text-meta text-muted">
+    <div class="mb-6 rounded-xl border border-line-soft bg-tint/40 p-4 text-meta text-muted">
       멤버 초대는 각 작업실 페이지에서 진행하세요 — 왼쪽 사이드바에서 작업실을 열어 "멤버 초대·관리"를 사용합니다.
     </div>
   <% end %>
