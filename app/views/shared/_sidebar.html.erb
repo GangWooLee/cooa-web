@@ -34,9 +34,10 @@
   </details>
 
   <%# 내게 요청된 리뷰 수신함(내가 지정 리뷰어인 pending 요청) — 배지 정책 불변 %>
-  <%= link_to reviews_path, data: { turbo: false },
-        class: "mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-body font-medium text-ink transition hover:bg-tint #{'bg-tint' if current_page?(reviews_path)}" do %>
-    <%= ui_icon "bell", size: 16, klass: "text-muted" %>
+  <% inbox_active = current_page?(reviews_path) %>
+  <%= link_to reviews_path, data: { turbo: false }, "aria-current": (inbox_active ? "page" : nil),
+        class: "mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-body transition #{inbox_active ? 'bg-accent font-semibold text-cooa' : 'font-medium text-ink hover:bg-tint'}" do %>
+    <%= ui_icon "bell", size: 16, klass: (inbox_active ? "text-cooa" : "text-muted") %>
     <span>내 리뷰 인박스</span>
     <%# 배지 정책(REF L493): pending(bg-cooa)은 내 Segment A 전체로 불변. overdue(bg-warn)는 그 부분집합을
         별도 병기 — 내 배정분만(bounded·개인 액션어블). Segment B는 미배지(인박스 행 강조로만). %>
@@ -53,9 +54,10 @@
   <%# 전사 관리(조직 로스터·초대, Phase 3) — 로스터 열람권자에게만 노출. tenant-wide 읽기권자 OR scoped
       brand_admin(자기 브랜드) — scoped admin은 조직 verb를 통과 못 하므로 can_view_members?로 판정(T3). %>
   <% if can_view_members? %>
-    <%= link_to members_path, data: { turbo: false },
-          class: "mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-body font-medium text-ink transition hover:bg-tint #{'bg-tint' if current_page?(members_path)}" do %>
-      <%= ui_icon "user", size: 16, klass: "text-muted" %>
+    <% members_active = current_page?(members_path) %>
+    <%= link_to members_path, data: { turbo: false }, "aria-current": (members_active ? "page" : nil),
+          class: "mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-body transition #{members_active ? 'bg-accent font-semibold text-cooa' : 'font-medium text-ink hover:bg-tint'}" do %>
+      <%= ui_icon "user", size: 16, klass: (members_active ? "text-cooa" : "text-muted") %>
       <span>구성원</span>
     <% end %>
   <% end %>
@@ -90,7 +92,7 @@
           <%# origin=side → create가 rename_side로 리다이렉트(사이드바에서 인라인 명명). workspace_id=현재 작업실
               → 새 폴더(트리)는 이 작업실에 귀속되는 새 루트로 생성(컨텍스트 유지). %>
           <%= button_to products_path, params: { product: { kind: "folder" }, origin: "side", workspace_id: current_workspace.id },
-                title: "새 폴더", form: { class: "inline" },
+                title: "새 폴더", "aria-label": "새 폴더", form: { class: "inline" },
                 class: "rounded p-0.5 text-muted transition hover:bg-tint hover:text-cooa" do %><%= ui_icon "plus", size: 14 %><% end %>
         </div>
         <% active_ids = (@product&.self_and_ancestors&.map(&:id) || []) %>

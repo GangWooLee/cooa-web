@@ -5,5 +5,5 @@
   <%= select_tag "members[][user_id]",
         options_for_select([["— 담당자 —", nil]] + assignable_member_users.map { |u| [u.name, u.id] }, user_id),
         class: "min-w-0 flex-1 rounded border border-line-soft px-1 py-0.5 text-meta focus:border-cooa focus:outline-none focus:ring-1 focus:ring-cooa" %>
-  <button type="button" data-action="members#remove" title="행 삭제" class="shrink-0 rounded p-0.5 text-muted hover:text-warn"><%= ui_icon "x", size: 12 %></button>
+  <button type="button" data-action="members#remove" title="행 삭제" aria-label="담당자 행 삭제" class="shrink-0 rounded p-0.5 text-muted hover:text-warn"><%= ui_icon "x", size: 12 %></button>
 </div>

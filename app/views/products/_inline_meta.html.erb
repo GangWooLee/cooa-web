@@ -2,8 +2,12 @@
 <dt class="font-bold text-muted"><%= label %></dt>
 <%# 메타 필드(코드·국가·채널·기한)는 모두 선택 — 빈값으로 비우기 허용(clearable) %>
 <dd data-controller="inline-edit" data-inline-edit-clearable-value="true" class="min-w-0">
-  <span data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 수정"
-        class="cursor-text rounded px-1 text-ink transition hover:bg-white/70 hover:text-cooa"><%= display.presence || "None" %></span>
+  <%# 표시 = 키보드 진입 가능한 button(Enter/Space) + 상시 연필 어포던스(hover만이 아닌 상시 노출) · 빈값은 중립 '—' %>
+  <button type="button" data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 수정"
+          class="group/meta inline-flex cursor-text items-center gap-1 rounded px-1 text-ink transition hover:bg-white/70 hover:text-cooa">
+    <span><%= display.presence || "—" %></span>
+    <%= ui_icon "pencil", size: 12, klass: "shrink-0 text-muted transition group-hover/meta:text-cooa" %>
+  </button>
   <%= form_with model: product, url: product_path(product), method: :patch,
         data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden" do |f| %>
     <%= hidden_field_tag :inline, 1 %>

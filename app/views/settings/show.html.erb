@@ -19,19 +19,23 @@
       </div>
     </div>
 
-    <div class="mt-4">
-      <label class="block text-caption font-bold text-muted">아바타 색</label>
+    <%# 아바타 색 — fieldset/legend로 라디오 그룹 이름 부여 + 각 스와치에 한글 색 이름(aria-label·title). AVATAR_SWATCHES 순서. %>
+    <% avatar_color_names = { "#8e0300" => "버건디", "#b23a2e" => "벽돌", "#c9822b" => "앰버", "#5f8f2e" => "그린",
+                              "#2f6f6b" => "틸", "#2d5a8e" => "블루", "#5b3f8e" => "퍼플", "#3d3d3d" => "차콜" } %>
+    <fieldset class="mt-4">
+      <legend class="text-caption font-bold text-muted">아바타 색</legend>
       <div class="mt-1.5 flex flex-wrap gap-2">
         <% Account::AVATAR_SWATCHES.each do |hex| %>
+          <% cname = avatar_color_names[hex.downcase] || hex %>
           <label class="relative cursor-pointer">
-            <input type="radio" name="account[avatar_color]" value="<%= hex %>" class="peer sr-only"
+            <input type="radio" name="account[avatar_color]" value="<%= hex %>" class="peer sr-only" aria-label="<%= cname %>"
                    <%= "checked" if current_account.avatar_color.to_s.casecmp?(hex) %>>
             <span class="block h-8 w-8 rounded-full ring-2 ring-transparent ring-offset-2 transition peer-checked:ring-cooa"
-                  style="background:<%= hex %>" title="<%= hex %>"></span>
+                  style="background:<%= hex %>" title="<%= cname %>"></span>
           </label>
         <% end %>
       </div>
-    </div>
+    </fieldset>
 
     <div class="mt-4">
       <label class="block text-caption font-bold text-muted">직무 <span class="font-normal">(표시용 — 권한과 무관)</span></label>

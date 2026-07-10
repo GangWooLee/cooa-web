@@ -11,13 +11,13 @@
       <div class="mb-2 text-meta font-bold text-ink">모든 작업실 접근 멤버 초대 <span class="font-normal text-muted">— 회사 전체 역할로 참여합니다</span></div>
       <div class="flex flex-wrap items-end gap-2">
         <div class="min-w-0 flex-1">
-          <label class="block text-caption font-bold text-muted">이메일</label>
-          <input type="email" name="email" required placeholder="teammate@company.com"
+          <label for="invite_email" class="block text-caption font-bold text-muted">이메일</label>
+          <input type="email" id="invite_email" name="email" required placeholder="teammate@company.com"
                  class="mt-1 w-full rounded-lg border border-line-soft px-3 py-2 text-body focus:border-cooa focus:outline-none focus:ring-1 focus:ring-cooa">
         </div>
         <div>
-          <label class="block text-caption font-bold text-muted">역할</label>
-          <select name="role_key" class="mt-1 rounded-lg border border-line-soft px-2 py-2 text-body">
+          <label for="invite_role_key" class="block text-caption font-bold text-muted">역할</label>
+          <select id="invite_role_key" name="role_key" class="mt-1 rounded-lg border border-line-soft px-2 py-2 text-body">
             <%= role_option_tags(Invitation::INVITABLE_ROLE_KEYS, selected: "contributor") %>
           </select>
         </div>

@@ -63,13 +63,16 @@
         <% if issues.any? %>
           <% issues.each do |f| %>
             <% seq = box_seq[f.id] %>
-            <%# 속성은 tag.div 해시로(Rails가 이스케이프·nil 생략 — html_safe 주입의 태그 조기종료 위험 제거) %>
-            <% f_class = ["rounded-lg border border-line-soft p-3"]
-               f_class << "cursor-pointer hover:border-cooa" if seq
+            <%# 박스 지정(seq 존재) finding은 <button>으로 렌더 — 키보드 포커스·실행·전역 focus-visible 링 확보
+                (states-3, 비교·버전 화면과 상태 표현 일치). 비-박스 카드는 순수 div 유지. 속성은 해시로(Rails 이스케이프·nil 생략). %>
+            <% boxed = seq.present?
+               f_class = ["rounded-lg border border-line-soft p-3"]
+               f_class << "block w-full cursor-pointer text-left hover:border-cooa" if boxed
                f_class << "opacity-0 blur-[2px]" if params[:ran]
                f_data = { "screening-target": "finding" }
-               (f_data[:seq] = seq; f_data[:action] = "click->screening#focusFinding") if seq %>
-            <%= tag.div class: f_class.join(" "), style: "border-left:4px solid #{f.decision_meta[:color]}", data: f_data do %>
+               (f_data[:seq] = seq; f_data[:action] = "click->screening#focusFinding") if boxed %>
+            <%= content_tag(boxed ? :button : :div, class: f_class.join(" "), type: (boxed ? "button" : nil),
+                            style: "border-left:4px solid #{f.decision_meta[:color]}", data: f_data) do %>
               <div class="flex items-center justify-between gap-2">
                 <div class="flex min-w-0 items-center gap-2">
                   <% if seq %><%= seq_badge(seq, color: f.decision_meta[:color], size: :md) %><% end %>

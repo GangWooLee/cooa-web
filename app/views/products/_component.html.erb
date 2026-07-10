@@ -71,7 +71,7 @@
             <%# + 새 버전 (전체 페이지 폼 — 드로어 프레임 탈출) %>
             <span class="h-px w-3 shrink-0 bg-line-soft sm:w-5"></span>
             <%= link_to new_component_component_version_path(component), data: { turbo_frame: "_top" },
-                  title: "#{component.display_name}에 새 버전 추가",
+                  title: "#{component.display_name}에 새 버전 추가", "aria-label": "#{component.display_name}에 새 버전 추가",
                   class: "flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border border-dashed border-line text-muted transition hover:border-cooa hover:text-cooa" do %>
               <%= ui_icon "plus", size: 16 %>
             <% end %>
@@ -81,7 +81,7 @@
         <div class="flex items-center gap-2 sm:pt-2.5">
           <span class="text-body text-muted">버전 없음</span>
           <%= link_to new_component_component_version_path(component), data: { turbo_frame: "_top" },
-                title: "#{component.display_name}에 새 버전 추가",
+                title: "#{component.display_name}에 새 버전 추가", "aria-label": "#{component.display_name}에 새 버전 추가",
                 class: "flex h-[28px] w-[28px] items-center justify-center rounded-md border border-dashed border-line text-muted transition hover:border-cooa hover:text-cooa" do %>
             <%= ui_icon "plus", size: 15 %>
           <% end %>
@@ -89,7 +89,7 @@
       <% end %>
 
       <%# 삭제 — 첫 줄 우측 상하중앙, 호버 노출(패널 토글과 무관하게 고정) %>
-      <%= button_to component_path(component), method: :delete, title: "구성요소 삭제",
+      <%= button_to component_path(component), method: :delete, title: "구성요소 삭제", "aria-label": "구성요소 삭제",
             form: { class: "absolute right-1 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-150 group-hover/comp:opacity-100",
                     data: { turbo_frame: "_top", turbo_confirm: "'#{component.display_name}' 및 모든 버전·피드백이 삭제됩니다. 계속할까요?" } },
             class: "rounded p-1 text-muted transition hover:bg-tint hover:text-warn" do %><%= ui_icon "trash", size: 14 %><% end %>

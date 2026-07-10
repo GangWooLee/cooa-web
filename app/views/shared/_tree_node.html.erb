@@ -27,7 +27,7 @@
 <% else %>
   <%# 리프: 이름=드로어 링크 / rename_side 시 인라인 입력 auto-open %>
   <span data-controller="inline-edit" data-inline-edit-auto-value="<%= params[:rename_side].to_s == node.id.to_s %>" class="block">
-    <%= link_to product_path(node),
+    <%= link_to product_path(node), "aria-current": (current ? "page" : nil),
           class: "flex items-center gap-1.5 rounded-md py-1.5 pl-[30px] pr-2 hover:bg-tint #{current ? 'bg-accent/60 font-bold text-cooa' : 'text-ink'}",
           data: { "inline-edit-target": "display", "tree-filter-target": "leaf", name: "#{node.name} #{node.code}",
                   "node-id": node.id, "node-kind": "leaf", "node-name": node.name, "node-path": node_path_label(node),

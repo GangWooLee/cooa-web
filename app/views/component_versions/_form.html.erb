@@ -8,13 +8,15 @@
 <%= form_with model: @version, url: url, method: method, multipart: true, class: "space-y-5",
       data: { controller: "submit-loading", action: "submit->submit-loading#onSubmit", submit_loading_label_value: (persisted ? "저장 중…" : "추가 중…") } do |f| %>
   <% if @version.errors.any? %>
-    <div class="flex gap-2 rounded-lg border border-warn/50 p-3 text-body text-ink">
+    <div id="version-form-errors" role="alert" class="flex gap-2 rounded-lg border border-warn/50 p-3 text-body text-ink">
       <%= ui_icon "warn", size: 16, klass: "mt-0.5 shrink-0 text-warn" %>
       <ul class="list-disc pl-4 font-medium">
         <% @version.errors.full_messages.each do |m| %><li><%= m %></li><% end %>
       </ul>
     </div>
   <% end %>
+  <%# 실패 필드 → aria-invalid + 오류 요약(role=alert)으로 aria-describedby 연결. %>
+  <% invalid_attrs = ->(attr) { @version.errors[attr].any? ? { "aria-invalid": "true", "aria-describedby": "version-form-errors" } : {} } %>
 
   <div>
     <label class="block text-body font-bold text-ink">아트워크 파일 <span class="font-normal text-muted">· PDF·PNG·JPG·WEBP · 30MB 이하</span></label>
@@ -33,13 +35,15 @@
     <% end %>
     <%# file: 셀렉터 버튼을 ui_button primary와 동형으로 정렬(bg-cooa·rounded-lg·hover:bg-cooa-dark) — M6 %>
     <%= f.file_field :artwork, accept: "application/pdf,image/png,image/jpeg,image/webp",
-          class: "mt-2 block w-full text-body text-ink file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-cooa file:px-3 file:py-2 file:font-bold file:text-white file:transition file:hover:bg-cooa-dark" %>
+          class: "mt-2 block w-full text-body text-ink file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-cooa file:px-3 file:py-2 file:font-bold file:text-white file:transition file:hover:bg-cooa-dark",
+          **invalid_attrs.(:artwork) %>
   </div>
 
   <div>
     <label class="block text-body font-bold text-ink">변경사유</label>
     <%= f.text_area :change_reason, rows: 3, placeholder: "이 버전에서 무엇이 달라졌나요?",
-          class: "mt-2 w-full rounded-lg border border-line-soft px-3 py-2 text-note focus:border-cooa focus:outline-none focus:ring-1 focus:ring-cooa" %>
+          class: "mt-2 w-full rounded-lg border border-line-soft px-3 py-2 text-note focus:border-cooa focus:outline-none focus:ring-1 focus:ring-cooa",
+          **invalid_attrs.(:change_reason) %>
   </div>
 
   <label class="flex items-center gap-2 text-note text-ink">

@@ -7,7 +7,7 @@
     <div class="relative border-b border-line-soft bg-accent/40 px-5 py-4">
       <div class="absolute right-3 top-3 flex items-center gap-2">
         <%# 삭제(파괴적) — 닫기와 구분선·간격으로 분리해 오클릭 방지(확인 다이얼로그 유지). danger 등급 호버. %>
-        <%= button_to product_path(product), method: :delete, title: "삭제",
+        <%= button_to product_path(product), method: :delete, title: "삭제", "aria-label": "제품 삭제",
               form: { data: { turbo_frame: "_top", turbo_confirm: del_confirm } },
               class: "rounded-lg p-1.5 text-muted transition hover:bg-warn/10 hover:text-warn" do %><%= ui_icon "trash", size: 16 %><% end %>
         <span class="h-4 w-px shrink-0 bg-line-soft"></span>
