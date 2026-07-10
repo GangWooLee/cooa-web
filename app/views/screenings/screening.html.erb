@@ -12,9 +12,9 @@
     <div class="text-meta text-muted">AI의 답변은 완벽하지 않으니 꼭 RA 담당자의 검토를 권합니다.</div>
   </div>
 
-  <div class="flex min-h-0 flex-1 flex-col lg:flex-row">
+  <div class="flex min-h-0 flex-1 flex-col overflow-auto lg:overflow-hidden lg:flex-row">
     <%# 좌: 아트워크 + finding 박스 (방금 실행 시 스캔 애니메이션) %>
-    <div class="relative min-h-0 min-w-0 flex-1 p-3 <%= "screening-scanning" if params[:ran] %>" style="min-height:380px">
+    <div class="screening-artwork-pane relative min-w-0 flex-1 p-3 <%= "screening-scanning" if params[:ran] %>">
       <% if artwork?(@version) %>
         <%# 줌 활성(세 아트워크 뷰 일관) — finding 박스는 stage %-자식이라 줌 transform과 함께 이동/확대(좌표 정합).
             스캔 빔 오버레이는 pane 절대배치·pointer-events-none·초기 실행 시에만이라 줌과 독립. %>
@@ -32,7 +32,7 @@
     </div>
 
     <%# 우: 결과 패널 %>
-    <aside class="flex w-full shrink-0 flex-col border-t border-line bg-white lg:w-[400px] lg:border-l lg:border-t-0">
+    <aside class="flex w-full shrink-0 flex-col border-t border-line bg-white lg:min-h-0 lg:w-[400px] lg:border-l lg:border-t-0">
       <div class="border-b border-line-soft p-3">
         <%# 라이브 라벨 — 서버는 항상 "스크리닝 결과"로 렌더(reduced-motion·비-ran 안전). ran 스캔 동안만 JS가
             "스크리닝 중…"으로 바꿨다가 완료 시 되돌린다. %>
@@ -57,7 +57,7 @@
         <% end %>
       </div>
 
-      <div class="min-h-0 flex-1 space-y-2 overflow-auto p-3">
+      <div class="space-y-2 overflow-visible p-3 lg:min-h-0 lg:flex-1 lg:overflow-auto">
         <%# 목적=위반 탐지 → '적합'(ok)은 노출하지 않음 %>
         <% issues = @run ? @run.screening_findings.reject(&:decision_ok?) : [] %>
         <% if issues.any? %>
@@ -109,7 +109,7 @@
   </div>
 
   <%# 하단 액션바 — 국가 미지정이면 실행 차단(거짓 '적합' 방지) %>
-  <div class="flex items-center justify-center gap-3 border-t border-line-soft bg-white px-6 py-3">
+  <div class="screening-actionbar flex shrink-0 items-center justify-center gap-3 border-t border-line-soft bg-white px-4 py-3 lg:px-6">
     <% if @product.country.blank? %>
       <span class="flex items-center gap-1.5 text-body font-medium text-warn">
         <%= ui_icon "warn", size: 16 %> 국가가 지정되지 않아 스크리닝을 실행할 수 없습니다 — 드로어에서 국가를 먼저 지정하세요.

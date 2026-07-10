@@ -17,10 +17,12 @@
   </head>
 
   <body class="h-full bg-tint text-ink font-sans antialiased">
-    <div class="flex h-screen flex-col overflow-hidden" data-controller="sidebar">
+    <div class="flex h-screen flex-col overflow-hidden" data-controller="sidebar" data-action="keydown@window->sidebar#onKeydown resize@window->sidebar#sync">
       <%= render "shared/topbar" %>
       <div class="flex min-h-0 flex-1">
         <%= render "shared/sidebar" %>
+        <button id="sidebar-backdrop" type="button" data-action="sidebar#close" aria-label="사이드바 닫기"
+                class="fixed inset-x-0 bottom-0 top-[43px] z-40 hidden bg-ink/30 lg:hidden"></button>
         <main class="min-w-0 flex-1 overflow-auto">
           <%# 일반 flash(notice/alert) = fixed 우상단 토스트(shared/_flash). grant UI·claim 등 모든 리다이렉트
               메시지의 유일한 렌더 지점. invite_link는 members 전용 배너(팝오버)라 제외. %>

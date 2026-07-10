@@ -2,7 +2,8 @@
      · 사용자 · 내 리뷰 인박스(배지) · 전사 관리 — 항상(불변).
      · 작업실 안(current_workspace) → 작업실 헤더 + "← 모든 작업실" + 그 작업실 서브트리 트리 + 검색 + 새 폴더.
      · 작업실 밖(홈·인박스·전사관리) → 작업실 목록(이름만·클릭=진입). 트리·검색 미렌더. %>
-<aside id="app-sidebar" class="hidden w-[281px] min-w-0 shrink-0 flex-col border-r border-line bg-white lg:flex">
+<aside id="app-sidebar" aria-label="주 내비게이션"
+       class="fixed bottom-0 left-0 top-[43px] z-50 flex w-[281px] min-w-0 shrink-0 flex-col border-r border-line bg-white shadow-xl lg:static lg:z-auto lg:shadow-none">
   <%# 사용자 → 계정 메뉴. 네이티브 <details>(JS 무의존 — 리뷰 F2: 로그아웃·설정 진입은 Stimulus 실패에도
       살아야 한다. 로그인 페이지 데모 피커와 동일 선례). 트리거=아바타+이름+caret · 패널=헤더→설정→로그아웃. %>
   <details class="relative px-3 pb-3 pt-4">

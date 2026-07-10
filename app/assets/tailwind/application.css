@@ -92,9 +92,30 @@ summary::-webkit-details-marker { display: none; }
   100% { top: 86%; opacity: 0; }
 }
 
-/* 좌측 사이드바 접기/펼치기 — html.sidebar-collapsed 시 화면 밖으로 부드럽게 슬라이드(토글은 상단바) */
-#app-sidebar { transition: margin-left .28s ease, opacity .2s ease; }
-html.sidebar-collapsed #app-sidebar { margin-left: -282px; opacity: 0; pointer-events: none; }
+/* 스크리닝 모바일: 아트워크 최소 높이를 완화하고 하단 액션은 safe-area를 존중한다. */
+.screening-artwork-pane { min-height: min(320px, calc(100svh - 220px)); }
+.screening-actionbar { padding-bottom: max(.75rem, env(safe-area-inset-bottom)); }
+@media (min-width: 640px) {
+  .screening-artwork-pane { min-height: 380px; }
+}
+@media (min-width: 1024px) {
+  .screening-artwork-pane { min-height: 0; }
+  .screening-actionbar { padding-bottom: .75rem; }
+}
+
+/* 좌측 사이드바: desktop은 접힘, mobile은 오프캔버스. */
+#app-sidebar { transition: transform .28s ease, margin-left .28s ease, opacity .2s ease; }
+@media (max-width: 1023.98px) {
+  #app-sidebar { transform: translateX(-100%); pointer-events: none; }
+  #sidebar-backdrop { left: 281px; }
+  html.sidebar-open #app-sidebar { transform: translateX(0); pointer-events: auto; }
+  html.sidebar-open #sidebar-backdrop { display: block; }
+  html.sidebar-collapsed #app-sidebar { margin-left: 0; opacity: 1; }
+}
+@media (min-width: 1024px) {
+  #app-sidebar { transform: translateX(0); }
+  html.sidebar-collapsed #app-sidebar { margin-left: -282px; opacity: 0; pointer-events: none; }
+}
 
 /* flash 토스트 퇴장 — opacity/transform만(200ms). flash_controller가 닫을 때 이 클래스를 붙인다. */
 .flash-leave { transition: opacity .2s ease, transform .2s ease; opacity: 0; transform: translateY(-6px); }
@@ -113,6 +134,7 @@ html.sidebar-collapsed #app-sidebar { margin-left: -282px; opacity: 0; pointer-e
 /* 접근성 — prefers-reduced-motion: 모션 최소화 시작점(flash 토스트 트랜지션·로딩 스피너 회전 무효화).
    컨트롤러가 reduced-motion에서 즉시 제거하지만 CSS 경로에서도 이중으로 못박는다. 향후 다른 모션도 여기에 추가한다. */
 @media (prefers-reduced-motion: reduce) {
+  #app-sidebar { transition: none; }
   .flash-leave { transition: none; }
   .spinner { animation: none; }
   .scan-line { animation: none; } /* 스크리닝 스캔 빔 무효(컨트롤러도 reduced-motion 시 스캐너 미표시 — 이중 못박기) */

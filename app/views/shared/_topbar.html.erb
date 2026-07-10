@@ -5,7 +5,8 @@
   <% end %>
   <div class="h-full w-px shrink-0 bg-line/70"></div>
   <%# 사이드바 접기/펼치기 — 로고 우측, 항상 같은 위치(콘텐츠 비가림) %>
-  <button type="button" data-action="click->sidebar#toggle" title="사이드바 접기/펼치기" aria-label="사이드바 접기/펼치기"
+  <button type="button" data-sidebar-target="toggle" data-action="click->sidebar#toggle"
+          title="사이드바 접기/펼치기" aria-label="사이드바 열기" aria-controls="app-sidebar" aria-expanded="false"
           class="flex h-full shrink-0 items-center px-3 text-muted transition hover:text-cooa">
     <%= ui_icon "panel-left", size: 18 %>
   </button>
