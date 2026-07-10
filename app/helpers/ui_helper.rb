@@ -236,20 +236,23 @@ module UiHelper
 
   IMG_RATIO = 2048.0 / 1118.0 # 박스 전개도 가로/세로 비
 
-  # 어노테이션 → 아트워크 뷰어 박스 배열
+  # 어노테이션 → 아트워크 뷰어 박스 배열. aria = 오버레이 박스·핀의 접근 이름(a11y-9: 색만으로 판정을
+  # 구분하던 박스에 라벨·카테고리를 SR로 전달, 시각 변화 없음).
   def annotation_boxes(annotations)
     annotations.map do |a|
       { seq: a.seq, x: a.box_x, y: a.box_y, w: a.box_w, h: a.box_h, color: a.box_color,
-        fill: "color-mix(in srgb, #{a.box_color} 12%, transparent)", label: a.seq }
+        fill: "color-mix(in srgb, #{a.box_color} 12%, transparent)", label: a.seq,
+        aria: "피드백 #{a.seq}: #{a.category}" }
     end
   end
 
-  # 스크리닝 finding → 박스 배열 (박스 지정된 것만)
+  # 스크리닝 finding → 박스 배열 (박스 지정된 것만). aria = "판정: 제목"(a11y-9).
   def finding_boxes(findings)
     findings.select(&:boxed?).each_with_index.map do |f, i|
       color = f.decision_meta[:color]
       { seq: i + 1, finding_id: f.id, x: f.box_x, y: f.box_y, w: f.box_w, h: f.box_h,
-        color:, fill: "color-mix(in srgb, #{color} 12%, transparent)", label: i + 1 }
+        color:, fill: "color-mix(in srgb, #{color} 12%, transparent)", label: i + 1,
+        aria: "#{f.decision_meta[:label]}: #{f.subject}" }
     end
   end
 

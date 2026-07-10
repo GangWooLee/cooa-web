@@ -47,6 +47,7 @@
         <div class="scroll-fade-x flex min-w-0 flex-nowrap items-center gap-1 overflow-x-auto scrollbar-slim">
           <% all_boxes.each do |b| %>
             <button type="button" data-seq="<%= b[:seq] %>" data-action="artwork-viewer#focusSeq"
+                    aria-label="<%= b[:aria] || "피드백 #{b[:label] || b[:seq]}" %>"
                     class="av-seq touch-target flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-body font-bold transition"
                     style="border-color:<%= b[:color] %>;color:var(--color-ink)"><%= b[:label] || b[:seq] %></button>
           <% end %>
@@ -89,6 +90,7 @@
                 <button type="button" data-artwork-viewer-target="box"
                         data-seq="<%= b[:seq] %>" data-x="<%= b[:x] %>" data-y="<%= b[:y] %>" data-w="<%= b[:w] %>" data-h="<%= b[:h] %>"
                         data-action="click->artwork-viewer#focusBox"
+                        aria-label="<%= b[:aria] || "피드백 #{b[:label] || b[:seq]}" %>"
                         class="absolute rounded-[3px] border-2 transition-[opacity,box-shadow]"
                         style="left:<%= b[:x] %>%;top:<%= b[:y] %>%;width:<%= b[:w] %>%;height:<%= b[:h] %>%;border-color:<%= b[:color] %>;background:<%= box_fill %>">
                   <%= seq_badge(b[:label] || b[:seq], color: b[:color], size: :md, extra: "absolute -left-2.5 -top-2.5 shadow") %>
@@ -136,7 +138,7 @@
           <button type="button" data-seq="<%= b[:seq] %>" data-w="<%= b[:w] %>" data-h="<%= b[:h] %>" data-action="artwork-viewer#focusSeq"
                   class="av-thumb relative shrink-0 overflow-hidden rounded border-2 transition"
                   style="height:54px;aspect-ratio:<%= box_aspect(b[:w], b[:h]) %>;border-color:<%= b[:color] %>;<%= crop_bg(mini[:thumb_src], b[:x], b[:y], b[:w], b[:h]) %>"
-                  title="피드백 <%= b[:label] || b[:seq] %>">
+                  aria-label="<%= b[:aria] || "피드백 #{b[:label] || b[:seq]}" %>" title="피드백 <%= b[:label] || b[:seq] %>">
             <%= seq_badge(b[:label] || b[:seq], color: b[:color], size: :sm, extra: "absolute left-0.5 top-0.5 shadow") %>
           </button>
         <% end %>

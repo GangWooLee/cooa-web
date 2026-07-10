@@ -169,6 +169,7 @@ turbo-frame#detail[busy] ~ .drawer-loading { display: flex; }
    컨트롤러가 reduced-motion에서 즉시 제거하지만 CSS 경로에서도 이중으로 못박는다. 향후 다른 모션도 여기에 추가한다. */
 @media (prefers-reduced-motion: reduce) {
   #app-sidebar { transition: none; }
+  [data-detail-drawer-target='panel'] { transition: none; } /* 드로어 슬라이드 무효(a11y-8) — 사이드바와 동일 규약 */
   .flash-leave { transition: none; }
   .spinner { animation: none; }
   .scan-line { animation: none; } /* 스크리닝 스캔 빔 무효(컨트롤러도 reduced-motion 시 스캐너 미표시 — 이중 못박기) */

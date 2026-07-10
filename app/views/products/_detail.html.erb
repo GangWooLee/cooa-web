@@ -16,7 +16,7 @@
       </div>
       <div data-controller="inline-edit" data-inline-edit-auto-value="<%= params[:rename] == "1" %>" class="flex flex-wrap items-center gap-2 pr-20">
         <%= product_code_chip(product.code) %>
-        <h1 data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 이름 변경"
+        <h1 id="drawer-title" data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 이름 변경"
             class="min-w-0 cursor-text break-words text-display font-bold text-ink transition hover:text-cooa"><%= product.name %></h1>
         <%= form_with model: product, url: product_path(product), method: :patch,
               data: { turbo_frame: "_top", "inline-edit-target": "form" }, class: "hidden min-w-0 flex-1" do |f| %>
