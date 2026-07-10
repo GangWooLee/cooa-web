@@ -12,6 +12,7 @@ module UiHelper
     "doc"          => '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
     "user"         => '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.5 18.5a6 6 0 0 1 11 0"/>',
     "plus"         => '<path d="M12 5v14M5 12h14"/>',
+    "minus"        => '<path d="M5 12h14"/>',
     "plus_circle"  => '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
     "filter"       => '<path d="M3 4h18l-7 8v6l-4 2v-8Z"/>',
     "sort"         => '<path d="M3 6h12M3 12h9M3 18h6"/><path d="m17 9 3-3 3 3"/><path d="M20 6v12"/>',
@@ -34,13 +35,16 @@ module UiHelper
     "logout"       => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>'
   }.freeze
 
-  def ui_icon(name, size: 20, stroke: 1.7, klass: nil)
+  # 장식용 아이콘은 기본 aria-hidden(a11y-6) — 접근성 트리에서 무명 노출 방지. 의미를 단독 전달하는
+  # 아이콘(라벨 없는 곳)만 decorative: false로 opt-out하고 호출부에서 aria-label/title로 이름을 준다.
+  def ui_icon(name, size: 20, stroke: 1.7, klass: nil, decorative: true)
     paths = ICON_PATHS[name.to_s]
     return "".html_safe unless paths
     content_tag :svg, paths.html_safe,
                 xmlns: "http://www.w3.org/2000/svg", width: size, height: size,
                 viewBox: "0 0 24 24", fill: "none", stroke: "currentColor",
                 "stroke-width": stroke, "stroke-linecap": "round", "stroke-linejoin": "round",
+                "aria-hidden": (decorative ? "true" : nil),
                 class: [ "inline-block shrink-0", klass ].compact.join(" ")
   end
 
@@ -136,7 +140,8 @@ module UiHelper
     primary:   "bg-cooa text-white hover:bg-cooa-dark",              # 채움 · 주요 CTA
     secondary: "border border-cooa bg-white text-cooa hover:bg-accent", # 아웃라인 · 보조 액션(로그인 등)
     ghost:     "text-muted hover:bg-tint hover:text-ink",            # 무테 저강도 · 취소/닫기/부차
-    danger:    "border border-warn bg-white text-warn hover:bg-warn hover:text-white" # 파괴적
+    danger:    "border border-warn bg-white text-warn hover:bg-warn hover:text-white", # 파괴적
+    ok:        "border border-ok-strong bg-ok-soft text-ink hover:bg-white" # 확인/반영(그린 아웃라인·ink 라벨)
   }.freeze
   BTN_SIZES = { sm: "gap-1 px-3 py-1.5 text-meta", md: "gap-1.5 px-4 py-2 text-body" }.freeze
 
@@ -149,6 +154,24 @@ module UiHelper
   def ui_button(label = nil, variant: :primary, size: :md, **opts, &block)
     klass = ui_button_classes(variant:, size:, extra: opts.delete(:class))
     body  = block ? capture(&block) : label
+    if (href = opts.delete(:href))
+      link_to body, href, class: klass, **opts
+    else
+      opts[:type] ||= "button"
+      button_tag body, class: klass, **opts
+    end
+  end
+
+  # 아이콘 단독 버튼 정본 — 정사각 히트영역(28px) + 아이콘(기본 16) · ghost 톤 · focus-visible 링 · aria-label 필수.
+  # href: → <a>(link_to) · 그 외 → <button>. title은 opts로 병기 가능(툴팁). ui_button과 동형 API.
+  ICON_BTN_BASE = "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition cursor-pointer " \
+                  "text-muted hover:bg-tint hover:text-ink " \
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/50 focus-visible:ring-offset-1 " \
+                  "disabled:pointer-events-none disabled:opacity-50"
+  def icon_button(icon, aria_label:, size: 16, stroke: 1.7, **opts)
+    klass = [ ICON_BTN_BASE, opts.delete(:class) ].compact.join(" ")
+    body  = ui_icon(icon, size: size, stroke: stroke)
+    opts[:"aria-label"] = aria_label
     if (href = opts.delete(:href))
       link_to body, href, class: klass, **opts
     else

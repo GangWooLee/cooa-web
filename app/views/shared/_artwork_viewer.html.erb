@@ -25,8 +25,8 @@
         <% if local_assigns.fetch(:zoom, true) %>
           <%# 관례 순서: 확대(＋) 선두 → 축소(－) → 전체 %>
           <div class="flex shrink-0 items-center overflow-hidden rounded-lg border border-line bg-white text-ink shadow-sm">
-            <button type="button" data-action="artwork-viewer#zoomIn"  class="flex h-7 w-8 items-center justify-center hover:bg-tint">＋</button>
-            <button type="button" data-action="artwork-viewer#zoomOut" class="flex h-7 w-8 items-center justify-center border-l border-line-soft hover:bg-tint">－</button>
+            <button type="button" data-action="artwork-viewer#zoomIn"  aria-label="확대" class="flex h-7 w-8 items-center justify-center hover:bg-tint"><%= ui_icon "plus", size: 15 %></button>
+            <button type="button" data-action="artwork-viewer#zoomOut" aria-label="축소" class="flex h-7 w-8 items-center justify-center border-l border-line-soft hover:bg-tint"><%= ui_icon "minus", size: 15 %></button>
             <button type="button" data-action="artwork-viewer#fit"     class="flex h-7 items-center justify-center border-l border-line-soft px-2 text-meta hover:bg-tint" title="전체 보기">전체</button>
           </div>
         <% end %>

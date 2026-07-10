@@ -108,7 +108,7 @@
               </div>
             <% else %>
               <%= button_to resolve_annotation_path(a, resolved_in_version_id: @to.id), method: :patch,
-                    class: "inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-ok-strong bg-ok-soft py-2 text-body font-bold text-ink transition hover:bg-white" do %><%= ui_icon "check", size: 15, stroke: 2.4, klass: "text-ok-strong" %><%= @to.vlabel %>에서 반영됨으로 표시<% end %>
+                    class: ui_button_classes(variant: :ok, extra: "w-full") do %><%= ui_icon "check", size: 15, stroke: 2.4, klass: "text-ok-strong" %><%= @to.vlabel %>에서 반영됨으로 표시<% end %>
             <% end %>
           </div>
         </div>
