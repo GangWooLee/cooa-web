@@ -30,7 +30,7 @@
         <% end %>
         <%= button_to tab_path(tab[:key]), method: :delete, title: "탭 닫기", "aria-label": "탭 닫기",
               form: { class: "absolute right-1 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-150 group-hover:opacity-100" },
-              class: "rounded bg-white/90 p-0.5 text-muted shadow-sm hover:text-warn" do %><%= ui_icon "x", size: 14 %><% end %>
+              class: "touch-target flex items-center justify-center rounded bg-white/90 p-0.5 text-muted shadow-sm hover:text-warn" do %><%= ui_icon "x", size: 14 %><% end %>
       </div>
       <div class="h-full w-px shrink-0 bg-line/70"></div>
     <% end %>

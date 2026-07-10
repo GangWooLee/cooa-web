@@ -9,11 +9,12 @@
       <% end %>
     </div>
     <div class="flex items-center gap-2">
-      <%# 형제 버전 스위처 (클릭 = 해당 버전 파일 보기) %>
-      <div class="flex items-center gap-1">
+      <%# 형제 버전 스위처 (클릭 = 해당 버전 파일 보기) — 넘칠 때 가로 스크롤 + 우측 페이드 단서(responsive-6).
+          py-1로 호버/활성 ring 클리핑 방지. 칩 클릭영역은 touch-target(responsive-4). %>
+      <div class="scroll-fade-x flex min-w-0 items-center gap-1 overflow-x-auto scrollbar-slim px-0.5 py-1">
         <% @siblings.each do |sib| %>
           <%= link_to component_version_path(sib), title: "#{sib.vlabel} 보기",
-                class: "shrink-0 rounded-lg p-0.5 transition hover:bg-accent hover:ring-2 hover:ring-cooa/40 #{'ring-2 ring-cooa' if sib.id == @version.id}" do %>
+                class: "touch-target flex shrink-0 items-center justify-center rounded-lg p-0.5 transition hover:bg-accent hover:ring-2 hover:ring-cooa/40 #{'ring-2 ring-cooa' if sib.id == @version.id}" do %>
             <%= version_chip(sib.vlabel, size: 28, active: sib.id == @version.id) %>
           <% end %>
         <% end %>

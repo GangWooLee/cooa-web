@@ -34,7 +34,7 @@
       <%= render "shared/empty_state", variant: :card, boxed: true, extra: "mt-10", icon: "folder",
             title: "아직 폴더나 항목이 없습니다", description: list_desc %>
     <% else %>
-      <div class="min-w-0 overflow-x-auto">
+      <div class="scroll-fade-x min-w-0 overflow-x-auto">
         <table class="w-full min-w-[860px] border-collapse text-note">
           <thead class="sticky top-0 z-10">
             <tr class="bg-tint text-ink">

@@ -29,8 +29,9 @@
       <%# 타임라인(칩) %>
       <% if versions.any? %>
         <div class="min-w-0 flex-1">
-          <%# 호버 ring 안 잘리게 패딩 + 슬림 스크롤바 %>
-          <div class="flex items-center overflow-x-auto scrollbar-slim px-1 py-2">
+          <%# 호버 ring 안 잘리게 패딩 + 슬림 스크롤바 + 좁은 뷰포트 우측 페이드 단서(responsive-6).
+              track 타깃 = 연결 시 현재 버전 칩을 가로 스크롤로 노출(layout-2). %>
+          <div data-version-timeline-target="track" class="scroll-fade-x flex items-center overflow-x-auto scrollbar-slim px-1 py-2">
             <% versions.each_with_index do |v, i| %>
               <% if i.positive? %>
                 <%# 연결선 + (변경사유 있으면) ▾ 토글 / 없으면 빨간 점 %>
@@ -53,7 +54,7 @@
                 </div>
               <% end %>
               <%# 버전 노드 = 클릭: 파일 보기 / 드래그: 슬롯 채우기. hover 담기(+) = 클릭으로 다음 빈 비교 슬롯 채움(터치패드 폴백·드래그 병존) %>
-              <span class="group/vchip relative shrink-0">
+              <span class="group/vchip relative shrink-0" <%= "data-current=true".html_safe if v.current? %>>
                 <button type="button" draggable="true" data-version-select-target="version"
                         data-vid="<%= v.id %>" data-vlabel="<%= v.vlabel %>" data-comp="<%= component.id %>"
                         data-action="dragstart->version-select#dragstart click->version-select#view"

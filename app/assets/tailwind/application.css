@@ -75,6 +75,22 @@ summary::-webkit-details-marker { display: none; }
   mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 }
 
+/* 가로 스크롤 단서(responsive-2·6) — 좁은 뷰포트에서만 우측 20px를 투명으로 페이드해 "더 있음"을 암시.
+   tab-fade와 동형(배경 무관 mask)이나 lg+에서는 무효(테이블·칩이 다 보이는 데스크톱에서 마지막 열/칩이
+   흐려지는 회귀 방지). CSS-only 근사 — 스크롤 끝에서도 옅게 남지만 단서로 충분(허용된 근사도). */
+@media (max-width: 1023.98px) {
+  .scroll-fade-x {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+  }
+}
+
+/* 터치 히트영역(responsive-4) — coarse 포인터(터치)에서만 인터랙티브 컨트롤의 클릭영역을 ≥44px로 확장.
+   내부 아이콘/칩은 flex 중앙정렬로 크기 유지, 박스만 커진다. 마우스(fine)에서는 무효(데스크톱 시각 불변). */
+@media (pointer: coarse) {
+  .touch-target { min-width: 44px; min-height: 44px; }
+}
+
 /* 인허가 스크리닝 — 등속 1패스 스캔 라인(하단 선명선 + 위로 옅은 트레일 + glow) + 스캔 중 박스 초기 숨김.
    선명선(하단 테두리)이 0%→100%를 균일 속도로 통과 → JS가 box_y 시점에 동기 reveal. */
 .screening-scanning [data-artwork-viewer-target='box'] { opacity: 0; }
