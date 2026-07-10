@@ -19,7 +19,8 @@
   <% invalid_attrs = ->(attr) { @version.errors[attr].any? ? { "aria-invalid": "true", "aria-describedby": "version-form-errors" } : {} } %>
 
   <div>
-    <label class="block text-body font-bold text-ink">아트워크 파일 <span class="font-normal text-muted">· PDF·PNG·JPG·WEBP · 30MB 이하</span></label>
+    <%# 신규(!persisted)만 아트워크 필수 — 별표(3중 신호: 색+기호+SR용 '필수')와 client required. edit는 기존 파일 유지 허용이라 미적용(forms-3). %>
+    <label class="block text-body font-bold text-ink">아트워크 파일<% unless persisted %> <span class="text-cooa" aria-hidden="true">*</span><span class="sr-only">필수</span><% end %> <span class="font-normal text-muted">· PDF·PNG·JPG·WEBP · 30MB 이하</span></label>
     <%# blob.persisted? 가드: 검증 실패(422) 재렌더 시 거부된 미저장 업로드가 "현재 파일"로 뜨거나
         미서명 blob의 signed_id로 500이 나는 것 방지(EC-4) — 저장된 기존 첨부만 표시. %>
     <% if persisted && @version.artwork.attached? && @version.artwork.blob&.persisted? %>
@@ -34,7 +35,7 @@
       </div>
     <% end %>
     <%# file: 셀렉터 버튼을 ui_button primary와 동형으로 정렬(bg-cooa·rounded-lg·hover:bg-cooa-dark) — M6 %>
-    <%= f.file_field :artwork, accept: "application/pdf,image/png,image/jpeg,image/webp",
+    <%= f.file_field :artwork, accept: "application/pdf,image/png,image/jpeg,image/webp", required: !persisted,
           class: "mt-2 block w-full text-body text-ink file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-cooa file:px-3 file:py-2 file:font-bold file:text-white file:transition file:hover:bg-cooa-dark",
           **invalid_attrs.(:artwork) %>
   </div>
