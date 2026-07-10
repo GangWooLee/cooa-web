@@ -6,11 +6,11 @@
 # Then point the Rails app at it (these enable the OmniAuth provider + the "Keycloak로 로그인" button):
 #   export KC_ISSUER=http://localhost:8080/realms/cooa
 #   export KC_CLIENT_ID=cooa-rails
-#   export KC_CLIENT_SECRET=cooa-rails-dev-secret          # = realm-cooa.json client "secret" (dev only)
+#   export KC_CLIENT_SECRET=local-dev-only-not-a-secret          # = realm-cooa.json client "secret" (dev only)
 #   export KC_REDIRECT_URI=http://localhost:3000/auth/openid_connect/callback
 #   bin/dev                                                 # app runtime = cooa_app (RLS)
 #
-# Demo users (realm-cooa.json): kim/song/lee/park @cooa.dev, password "demo1234" — emails match the
+# Demo users (realm-cooa.json): kim/song/lee/park @cooa.dev, password "demo-local-pass" — emails match the
 # Rails seed, so the first OIDC login links by email and binds the IdP subject (roles preserved).
 # `down -v` resets the in-memory (H2) realm state.
 services:
