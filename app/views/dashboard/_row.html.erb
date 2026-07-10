@@ -60,7 +60,7 @@
 
       <%# 좌측 호버 컨트롤 — 삭제만(이동=드래그앤드롭, 생성=상단 아이콘) %>
       <span class="ml-1.5 inline-flex items-center gap-0.5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100" data-no-rowlink>
-        <%= button_to product_path(node), method: :delete, title: "삭제",
+        <%= button_to product_path(node), method: :delete, title: "삭제", "aria-label": "#{node.name} 삭제",
               form: { class: "inline", data: { turbo_frame: "_top", turbo_confirm: del_confirm } },
               class: "rounded p-0.5 text-muted hover:bg-tint hover:text-warn" do %><%= ui_icon "trash", size: 14 %><% end %>
       </span>
