@@ -30,7 +30,7 @@
 | `ok` / `ok-strong` / `ok-soft` | #84b733 / #5f8f2e / #eef6e3 | 적합 / 확인 버튼·상태 / 연틴트 배경 | ok-strong 텍스트는 large만 AA |
 | 유틸 | `.bg-cooa-gradient` | 브랜드 그라데이션 | 버전 칩 + 홈 히어로 CTA 예외 |
 
-**금지**: 토큰 외 인라인 hex/스타일 색 (예: `#6b4ea8`, `#9aa0a6`, `#888` — 현존 위반, 정리 대상).
+**금지**: 토큰 외 인라인 hex/스타일 색 (2026-07-10 전폐 완료 — 데이터 주입·아바타 팔레트만 예외). 모델 색 맵(annotation·decidable)은 `var(--color-*)` 토큰 참조가 정본.
 
 ## 2. 타이포 스케일
 
@@ -61,14 +61,17 @@ Pretendard Variable. 현행 6단계 + 확장 3단(§9-B 확정 대기, 현재 ar
   - `rounded-2xl` = 모달·히어로 카드(홈 작업실 카드)
   - `rounded-md` = 버전 칩 등 소형 사각 요소. 그 외 값(arbitrary) 금지.
 - **빈 상태 표준 2종** (§5 참고): 카드형 `py-12` / 텍스트형 `py-8`. 그 외 패딩 임의값 금지.
+- **작업 3화면(버전·비교·스크리닝) 표준**: 캔버스 gutter `p-3`(px-6의 문서화된 예외 — 아트워크 몰입 영역), 우측 패널 폭 `lg:w-[380px]` 단일. 인박스 본문 `px-6 py-4`(헤더 좌측 기준선 정렬).
 
 ## 4. 컴포넌트 정본 (ui_helper.rb)
 
-- **버튼 = `ui_button` / `ui_button_classes` 단일 진실원**. 변형 4종: `primary`(채움 버건디) `secondary`(아웃라인) `ghost`(무테 저강도) `danger`(warn 아웃라인). 크기 `sm`/`md`. radius `rounded-lg` 고정, focus-visible 링 내장.
-  - **raw 버튼 마크업 금지**. 예외는 단 1곳: 홈 "새 작업실" 히어로의 그라데이션 프라이머리 (주석 명문화된 예외 — 현존 5곳 위반, 정리 대상).
-  - 확인/반영 계열(현 raw `bg-ok-strong`)은 `ok` 변형으로 승격 예정.
-- **아이콘 = `ui_icon`** (lucide 스타일 인라인 SVG 28종, currentColor). **이모지 아이콘 금지**. 새 아이콘은 ICON_PATHS에 추가.
-- **pill**: 판정 `decision_pill` · 피드백 상태 `annotation_status_pill`. 필터/탭 pill(`rounded-full px-2.5 py-1`, 활성 `bg-cooa text-white`/비활성 `bg-tint text-muted`)은 헬퍼 승격 예정 (현 인라인 6곳).
+- **버튼 = `ui_button` / `ui_button_classes` 단일 진실원**. 변형 5종: `primary`(채움 버건디) `secondary`(아웃라인) `ghost`(무테 저강도) `danger`(warn 아웃라인) `ok`(확인/반영 — ok-soft 배경+ok-strong 보더+ink 라벨). 크기 `sm`/`md`. radius `rounded-lg` 고정, focus-visible 링 내장.
+  - **raw 버튼 마크업 금지**. gradient 예외는 단 2곳: `version_chip` + 홈 빈 상태 히어로 "새 작업실 만들기".
+- **아이콘 단독 버튼 = `icon_button`** (aria-label 필수 인자 내장, 정사각 히트영역·rounded-lg·focus 링).
+- **아이콘 = `ui_icon`** (lucide 스타일 인라인 SVG 29종, currentColor, **기본 aria-hidden**). **이모지 아이콘 금지**. 새 아이콘은 ICON_PATHS에 추가.
+- **pill/뱃지**: 판정 `decision_pill` · 피드백 상태 `annotation_status_pill` — ink 라벨 + 시맨틱 색 보더/아이콘의 3중 신호가 정본. 순번 뱃지 = `seq_badge`(아웃라인形: 白배경+ink 글자+색 보더, 크기 16/20/28만). 품목코드 = `product_code_chip`.
+- **select = `ui_select_classes`** (appearance-none+caret 배경+focus ring — 인풋과 동형).
+- **터치/스크롤 유틸**: `.touch-target`(coarse 포인터에서 히트영역 ≥44px) · `.scroll-fade-x`(가로 스크롤 우측 페이드 단서).
 - **아바타 = `avatar`** (이름 첫 글자 + avatar_color, 이름 없으면 미렌더).
 - **버전 칩 = `version_chip`** (그라데이션 사각 + V#).
 - **브레드크럼 = `node_breadcrumb`** (가시 조상만 — 권한 누출 차단. 변경 금지).
@@ -76,11 +79,11 @@ Pretendard Variable. 현행 6단계 + 확장 3단(§9-B 확정 대기, 현재 ar
 
 ## 5. 상태 표면
 
-- **빈 상태 2종**:
-  - *카드형* (주요 목록이 비었고 행동 유도 필요): 아이콘(32) + 제목 + 설명 + CTA, `py-12`, 관리자/비관리자 문구 분기 유지.
-  - *텍스트형* (패널·보조 목록): `py-8 text-center text-meta text-muted` 한 줄.
-  - 모든 목록 화면은 빈 상태를 반드시 가진다 (현 비교 화면 누락 — 정리 대상).
-- **로딩**: 제출 버튼 = `submit_loading`(스피너+라벨 교체). 스피너 = `.spinner`(1em, currentColor, reduced-motion 대응). 드로어/프레임 페치 중 표시 부재는 개선 대상.
+- **빈 상태 = `shared/_empty_state` partial 단일 진실원** — variant 2종:
+  - *:card* (주요 목록이 비었고 행동 유도 필요): 아이콘(32) + 제목 + 설명 + 선택 CTA, `py-12`.
+  - *:text* (패널·보조 목록): `py-8 text-center text-meta text-muted` 한 줄.
+  - 모든 목록 화면은 빈 상태를 반드시 가진다. 단, 성공 상태(스크리닝 all-clear "위반·주의 사항 없음")는 빈 상태가 아니라 3중 신호 성공 표면으로 유지.
+- **로딩**: 제출 버튼 = `submit_loading`(스피너+라벨 교체). 스피너 = `.spinner`(1em, currentColor, reduced-motion 대응). 드로어 = 클릭 즉시 슬라이드-인 + turbo-frame `[busy]` CSS 스피너.
 - **에러**: `docs/error-handling.md` 규약 준수 — 대형 폼 인라인 422 재렌더, 소형 폼 flash alert, 전역 토스트 `net_error_toast`.
 - **flash**: 우상단 토스트, notice 4s/alert 8s 자동소멸, `role=status`/`role=alert`.
 
@@ -89,7 +92,8 @@ Pretendard Variable. 현행 6단계 + 확장 3단(§9-B 확정 대기, 현재 ar
 - 전역: 톱바(로고=홈·사이드바 토글·히스토리 탭) + 사이드바(인박스·구성원·컨텍스트 트리/작업실 목록).
 - **풀페이지 작업 화면(버전/비교/스크리닝)은 브레드크럼 필수**. 드로어는 경로 라벨(`node_path_label`).
 - 히스토리 탭은 풀페이지 작업만 (버전 v · 비교 c · 스크리닝 s).
-- **모바일(lg 미만)**: 사이드바 오프캔버스 + 톱바 햄버거로 접근 보장 (현재 소실 — P0 개선 대상).
+- **모바일(lg 미만)**: 사이드바 오프캔버스(translateX+백드롭+Escape/resize 동기화+aria-expanded) — 톱바 토글로 접근 보장. 데스크톱 접힘(쿠키 영속)과 분리 동작.
+- **드로어(제품 상세)**: `role=dialog aria-modal` + 열림 시 닫기 버튼 포커스 + Tab 트랩 + 닫힘 시 트리거 포커스 복원.
 
 ## 7. 접근성 (유지·강화 규칙)
 
