@@ -48,6 +48,23 @@ module UiHelper
                 class: [ "inline-block shrink-0", klass ].compact.join(" ")
   end
 
+  # 품목코드 칩 (식별자 정본) — 드로어 헤더·리뷰 인박스·톱바 탭 등에서 동일 회색 칩으로 통일(consistency-2).
+  def product_code_chip(code, extra: nil)
+    return "".html_safe if code.blank?
+    content_tag :span, code,
+                class: [ "inline-block rounded bg-tint px-1.5 py-0.5 text-caption font-bold text-muted", extra ].compact.join(" ")
+  end
+
+  # 순번 배지 (피드백·finding 번호) — 00936ce가 확립한 아웃라인形 정본화(border-2 · bg-white · text-ink · 보더=색).
+  # 크기 3종만 허용: sm 16 / md 20 / lg 28. extra로 절대배치·그림자 등 컨텍스트 유틸 흡수.
+  SEQ_BADGE_SIZES = { sm: "h-4 w-4 text-caption", md: "h-5 w-5 text-caption", lg: "h-7 w-7 text-body" }.freeze
+  def seq_badge(label, color:, size: :md, extra: nil)
+    content_tag :span, label,
+                class: [ "inline-flex shrink-0 items-center justify-center rounded-full border-2 bg-white font-bold leading-none text-ink",
+                         SEQ_BADGE_SIZES.fetch(size), extra ].compact.join(" "),
+                style: "border-color:#{color}"
+  end
+
   # 버전 칩 (그라데이션 사각형 + V#)
   def version_chip(text, size: 28, active: true)
     base = active ? "bg-cooa-gradient text-white border border-transparent" : "bg-white border-2 border-line text-ink"
@@ -132,7 +149,7 @@ module UiHelper
 
   # ── 표준 버튼 (단일 진실원) ────────────────────────────────────────────────
   # radius rounded-lg 1종 · size별 padding/텍스트 고정 · disabled · focus-visible 링 내장.
-  # 브랜드 그라데이션 프라이머리는 홈 "새 작업실" 히어로 1곳만 예외(여기 미포함).
+  # 브랜드 그라데이션 프라이머리는 홈 빈 상태 "새 작업실 만들기" 히어로 1곳만 예외(여기 미포함) — 그 외 gradient 회수 완료.
   BTN_BASE = "inline-flex items-center justify-center rounded-lg font-semibold transition cursor-pointer " \
              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cooa/50 focus-visible:ring-offset-1 " \
              "disabled:pointer-events-none disabled:opacity-50"

@@ -5,7 +5,7 @@
     <%= link_to component_version_path(cv), class: "flex min-w-0 flex-1 items-center justify-between gap-3" do %>
       <div class="min-w-0">
         <div class="flex items-center gap-2 text-body">
-          <span class="shrink-0 rounded bg-tint px-1.5 py-0.5 text-caption font-bold text-ink/70"><%= cv.product.code %></span>
+          <%= product_code_chip(cv.product.code, extra: "shrink-0") %>
           <span class="truncate font-bold text-ink"><%= cv.component.display_name %> <%= cv.vlabel %></span>
         </div>
         <div class="mt-1 truncate text-meta text-muted"><%= cv.product.name %></div>

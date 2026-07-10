@@ -24,7 +24,7 @@
                 class="block w-full rounded-lg border border-line-soft p-2.5 text-left transition hover:border-cooa">
           <div class="flex items-center justify-between">
             <span class="flex items-center gap-2">
-              <span class="flex h-5 w-5 items-center justify-center rounded-full border-2 bg-white text-caption font-bold text-ink" style="border-color:<%= a.box_color %>"><%= a.seq %></span>
+              <%= seq_badge(a.seq, color: a.box_color, size: :md) %>
               <span class="rounded bg-tint px-1.5 py-0.5 text-caption text-muted"><%= a.category %></span>
             </span>
             <%= annotation_status_pill(a) %>
@@ -43,7 +43,7 @@
   <div data-<%= controller %>-target="detail" data-seq="<%= a.seq %>" class="hidden min-h-0 flex-1 flex-col">
     <div class="flex items-center gap-2 border-b border-line-soft p-3">
       <button type="button" data-action="<%= controller %>#backToList" class="text-note text-muted hover:text-cooa">← 목록</button>
-      <span class="flex h-5 w-5 items-center justify-center rounded-full border-2 bg-white text-caption font-bold text-ink" style="border-color:<%= a.box_color %>"><%= a.seq %></span>
+      <%= seq_badge(a.seq, color: a.box_color, size: :md) %>
       <span class="rounded bg-tint px-1.5 py-0.5 text-caption text-muted"><%= a.category %></span>
       <%= annotation_status_pill(a, extra: "ml-auto") %>
     </div>

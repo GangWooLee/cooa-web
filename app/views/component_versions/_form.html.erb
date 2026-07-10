@@ -31,8 +31,9 @@
         <span>현재 파일 · 새로 선택하지 않으면 유지됩니다</span>
       </div>
     <% end %>
+    <%# file: 셀렉터 버튼을 ui_button primary와 동형으로 정렬(bg-cooa·rounded-lg·hover:bg-cooa-dark) — M6 %>
     <%= f.file_field :artwork, accept: "application/pdf,image/png,image/jpeg,image/webp",
-          class: "mt-2 block w-full text-body text-ink file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-cooa file:px-3 file:py-2 file:font-bold file:text-white" %>
+          class: "mt-2 block w-full text-body text-ink file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-cooa file:px-3 file:py-2 file:font-bold file:text-white file:transition file:hover:bg-cooa-dark" %>
   </div>
 
   <div>

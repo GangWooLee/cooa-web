@@ -11,10 +11,9 @@
       </div>
       <%# 카드 0개면 헤더 CTA를 숨긴다 — 빈 상태 히어로 "새 작업실 만들기"가 유일 primary(중복 CTA 제거). %>
       <% if @can_manage_workspaces && @workspace_cards.any? %>
-        <button type="button" data-action="dialog#open"
-                class="bg-cooa-gradient flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-body font-bold text-white transition hover:opacity-90">
+        <%= ui_button variant: :primary, data: { action: "dialog#open" }, class: "shrink-0" do %>
           <%= ui_icon "plus", size: 16, stroke: 2 %> 새 작업실
-        </button>
+        <% end %>
       <% end %>
     </div>
     <%# 필터는 카드가 많을 때만(8개 미만은 한눈에 보임 — 불필요한 입력 제거). 돋보기 아이콘 + 테두리. %>
@@ -40,7 +39,7 @@
                         action: (@can_manage_workspaces ? "contextmenu->workspace-ctx#open" : nil) },
                 class: "group flex flex-col gap-3 rounded-2xl border border-line-soft bg-white p-4 transition hover:border-cooa/40 hover:shadow-md" do %>
             <div class="flex min-w-0 items-start gap-2">
-              <span class="bg-cooa-gradient flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white">
+              <span class="bg-cooa flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white">
                 <%= ui_icon "layers", size: 18 %>
               </span>
               <div class="min-w-0 flex-1">

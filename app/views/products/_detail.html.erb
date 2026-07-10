@@ -15,9 +15,7 @@
                 class="rounded-lg p-1.5 text-muted transition hover:bg-tint hover:text-ink"><%= ui_icon "x", size: 18 %></button>
       </div>
       <div data-controller="inline-edit" data-inline-edit-auto-value="<%= params[:rename] == "1" %>" class="flex flex-wrap items-center gap-2 pr-20">
-        <% if product.code.present? %>
-          <span class="bg-cooa-gradient rounded-md px-2 py-0.5 text-meta font-bold text-white">[<%= product.code %>]</span>
-        <% end %>
+        <%= product_code_chip(product.code) %>
         <h1 data-inline-edit-target="display" data-action="click->inline-edit#edit" title="클릭하여 이름 변경"
             class="min-w-0 cursor-text break-words text-display font-bold text-ink transition hover:text-cooa"><%= product.name %></h1>
         <%= form_with model: product, url: product_path(product), method: :patch,

@@ -19,7 +19,7 @@
       <div class="group relative flex h-full w-[180px] shrink-0 items-center <%= tab_active ? "bg-white shadow-[inset_0_-2px_0_0_var(--color-cooa)]" : "hover:bg-white/60" %>">
         <%= link_to tab[:path], data: { turbo_action: "advance" }, "aria-current": (tab_active ? "page" : nil), class: "tab-fade flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden px-3 hover:text-cooa" do %>
           <%= ui_icon (tab[:type] == "s" ? "spark" : tab[:type] == "c" ? "layers" : "doc"), size: 14, klass: "shrink-0 text-muted" %>
-          <span class="shrink-0 whitespace-nowrap text-note font-medium text-ink">[<%= tab[:code] %>]</span>
+          <%= product_code_chip(tab[:code], extra: "shrink-0") %>
           <% if tab[:type] == "c" %>
             <span class="shrink-0 whitespace-nowrap text-meta text-muted"><%= tab[:from].component.display_name %> <%= tab[:from].vlabel %>↔<%= tab[:to].vlabel %></span>
           <% else %>

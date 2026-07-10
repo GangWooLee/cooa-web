@@ -16,14 +16,12 @@
   <%# 액션 툴바 — 첫 행동(새 폴더/새 파일). 선택 노드 기준(폴더→자식 / 파일→형제 / 미선택→루트 맨 아래).
       아이콘+텍스트 라벨로 승격(빈 상태 문구의 "새 폴더·새 파일"과 명칭 일치). %>
   <div class="flex min-w-0 flex-wrap items-center gap-2 px-6 py-3">
-    <button type="button" data-action="tree#newFolder" title="새 폴더"
-            class="bg-cooa-gradient flex items-center gap-1.5 rounded-lg px-3 py-2 text-note font-semibold text-white transition hover:opacity-90">
+    <%= ui_button variant: :primary, size: :sm, title: "새 폴더", data: { action: "tree#newFolder" } do %>
       <%= ui_icon "folder", size: 16 %> 새 폴더
-    </button>
-    <button type="button" data-action="tree#newItem" title="새 파일"
-            class="flex items-center gap-1.5 rounded-lg border border-line-soft bg-white px-3 py-2 text-note font-semibold text-cooa transition hover:border-cooa hover:bg-tint">
+    <% end %>
+    <%= ui_button variant: :secondary, size: :sm, title: "새 파일", data: { action: "tree#newItem" } do %>
       <%= ui_icon "doc", size: 16 %> 새 파일
-    </button>
+    <% end %>
     <%# 로드맵(규칙·담당자·필터·정렬)은 가짜 비활성 컨트롤 6개 대신 1줄 표기로 축약 — 첫 행동에 집중. %>
     <span class="ml-auto text-caption text-muted">곧 제공 · 규칙 · 담당자 · 필터 · 정렬</span>
   </div>

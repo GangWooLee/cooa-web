@@ -72,7 +72,7 @@
             <%= tag.div class: f_class.join(" "), style: "border-left:4px solid #{f.decision_meta[:color]}", data: f_data do %>
               <div class="flex items-center justify-between gap-2">
                 <div class="flex min-w-0 items-center gap-2">
-                  <% if seq %><span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 bg-white text-caption font-bold text-ink" style="border-color:<%= f.decision_meta[:color] %>"><%= seq %></span><% end %>
+                  <% if seq %><%= seq_badge(seq, color: f.decision_meta[:color], size: :md) %><% end %>
                   <span class="shrink-0 rounded bg-tint px-1.5 py-0.5 text-caption text-muted"><%= f.element_label %></span>
                   <span class="truncate text-note font-bold text-ink"><%= f.subject %></span>
                 </div>

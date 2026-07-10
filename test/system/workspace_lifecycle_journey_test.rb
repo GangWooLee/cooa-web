@@ -25,7 +25,7 @@ class WorkspaceLifecycleJourneyTest < ApplicationSystemTestCase
            "생성 시 선택 멤버 = 이 작업실 workspace-scope grant(관리자)"
 
     # 3) 툴바 "새 폴더"(미선택) → 이 작업실에 첫 루트 생성(빈 작업실 heal 아님 · JS가 workspace_id 스레딩).
-    find("button.bg-cooa-gradient[title='새 폴더']").click
+    find("button.bg-cooa[title='새 폴더']").click
     inp = find("input[id^='node_name_']", wait: 6)
     first_root = Product.find(inp[:id][/\d+/])
     assert_equal ws.id, first_root.workspace_id, "첫 폴더는 이 작업실 루트로 귀속"

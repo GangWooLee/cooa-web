@@ -40,7 +40,7 @@ class TreeCrudTest < ApplicationSystemTestCase
   def create_folder_via_toolbar
     page.current_window.resize_to(1440, 900)
     visit workspace_path(retinol.derived_workspace) # 작업실 진입 → 트리 테이블 + 툴바
-    find("button.bg-cooa-gradient[title='새 폴더']").click # 툴바 폴더 아이콘(사이드바와 구분)
+    find("button.bg-cooa[title='새 폴더']").click # 툴바 폴더 아이콘(사이드바와 구분)
     new_node # 대기 + 폴더 반환
   end
 
@@ -112,7 +112,7 @@ class TreeCrudTest < ApplicationSystemTestCase
     visit workspace_path(r.derived_workspace) # 작업실 진입
     before = r.children.count
     find("tr[data-node-id='#{r.id}']").click # 작업실 루트 폴더 선택
-    find("button.bg-cooa-gradient[title='새 폴더']").click
+    find("button.bg-cooa[title='새 폴더']").click
     child = new_node
     assert child.folder?
     assert_equal r.id, child.parent_id, "폴더 선택 → 자식"
