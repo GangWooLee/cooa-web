@@ -131,6 +131,11 @@ summary::-webkit-details-marker { display: none; }
 }
 @keyframes cooa-spin { to { transform: rotate(360deg); } }
 
+/* 상세 드로어 로딩 오버레이(states-1) — Turbo가 fetch 중 프레임에 붙이는 [busy] 속성 기반 CSS 표시(JS 최소).
+   콘텐츠 도착 시 Turbo가 [busy]를 떼면 자연 은닉. 스피너는 reduced-motion에서 회전을 멈춰도 오버레이는 유지. */
+.drawer-loading { display: none; }
+turbo-frame#detail[busy] ~ .drawer-loading { display: flex; }
+
 /* 접근성 — prefers-reduced-motion: 모션 최소화 시작점(flash 토스트 트랜지션·로딩 스피너 회전 무효화).
    컨트롤러가 reduced-motion에서 즉시 제거하지만 CSS 경로에서도 이중으로 못박는다. 향후 다른 모션도 여기에 추가한다. */
 @media (prefers-reduced-motion: reduce) {

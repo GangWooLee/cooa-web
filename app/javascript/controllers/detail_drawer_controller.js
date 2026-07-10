@@ -10,12 +10,17 @@ export default class extends Controller {
     if (this._productUrl()) this.open()
     this._onLoad = () => this.open()
     this.frame?.addEventListener("turbo:frame-load", this._onLoad)
+    // 프레임 fetch 시작 즉시 패널 슬라이드-인 — 느린 네트워크에서도 클릭 반응 보장(states-1).
+    // 로딩 스피너 자체는 CSS([busy]) 경로가 담당하므로 JS는 슬라이드-인만 트리거한다.
+    this._onFetch = () => this.open()
+    this.frame?.addEventListener("turbo:before-fetch-request", this._onFetch)
     this._onKey = (e) => { if (e.key === "Escape") this.close() }
     document.addEventListener("keydown", this._onKey)
   }
 
   disconnect() {
     this.frame?.removeEventListener("turbo:frame-load", this._onLoad)
+    this.frame?.removeEventListener("turbo:before-fetch-request", this._onFetch)
     document.removeEventListener("keydown", this._onKey)
   }
 

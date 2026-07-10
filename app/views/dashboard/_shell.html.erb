@@ -12,5 +12,10 @@
         <%= render "products/detail", product: detail_product %>
       <% end %>
     <% end %>
+    <%# 프레임 fetch 중 로딩 스피너(states-1) — Turbo [busy] 기반 CSS로만 표시(위 .drawer-loading 규칙),
+        콘텐츠 도착 시 자연 은닉. 항상 DOM에 존재(기본 display:none)하므로 프레임 로드 지연 시 즉시 뜬다. %>
+    <div class="drawer-loading pointer-events-none absolute inset-0 items-center justify-center bg-white" aria-hidden="true">
+      <span class="spinner text-display text-cooa"></span>
+    </div>
   </aside>
 </div>

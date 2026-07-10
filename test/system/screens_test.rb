@@ -40,6 +40,8 @@ class ScreensTest < ApplicationSystemTestCase
     within("table") { find("td", text: "CO0001").click }
     sleep 0.7
     assert_selector "[data-detail-drawer-target='panel']"
+    # states-1: 프레임 로딩 스피너 마크업이 드로어에 상존(기본 display:none, [busy] 시 CSS로 노출)
+    assert_selector "[data-detail-drawer-target='panel'] .drawer-loading .spinner", visible: :all
     assert_text "구성요소" # 드로어에 상세 로드
     save_screenshot(dir.join("1b_dashboard_detail.png"))
     # 닫기 → 드로어 닫힘 + URL 정리(/)
