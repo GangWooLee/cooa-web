@@ -8,7 +8,9 @@
      data-screening-just-ran-value="<%= params[:ran].present? %>">
   <%# 헤더 + 주의문 %>
   <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-6 py-3">
-    <div class="text-note"><%= node_breadcrumb(@product, trailing: "#{@version.component.display_name} #{@version.vlabel} 인허가 스크리닝") %></div>
+    <div class="text-note"><%= node_breadcrumb(@product,
+          trailing_link: [ "#{@version.component.display_name} #{@version.vlabel}", component_version_path(@version) ],
+          trailing: "인허가 스크리닝") %></div>
     <div class="text-meta text-muted">AI의 답변은 완벽하지 않으니 꼭 RA 담당자의 검토를 권합니다.</div>
   </div>
 

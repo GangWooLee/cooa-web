@@ -3,7 +3,10 @@
      data-action="artwork-viewer:focus->comparison#onFocus artwork-viewer:draw->comparison#onDraw">
   <%# 상단: 브레드크럼 + 버전 페어 선택기 (가치 라벨 없음) + 우패널 접기 %>
   <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft px-6 py-3">
-    <div class="text-note"><%= node_breadcrumb(@product, trailing: "#{@component.display_name} 버전 비교") %></div>
+    <%# 비교는 기준 버전(@from)으로 올라가는 링크로 분해 — 현재 세그먼트는 '버전 비교'만 text-ink(ia-nav-3). %>
+    <div class="text-note"><%= node_breadcrumb(@product,
+          trailing_link: [ "#{@component.display_name} #{@from.vlabel}", component_version_path(@from) ],
+          trailing: "버전 비교") %></div>
     <div class="flex items-center gap-2">
       <div data-controller="version-picker" class="flex items-center gap-2 text-note">
         <span class="text-meta text-muted">기준</span>

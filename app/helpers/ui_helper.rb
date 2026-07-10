@@ -99,13 +99,19 @@ module UiHelper
   # 가시성 인지(권한 없는 상위 브랜드명 비노출).
   def node_path_label(node) = visible_ancestors(node).map(&:name).join(" › ")
 
-  # 조상 경로 브레드크럼 (루트 › … › 현재 [› trailing]) — 가시 조상만
+  # 조상 경로 브레드크럼 (루트 › … › 현재 [› trailing_link] [› trailing]) — 가시 조상만
   #  · 폴더 세그먼트 → 대시보드(해당 폴더 펼침)  · 리프 세그먼트 → 드로어
-  def node_breadcrumb(product, trailing: nil)
+  #  · trailing_link: [라벨, href] — depth-5(스크리닝·비교)에서 depth-4(버전)로 올라가는 링크 세그먼트.
+  #    현재 페이지(trailing)만 text-ink로 남기고 그 위 버전은 링크로 분해한다(ia-nav-3).
+  def node_breadcrumb(product, trailing: nil, trailing_link: nil)
     sep = content_tag(:span, "›", class: "px-1 text-muted")
     crumbs = visible_ancestors(product).map do |a|
       href = a.folder? ? root_path(focus: a.id) : product_path(a)
       link_to(a.name, href, class: "text-muted hover:text-cooa")
+    end
+    if trailing_link.present?
+      label, href = trailing_link
+      crumbs << link_to(label, href, class: "text-muted hover:text-cooa")
     end
     crumbs << content_tag(:span, trailing, class: "text-ink") if trailing.present?
     safe_join(crumbs, sep)

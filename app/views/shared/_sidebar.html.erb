@@ -66,8 +66,9 @@
     <%# ── 작업실 컨텍스트 ── "← 모든 작업실" 백링크(작업실명은 헤더 타이틀·트리 루트로 표시 — D3 중복 제거).
         border-t 블록은 유지: 전역 내비(사용자·인박스·구성원)와 작업실 트리 사이의 시각 구분자로 남긴다. %>
     <div class="mx-2 mb-1 mt-2 border-t border-line-soft pt-3">
+      <%# 위계 정렬(ia-nav-4): 트리 항목과 동급인 text-note(14px)로 승격 — 사이드바 최소 텍스트 역전 해소. %>
       <%= link_to root_path, data: { turbo: false },
-            class: "flex items-center gap-1 px-1 text-caption font-medium text-muted transition hover:text-cooa" do %>
+            class: "flex items-center gap-1 px-1 text-note font-medium text-muted transition hover:text-cooa" do %>
         <span aria-hidden="true">←</span><span>모든 작업실</span>
       <% end %>
     </div>
@@ -76,8 +77,9 @@
     <nav class="mt-1 flex min-w-0 flex-1 flex-col overflow-hidden px-2 pb-6" data-controller="tree-filter tree-ctx">
       <div class="px-4 pt-2 pb-3">
         <div class="relative">
+          <%# 스코프 명시(ia-nav-5): 검색은 현재 작업실 트리 한정임을 placeholder로 알린다(무매치 문구 '일치하는 항목 없음'과 정합). %>
           <input data-tree-filter-target="input" data-action="input->tree-filter#filter keydown->tree-filter#keydown"
-                 placeholder="품목코드·품목명 검색" class="w-full rounded-lg bg-tint px-3 py-2 pr-16 text-lead focus:outline-none focus:ring-1 focus:ring-cooa">
+                 placeholder="이 작업실에서 검색" class="w-full rounded-lg bg-tint px-3 py-2 pr-16 text-lead focus:outline-none focus:ring-1 focus:ring-cooa">
           <div class="pointer-events-none absolute inset-y-0 right-2 flex items-center gap-1">
             <span data-tree-filter-target="count" class="hidden rounded bg-tint-2 px-1.5 py-0.5 text-caption font-medium text-muted"></span>
             <button type="button" data-tree-filter-target="clear" data-action="tree-filter#clear" title="검색 지우기" aria-label="검색 지우기"

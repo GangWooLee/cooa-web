@@ -20,12 +20,14 @@
         <%= link_to tab[:path], data: { turbo_action: "advance" }, "aria-current": (tab_active ? "page" : nil), class: "tab-fade flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden px-3 hover:text-cooa" do %>
           <%= ui_icon (tab[:type] == "s" ? "spark" : tab[:type] == "c" ? "layers" : "doc"), size: 14, klass: "shrink-0 text-muted" %>
           <%= product_code_chip(tab[:code], extra: "shrink-0") %>
+          <%# 타입 뱃지는 코드 바로 뒤(좌측 unmasked 영역)에 — tab-fade 마스크가 우측에서 잘라 스크리닝/버전 탭이
+              동일하게 보이던 문제 해소(ia-nav-2). 긴 '컴포넌트+버전' 라벨은 마스크에 걸려도 타입은 항상 읽힌다. %>
+          <% if tab[:type] == "s" %><span class="shrink-0 rounded bg-accent px-1 py-0.5 text-caption font-bold text-cooa">스크리닝</span><% end %>
           <% if tab[:type] == "c" %>
             <span class="shrink-0 whitespace-nowrap text-meta text-muted"><%= tab[:from].component.display_name %> <%= tab[:from].vlabel %>↔<%= tab[:to].vlabel %></span>
           <% else %>
             <% v = tab[:version] %>
             <span class="shrink-0 whitespace-nowrap text-meta text-muted"><%= v.component.display_name %> <%= v.vlabel %></span>
-            <% if tab[:type] == "s" %><span class="shrink-0 rounded bg-accent px-1 py-0.5 text-caption font-bold text-cooa">스크리닝</span><% end %>
           <% end %>
         <% end %>
         <%= button_to tab_path(tab[:key]), method: :delete, title: "탭 닫기", "aria-label": "탭 닫기",
