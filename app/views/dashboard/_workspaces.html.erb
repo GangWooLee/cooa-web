@@ -61,21 +61,20 @@
           <% end %>
         <% end %>
       </div>
-      <p data-workspace-filter-target="empty" class="hidden px-3 py-10 text-center text-body text-muted">일치하는 작업실 없음</p>
+      <%= render "shared/empty_state", variant: :text, title: "일치하는 작업실 없음",
+            extra: "hidden", data: { workspace_filter_target: "empty" } %>
     <% else %>
-      <div class="flex flex-col items-center gap-2 px-3 py-16 text-center">
-        <%= ui_icon "layers", size: 32, klass: "text-muted" %>
-        <p class="text-note font-medium text-ink">아직 작업실이 없습니다</p>
-        <% if @can_manage_workspaces %>
-          <p class="text-body text-muted">첫 작업실을 만들어 폴더·항목을 담고 멤버를 초대해 보세요.</p>
-          <button type="button" data-action="dialog#open"
-                  class="bg-cooa-gradient mt-1 flex items-center gap-1.5 rounded-lg px-3 py-2 text-body font-bold text-white transition hover:opacity-90">
-            <%= ui_icon "plus", size: 16, stroke: 2 %> 새 작업실 만들기
-          </button>
-        <% else %>
-          <p class="text-body text-muted">접근 가능한 작업실이 배정되면 여기에 표시됩니다.</p>
-        <% end %>
-      </div>
+      <%# 홈 히어로 CTA(gradient)는 DESIGN §4 문서화된 유일 예외 — 그대로 유지 %>
+      <% hero_cta = capture do %>
+        <button type="button" data-action="dialog#open"
+                class="bg-cooa-gradient flex items-center gap-1.5 rounded-lg px-3 py-2 text-body font-bold text-white transition hover:opacity-90">
+          <%= ui_icon "plus", size: 16, stroke: 2 %> 새 작업실 만들기
+        </button>
+      <% end if @can_manage_workspaces %>
+      <%= render "shared/empty_state", variant: :card, icon: "layers",
+            title: "아직 작업실이 없습니다",
+            description: (@can_manage_workspaces ? "첫 작업실을 만들어 폴더·항목을 담고 멤버를 초대해 보세요." : "접근 가능한 작업실이 배정되면 여기에 표시됩니다."),
+            cta: hero_cta %>
     <% end %>
   </div>
 

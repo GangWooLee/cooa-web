@@ -3,7 +3,7 @@
       controller       Stimulus 컨트롤러명("version-feedback" | "comparison") — data-target·data-action 접두
       annotations      표시할 어노테이션
       list_subtitle    목록 헤더 보조문(html_safe) — 화면별 상이(제기/반영 요약 vs 남기기 안내)
-      empty_state      목록이 비었을 때 안내문 표시 여부
+      empty_text       목록이 비었을 때 표시할 안내문(nil이면 미표시) — 화면별 맥락 문구
       focus_hint       상세 상단 안내(캔버스 확대 문구)
       thread_class     코멘트 스레드 상단 여백 유틸(비교=mt-3 · 버전=mt-1)
       show_diff        before→after 변경 텍스트 블록 표시(비교 전용)
@@ -32,8 +32,8 @@
           <p class="mt-1 line-clamp-2 text-meta text-ink/80"><%= a.comments.first&.body %></p>
         </button>
       <% end %>
-    <% elsif empty_state %>
-      <p class="py-8 text-center text-body text-muted">아직 피드백이 없습니다.</p>
+    <% elsif empty_text.present? %>
+      <%= render "shared/empty_state", variant: :text, title: empty_text %>
     <% end %>
   </div>
 </div>

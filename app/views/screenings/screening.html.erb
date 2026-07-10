@@ -103,7 +103,9 @@
             <span class="text-muted">검토 기준을 통과했습니다.</span>
           </div>
         <% else %>
-          <div class="py-12 text-center text-note text-ink">아직 스크리닝을 실행하지 않았습니다.<br>아래 <b>‘인허가 스크리닝’</b>을 눌러 실행하세요.</div>
+          <% run_hint = capture do %>아래 <b>‘인허가 스크리닝’</b>을 눌러 실행하세요.<% end %>
+          <%= render "shared/empty_state", variant: :card, icon: "spark",
+                title: "아직 스크리닝을 실행하지 않았습니다", description: run_hint %>
         <% end %>
       </div>
 

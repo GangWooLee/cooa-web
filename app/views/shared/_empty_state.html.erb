@@ -1,0 +1,37 @@
+<%# 빈 상태 표준 (DESIGN §5) — variant 2종. M5 정본.
+      :card  주요 목록이 비어 행동 유도가 필요할 때 — 아이콘(32) + 제목 + 설명(선택) + CTA(선택), py-12.
+             boxed:true면 독립 표면 카드(rounded-xl 테두리 상자, §3)로 감싼다.
+      :text  패널·보조 목록 한 줄 — py-8 text-center text-meta text-muted.
+    locals:
+      variant      :card | :text (기본 :text)
+      title        문구(필수) — :card 제목 · :text 한 줄
+      icon         :card 아이콘명(기본 "folder")
+      description  :card 설명(선택 · html_safe 허용)
+      cta          :card 행동 버튼(선택 · capture로 넘긴 html_safe)
+      boxed        :card 테두리 상자 래핑 여부(기본 false)
+      extra        컨테이너에 덧댈 유틸(예: 필터 no-match의 "hidden", 위치 "mt-10")
+      data         컨테이너 data 속성(:text의 JS 필터 타깃 등) %>
+<% variant = local_assigns.fetch(:variant, :text) %>
+<% if variant == :card %>
+  <% card = capture do %>
+    <div class="flex flex-col items-center gap-2 py-12 text-center">
+      <%= ui_icon(local_assigns.fetch(:icon, "folder"), size: 32, klass: "text-muted") %>
+      <p class="text-note font-medium text-ink"><%= title %></p>
+      <% if local_assigns[:description].present? %>
+        <p class="text-body text-muted"><%= description %></p>
+      <% end %>
+      <% if local_assigns[:cta].present? %>
+        <div class="mt-1"><%= cta %></div>
+      <% end %>
+    </div>
+  <% end %>
+  <% if local_assigns[:boxed] %>
+    <%= content_tag :div, card, class: class_names("mx-auto max-w-md rounded-xl border border-line-soft bg-white px-6 shadow-sm", local_assigns[:extra]) %>
+  <% elsif local_assigns[:extra] %>
+    <%= content_tag :div, card, class: local_assigns[:extra] %>
+  <% else %>
+    <%= card %>
+  <% end %>
+<% else %>
+  <%= content_tag :p, title, class: class_names("py-8 text-center text-meta text-muted", local_assigns[:extra]), data: local_assigns[:data] %>
+<% end %>

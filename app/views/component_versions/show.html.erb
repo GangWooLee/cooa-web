@@ -97,7 +97,7 @@
           resolve는 policy(a).resolve_feedback? 게이트(@version 기준). 새 피드백 폼은 화면 고유(아래). %>
       <% subtitle = capture do %><% if policy(@version).leave_feedback? %>아트워크에서 <b>영역 표시</b> 버튼(또는 <b>Shift+드래그</b>)으로 영역을 지정해 남기세요 · <% end %><b class="text-ink"><%= @annotations.count(&:resolved?) %> 반영</b> / <b class="text-cooa"><%= @annotations.count(&:open?) %> 미반영</b><% end %>
       <%= render "shared/feedback_panel", controller: "version-feedback", annotations: @annotations,
-            list_subtitle: subtitle, empty_state: true,
+            list_subtitle: subtitle, empty_text: "아직 피드백이 없습니다.",
             focus_hint: "← 캔버스에서 이 영역이 확대됩니다.", thread_class: "mt-1",
             show_diff: false, show_attachment: false, resolve_gated: true,
             resolve_version: @version, resolve_label: "반영됨으로 표시", resolved_fallback: @version %>

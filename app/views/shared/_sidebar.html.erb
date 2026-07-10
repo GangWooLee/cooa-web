@@ -108,7 +108,8 @@
           <%= render "shared/tree_node", node: node, active_ids: active_ids, current_id: @product&.id %>
         <% end %>
         <%# 검색 무매치 시 tree_filter가 노출(그 외엔 hidden). %>
-        <p data-tree-filter-target="empty" class="hidden px-3 py-6 text-center text-body text-muted">일치하는 항목 없음</p>
+        <%= render "shared/empty_state", variant: :text, title: "일치하는 항목 없음",
+              extra: "hidden", data: { tree_filter_target: "empty" } %>
       </div>
 
       <%= render "shared/tree_context_menu" %>
@@ -128,7 +129,7 @@
           <% end %>
         <% end %>
         <% if visible_workspaces.empty? %>
-          <p class="px-3 py-6 text-center text-body text-muted">접근 가능한 작업실이 없습니다</p>
+          <%= render "shared/empty_state", variant: :text, title: "접근 가능한 작업실이 없습니다" %>
         <% end %>
       </div>
     </nav>

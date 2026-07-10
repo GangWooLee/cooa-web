@@ -49,7 +49,7 @@
           첨부명 표시 · resolve 게이트 없음(리뷰 컨텍스트는 @to 기준). 새 피드백 폼은 화면 고유(아래). %>
       <% subtitle = capture do %><%= @from.vlabel %>에서 제기 · <%= @to.vlabel %> 반영 검토 · <b class="text-ink"><%= @annotations.count(&:resolved?) %> 반영</b> / <b class="text-cooa"><%= @annotations.count(&:open?) %> 미반영</b><% end %>
       <%= render "shared/feedback_panel", controller: "comparison", annotations: @annotations,
-            list_subtitle: subtitle, empty_state: false,
+            list_subtitle: subtitle, empty_text: "이 구간에서 제기된 피드백이 없습니다.",
             focus_hint: "← 좌(이전)·우(현재) 캔버스에서 이 영역이 확대됩니다.", thread_class: "mt-3",
             show_diff: true, show_attachment: true, resolve_gated: false,
             resolve_version: @to, resolve_label: "#{@to.vlabel}에서 반영됨으로 표시", resolved_fallback: nil %>

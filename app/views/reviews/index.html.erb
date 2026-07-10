@@ -22,7 +22,9 @@
         <%= render partial: "request_row", collection: @assigned_inbox.requests, as: :req, locals: { claimable: false } %>
       </ul>
     <% else %>
-      <div class="py-16 text-center text-body text-muted">요청된 리뷰가 없습니다.</div>
+      <%= render "shared/empty_state", variant: :card, icon: "bell",
+            title: "요청된 리뷰가 없습니다",
+            description: "회원님이 리뷰어로 지정되면 여기에 표시됩니다." %>
     <% end %>
 
     <%# ── Segment B: 리뷰어 미배정 — 내가 맡을 수 있는 리뷰(적격 owner/approver만) ── %>
@@ -51,7 +53,7 @@
             <% end %>
           </div>
         <% else %>
-          <div class="py-8 text-center text-body text-muted">맡을 수 있는 미배정 리뷰가 없습니다.</div>
+          <%= render "shared/empty_state", variant: :text, title: "맡을 수 있는 미배정 리뷰가 없습니다." %>
         <% end %>
       </div>
     <% end %>

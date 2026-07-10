@@ -30,13 +30,9 @@
       대신 빈 상태 카드만 렌더 — 첫 폴더/항목 유도(D3). 위 툴바의 "새 폴더/새 파일"이 이 작업실에 귀속. %>
   <div class="min-w-0 flex-1 overflow-auto px-6 pb-10" data-controller="tree-table tree-dnd">
     <% if @workspace && @rows.empty? %>
-      <div class="mx-auto mt-10 max-w-md rounded-2xl border border-line-soft bg-white px-6 py-14 text-center shadow-sm">
-        <div class="flex flex-col items-center gap-2">
-          <%= ui_icon "folder", size: 32, klass: "text-muted" %>
-          <p class="text-note font-medium text-ink">아직 폴더나 항목이 없습니다</p>
-          <p class="text-body text-muted">위의 <b>새 폴더</b>·<b>새 파일</b>로 이 작업실의 첫 항목을 만들어 보세요<% if @can_manage_workspace %> — 위 헤더의 <b>＋ 멤버 초대·관리</b>에서 멤버도 초대할 수 있습니다<% end %>.</p>
-        </div>
-      </div>
+      <% list_desc = capture do %>위의 <b>새 폴더</b>·<b>새 파일</b>로 이 작업실의 첫 항목을 만들어 보세요<% if @can_manage_workspace %> — 위 헤더의 <b>＋ 멤버 초대·관리</b>에서 멤버도 초대할 수 있습니다<% end %>.<% end %>
+      <%= render "shared/empty_state", variant: :card, boxed: true, extra: "mt-10", icon: "folder",
+            title: "아직 폴더나 항목이 없습니다", description: list_desc %>
     <% else %>
       <div class="min-w-0 overflow-x-auto">
         <table class="w-full min-w-[860px] border-collapse text-note">
