@@ -12,3 +12,6 @@
 - 코드가 이미 기록하는 것(구조·git 히스토리) · [dev-discipline.md](../dev-discipline.md)/[harness.md](../harness.md)가 덮는 규율.
 
 파일 하나 = 교훈 하나. 관련: [../dev-discipline.md](../dev-discipline.md) · [../harness.md](../harness.md).
+
+## 색인
+- [비전 기반 디자인 리뷰 파이프라인](design-review-pipeline.md) — 성문화→캡처→다차원 파인더+adversarial 검증→WP 적용→재캡처 대조 5단 + 함정 6건(puma -d 조용한 실패·RLS 시드 착시·대비는 신호 재배치로)
