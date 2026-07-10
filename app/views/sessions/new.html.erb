@@ -39,7 +39,7 @@
           <%= button_to session_path, params: { account_id: account.id }, method: :post,
                 class: "flex w-full items-center gap-3 rounded-xl border border-line-soft px-4 py-3 text-left transition hover:border-cooa hover:bg-tint" do %>
             <span class="flex size-9 shrink-0 items-center justify-center rounded-full text-body font-bold text-white"
-                  style="background: <%= account.avatar_color || "#888" %>"><%= account.role_short %></span>
+                  style="background: <%= account.avatar_color || "var(--color-muted)" %>"><%= account.role_short %></span>
             <span class="min-w-0">
               <span class="block truncate text-lead font-semibold text-ink"><%= account.name %></span>
               <span class="block truncate text-meta text-muted"><%= account.role_label %> · <%= account.email %></span>
