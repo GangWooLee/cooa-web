@@ -61,6 +61,17 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
     assert_includes ids, lee.id
   end
 
+  # viewer 제외(절충안): yu는 viewer뿐(tenant-wide)이라 CO0001 후보가 아니다 → 리뷰어 지정에서 strip(viewer
+  # 지정=소프트그랜트로 confirm 우회 차단 — external과 동일 근거). tenant-wide approver lee는 남는다.
+  test "viewer(yu)의 id는 화이트리스트에서 strip" do
+    yu  = User.find_by!(email: "yu@cooa.dev") # viewer @ tenant-wide — 후보 아님
+    lee = User.find_by!(email: "lee@cooa.dev") # tenant-wide approver — 후보
+    post approval_requests_path, params: { component_version_id: @v.id, reviewer_ids: [ yu.id, lee.id ] }
+    ids = request_for.requested_reviewer_ids
+    refute_includes ids, yu.id, "viewer 계정은 후보 풀 밖 → 지정될 수 없어야 함"
+    assert_includes ids, lee.id
+  end
+
   # SoD: 요청자 자신을 리뷰어로 지정해도 strip + 본인 확인 불가.
   test "자기 자신 리뷰어 지정은 strip되고 SoD로 확인 불가" do
     kim = User.find_by!(name: "김쿠아")

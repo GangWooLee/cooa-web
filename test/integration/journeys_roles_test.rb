@@ -128,7 +128,7 @@ class JourneysRolesTest < ActionDispatch::IntegrationTest
     sign_in_as(kim)
     post approval_requests_path, params: { component_version_id: v5.id, reviewer_ids: [ han_user.id ] }
     req = ApprovalRequest.find_by!(component_version_id: v5.id)
-    assert_includes req.requested_reviewer_ids, han_user.id, "assignee도 리뷰어 후보(external-only 계정만 제외)"
+    assert_includes req.requested_reviewer_ids, han_user.id, "assignee도 리뷰어 후보(external·viewer-only 계정만 제외)"
 
     sign_in_as(han)
     post confirm_approval_request_path(req)

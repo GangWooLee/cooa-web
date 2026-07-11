@@ -34,7 +34,9 @@
           <% if candidates.any? %>
             <%# 후보 = 권한 평면(role_assignment) 기준 브랜드 팀 — 표시 명부(담당자)와 분리(Stage 4 T2) %>
             <div class="text-caption font-bold text-muted">리뷰어 지정 (브랜드 팀)</div>
-            <div class="space-y-1">
+            <%# 후보 다수 시 목록이 aside를 밀어내지 않도록 max-height + 스크롤 가드(약 8행). 서버측 .first(20)
+                캡과의 무캡 비대칭은 컨트롤러 sanitized_reviewer_ids 주석 참조. %>
+            <div class="max-h-64 space-y-1 overflow-y-auto">
               <% candidates.each do |u| %>
                 <label class="flex cursor-pointer items-center gap-2 rounded-md border border-line-soft px-2 py-1.5 text-meta hover:border-cooa">
                   <%= check_box_tag "reviewer_ids[]", u.id, false, class: "accent-cooa" %>

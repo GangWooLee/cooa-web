@@ -99,7 +99,8 @@ class ApprovalRequestsController < ApplicationController
 
   # 지정 리뷰어는 서버측에서 후보 풀(권한 평면 — 브랜드 루트 서브트리 스코프 + tenant-wide grant)로 제한
   # (임의 id 방어; 요청자 제외는 모델 sync_requested_reviewers!). 후보 정의는 리뷰 패널 체크박스와 단일
-  # 출처(ReviewCandidates) — UI에 뜬 후보만 지정 가능. 상한 캡(S3): 과도한 지정 방어.
+  # 출처(ReviewCandidates) — UI에 뜬 후보만 지정 가능. 상한 캡(S3, .first(20)): 과도한 지정 방어. UI 후보
+  # 목록은 무캡(스크롤 가드만) — 20 초과 지정분은 여기서 잘린다(의도된 비대칭, 서버 동작 불변).
   def sanitized_reviewer_ids(component_version)
     (Array(params[:reviewer_ids]).map(&:to_i).uniq & ReviewCandidates.user_ids_for(component_version)).first(20)
   end

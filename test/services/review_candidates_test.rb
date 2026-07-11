@@ -15,17 +15,18 @@ class ReviewCandidatesTest < ActiveSupport::TestCase
 
   def emails(users) = users.map { |u| u.account&.email || u.email }.sort
 
-  # ── CO0001(레티놀 브랜드): 스코프 grant가 없어 후보 = tenant-wide 연결계정 전원 ──
-  # 표시 명부(product_member) 4인(kim·song·lee·park)은 전원 tenant-wide → 후보에 포함(무회귀). 팀 밖
-  # tenant-wide 신원(유뷰어 viewer·한담당 assignee)도 tenant-wide grant 근거로 후보에 등장(권한 평면).
-  test "CO0001 후보 = tenant-wide 연결계정 전원(표시 명부 4인 무회귀 포함)" do
+  # ── CO0001(레티놀 브랜드): 스코프 grant가 없어 후보 = tenant-wide 연결계정 중 viewer/external 아닌 전원 ──
+  # 표시 명부(product_member) 4인(kim·song·lee·park)은 전원 tenant-wide 비-viewer → 후보에 포함(무회귀). 팀 밖
+  # tenant-wide 신원 중 한담당(assignee)은 후보에 등장(권한 평면), 유뷰어(viewer)는 절충안대로 탈락.
+  test "CO0001 후보 = tenant-wide 연결계정 중 viewer 제외 전원(표시 명부 4인 무회귀 포함)" do
     v = cv("CO0001")
     old_users = v.product.product_members.select(&:user).map(&:user).uniq
     new_users = ReviewCandidates.users_for(v)
 
     assert_empty old_users.map(&:id) - new_users.map(&:id),
-                 "표시 명부 4인은 전원 tenant-wide → 후보에 포함되어야(무회귀)"
-    assert_equal %w[han@cooa.dev kim@cooa.dev lee@cooa.dev park@cooa.dev song@cooa.dev yu@cooa.dev], emails(new_users)
+                 "표시 명부 4인은 전원 tenant-wide 비-viewer → 후보에 포함되어야(무회귀)"
+    # yu(viewer@tenant-wide)는 절충안으로 탈락 — 리뷰 확인 무결성(viewer는 지정=소프트그랜트 우회 불가).
+    assert_equal %w[han@cooa.dev kim@cooa.dev lee@cooa.dev park@cooa.dev song@cooa.dev], emails(new_users)
   end
 
   # ── 제출자 제외 ──
@@ -58,6 +59,35 @@ class ReviewCandidatesTest < ActiveSupport::TestCase
     assert_includes ids, choi_acc.user_id, "external+contributor 병존 → contributor 근거로 후보"
   end
 
+  # ── viewer 제외(절충안): 유뷰어(viewer뿐, tenant-wide)는 후보 아님 ──
+  # REF — viewer는 읽기 전용(approve/reject·리뷰 확인 표면 없음). external과 동일 근거로, 지정=소프트그랜트
+  # 우회를 막기 위해 후보에서 뺀다. tenant-wide 근거로도 등장하지 않아야 한다.
+  test "viewer뿐(tenant-wide)인 유뷰어는 후보 아님 — 규제 검토 확인 무결성" do
+    yu = User.find_by!(email: "yu@cooa.dev")
+    refute_includes ReviewCandidates.users_for(cv("CO0001")).map(&:id), yu.id,
+                    "viewer 단일역할 계정은 리뷰 후보가 아니어야 함"
+  end
+
+  # ── viewer + 다른 역할 병존: viewer뿐일 때만 제외 — 다른 역할 근거로는 후보 포함(행 단위 필터) ──
+  test "viewer에 비-viewer 역할이 병존하면 그 역할 근거로 후보에 포함" do
+    yu_acc = Account.find_by!(email: "yu@cooa.dev")
+    # 시드 불변 — 테스트 내에서만 tenant-wide contributor grant를 추가(viewer 외 역할 병존).
+    RoleAssignment.create!(account: yu_acc, tenant_id: yu_acc.tenant_id, role_key: "contributor", scope_type: "tenant")
+    assert_includes ReviewCandidates.users_for(cv("CO0001")).map(&:id), yu_acc.user_id,
+                    "viewer+contributor 병존 → contributor 근거로 후보"
+  end
+
+  # ── 정렬 축: confirm 하드권한(owner/approver = approve verb) 후보가 앞선다(지정 편의·위계 신호) ──
+  # CO0001 후보: kim=owner·lee=approver(하드) / song=brand_admin·park=contributor·han=assignee(소프트).
+  # 그룹 내 순서는 불문 — 하드 전원이 소프트 전원보다 앞이면 통과(집합은 불변, 순서만 검증).
+  test "후보 정렬: confirm 하드권한(owner/approver)이 비하드권한보다 앞에 온다" do
+    ordered = ReviewCandidates.users_for(cv("CO0001")).map { |u| u.account&.email || u.email }
+    hard = %w[kim@cooa.dev lee@cooa.dev]
+    soft = ordered - hard
+    assert_operator hard.map { |e| ordered.index(e) }.max, :<, soft.map { |e| ordered.index(e) }.min,
+                    "owner/approver 후보가 비하드권한 후보보다 앞에 정렬되어야 함 (#{ordered.inspect})"
+  end
+
   # ── 스코프 admin(정브랜 @ 비타민C)도 자기 브랜드 버전의 후보로 등장 ──
   test "정브랜(brand_admin @ 비타민C 루트)은 CO0100 버전 후보에 포함" do
     jung = User.find_by!(email: "jung@cooa.dev")
@@ -83,8 +113,9 @@ class ReviewCandidatesTest < ActiveSupport::TestCase
 
     users = ReviewCandidates.users_for(v)
     assert users.all?(&:present?), "후보는 연결 User만 — nil 없음"
-    # bare 계정엔 연결 User가 없으므로 후보 수는 tenant-wide 연결계정 수 그대로(kim·song·lee·park·yu·han = 6).
-    assert_equal 6, users.size
+    # bare 계정엔 연결 User가 없으므로 후보 수는 tenant-wide 비-viewer 연결계정 수 그대로(kim·song·lee·park·han = 5;
+    # yu=viewer는 제외).
+    assert_equal 5, users.size
   end
 
   test "user_ids_for는 후보 User id 배열(화이트리스트 소스)" do
