@@ -5,7 +5,7 @@
 class TabHistory
   include Rails.application.routes.url_helpers
 
-  MAX = 8
+  MAX = 12
   KEY = /\A([svc])-([\d-]+)\z/ # v-{id} / s-{id} / c-{from}-{to}
 
   class << self

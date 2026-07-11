@@ -24,9 +24,13 @@ class TabHistoryTest < ActiveSupport::TestCase
     assert_equal [ "v-1", "s-2" ], s[:open_tabs], "순서 유지, 중복 안 쌓임"
     TabHistory.track(s, "c", "3-4")
     assert_equal [ "v-1", "s-2", "c-3-4" ], s[:open_tabs], "새 항목은 끝에"
+    # 상한 초과 → 오래된 것부터 드롭, 최근 MAX(=12)만 유지. 누적 순서 [v-1, s-2, c-3-4, v-100..v-119] 중 마지막 12개.
     20.times { |i| TabHistory.track(s, "v", 100 + i) }
-    assert_equal TabHistory::MAX, s[:open_tabs].size
+    assert_equal 12, TabHistory::MAX, "상한은 12"
+    assert_equal TabHistory::MAX, s[:open_tabs].size, "12개로 잘림"
     assert_equal "v-119", s[:open_tabs].last, "최신이 끝(오래된 것부터 드롭)"
+    assert_equal "v-108", s[:open_tabs].first, "13개째부터 오래된 것 드롭 — 최근 12개 윈도우(v-108..v-119)"
+    assert_not_includes s[:open_tabs], "v-1", "상한 초과분(가장 오래된 v-1)은 드롭됨"
   end
 
   test "descriptors: 버전/스크리닝/비교 폴리모픽 + 레거시 섞여도 크래시 없음" do

@@ -82,8 +82,14 @@ summary::-webkit-details-marker { display: none; }
 .drop-inside { box-shadow: inset 0 0 0 2px var(--color-cooa); background-color: var(--color-accent); }
 .tree-selected { background-color: var(--color-accent); box-shadow: inset 2px 0 0 0 var(--color-cooa); }
 
-/* 헤더 탭 우측 페이드 — 넘치는 텍스트/칩이 x버튼 영역에서 투명으로 사라짐(배경 무관, Notion식) */
+/* 헤더 탭 우측 페이드 — 넘치는 텍스트/칩이 x버튼 영역에서 투명으로 사라짐(배경 무관, Notion식).
+   기본은 옅게(6px)만 페더링 → 비활성 탭 라벨이 '지워진 듯' 묻히지 않게(ia-nav-3).
+   호버 시(=✕ 노출)에만 24px로 넓혀 넘치는 라벨을 닫기 버튼 영역에서 걷어낸다. */
 .tab-fade {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 6px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 6px), transparent);
+}
+.group:hover > .tab-fade {
   -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
   mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 }

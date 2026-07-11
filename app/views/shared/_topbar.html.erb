@@ -12,11 +12,21 @@
   </button>
   <div class="h-full w-px shrink-0 bg-line/70"></div>
 
-  <nav class="flex h-full min-w-0 flex-1 items-center overflow-x-auto">
-    <%# 히스토리 탭 — 풀페이지 작업만(버전 v / 비교 c / 스크리닝 s), 쌓인 순서 유지. 우측 페이드 클립, x 호버 노출 %>
+  <%# 활성/비활성 탭 클래스 — 서버 렌더(SSR 폴백)와 Stimulus 클라이언트 토글이 같은 목록을 쓰도록 1곳에서 정의(드리프트 방지).
+      비활성 = 밝은 칩(bg-tint, 회색 상단바 bg-tint-2보다 밝음) + 중립 하단 경계선(line-soft 인셋) → 빈 상단바와 확실히 구분.
+      활성(불변) = 흰 배경 + 버건디 하단 인셋. %>
+  <% tab_active_class   = "bg-white shadow-[inset_0_-2px_0_0_var(--color-cooa)]" %>
+  <% tab_inactive_class = "bg-tint hover:bg-white shadow-[inset_0_-2px_0_0_var(--color-line-soft)]" %>
+  <nav class="flex h-full min-w-0 flex-1 items-center overflow-x-auto"
+       data-controller="topbar-tabs"
+       data-action="turbo:load@document->topbar-tabs#highlight turbo:submit-start->topbar-tabs#closeTab"
+       data-topbar-tabs-active-class="<%= tab_active_class %>"
+       data-topbar-tabs-inactive-class="<%= tab_inactive_class %>">
+    <%# 히스토리 탭 — 풀페이지 작업만(버전 v / 비교 c / 스크리닝 s), 쌓인 순서 유지. 우측 페이드는 호버 시에만 클립, x 호버 노출 %>
     <% header_tabs.each do |tab| %>
       <% tab_active = request.path == tab[:path] %>
-      <div class="group relative flex h-full w-[180px] shrink-0 items-center <%= tab_active ? "bg-white shadow-[inset_0_-2px_0_0_var(--color-cooa)]" : "hover:bg-white/60" %>">
+      <div data-topbar-tabs-target="tab"
+           class="group relative flex h-full w-[180px] shrink-0 items-center <%= tab_active ? tab_active_class : tab_inactive_class %>">
         <%= link_to tab[:path], data: { turbo_action: "advance" }, "aria-current": (tab_active ? "page" : nil), class: "tab-fade flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden px-3 hover:text-cooa" do %>
           <%= ui_icon (tab[:type] == "s" ? "spark" : tab[:type] == "c" ? "layers" : "doc"), size: 14, klass: "shrink-0 text-muted" %>
           <%= product_code_chip(tab[:code], extra: "shrink-0") %>
