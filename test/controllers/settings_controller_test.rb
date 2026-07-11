@@ -62,6 +62,37 @@ class SettingsControllerTest < ActionDispatch::IntegrationTest
     assert_no_match(/<option selected[^>]*value="(designer|pm|ra|scm)"/, @response.body)
   end
 
+  test "아바타 색: raw nil이면 '기본값'(value='') 라디오가 checked이고 리졸브된 폴백 색은 어떤 hex에도 새지 않는다 (리뷰 F1 렌더)" do
+    assert_nil kim[:avatar_color] # 시드 기본(폴백 = 리졸버가 #8e0300 반환)
+    get settings_path
+    assert_response :success
+    assert_match %r{<input[^>]*name="account\[avatar_color\]"[^>]*value=""[^>]*checked}, @response.body
+    # 리졸브된 폴백(#8e0300)이 hex 라디오에 checked로 굳지 않아야 한다(원 컬럼 기준).
+    assert_no_match %r{<input[^>]*value="#8e0300"[^>]*checked}, @response.body
+  end
+
+  test "이름만 변경 저장 시 아바타 색 원 컬럼은 nil 유지 (폴백 재영속 방지 — 리뷰 F1 ①)" do
+    # 수정된 폼의 기본-체크 라디오(value="")를 그대로 제출 = 이름만 바꾼 저장. 빈 문자열→normalizes로 nil.
+    patch settings_path, params: { account: { display_name: "이름만", avatar_color: "" } }
+    assert_redirected_to settings_path
+    assert_equal "이름만", kim.reload[:display_name]
+    assert_nil kim[:avatar_color]
+  end
+
+  test "색 선택→저장(raw 영속)→'기본값'(빈값) 재저장→nil 원복 (리뷰 F1 ②)" do
+    patch settings_path, params: { account: { avatar_color: "#2f6f6b" } }
+    assert_redirected_to settings_path
+    assert_equal "#2f6f6b", kim.reload[:avatar_color]
+    # 선택한 hex가 원 컬럼 기준으로 checked 렌더.
+    get settings_path
+    assert_match %r{<input[^>]*value="#2f6f6b"[^>]*checked}, @response.body
+    # "기본값"(빈 문자열) 재저장 → nil 정규화 → 폴백 부활.
+    patch settings_path, params: { account: { avatar_color: "" } }
+    assert_redirected_to settings_path
+    assert_nil kim.reload[:avatar_color]
+    assert_equal Account::DEFAULT_AVATAR_COLOR, kim.avatar_color # 리졸버 폴백 확인
+  end
+
   test "update never accepts a foreign account id (mass-assignment closed — self only)" do
     other = Account.where.not(email: "kim@cooa.dev").first
     skip "single-account seed" unless other

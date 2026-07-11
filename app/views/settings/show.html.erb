@@ -24,14 +24,27 @@
     <%# 아바타 색 — fieldset/legend로 라디오 그룹 이름 부여 + 각 스와치에 한글 색 이름(aria-label·title). AVATAR_SWATCHES 순서. %>
     <% avatar_color_names = { "#8e0300" => "버건디", "#b23a2e" => "벽돌", "#c9822b" => "앰버", "#5f8f2e" => "그린",
                               "#2f6f6b" => "틸", "#2d5a8e" => "블루", "#5b3f8e" => "퍼플", "#3d3d3d" => "차콜" } %>
+    <%# checked/원복 기준은 원 컬럼(current_account[:avatar_color]) — 리졸버(폴백 해석값)를 그대로 재영속하면
+        이름만 바꿔 저장해도 폴백 색이 account에 굳어 "빈값=기본값" 불변식이 깨진다(리뷰 F1, 직무 셀렉트와 동일 패턴).
+        맨 앞 "기본값" 옵션(value="")은 raw nil일 때 checked이고, 저장 시 빈 문자열→모델 normalizes가 nil로 정규화. %>
+    <% raw_avatar_color = current_account[:avatar_color] %>
     <fieldset class="mt-4">
       <legend class="text-caption font-bold text-muted">아바타 색</legend>
       <div class="mt-1.5 flex flex-wrap gap-2">
+        <%# 기본값 사용 — 리졸브된 현재 기본색을 채우되 "기본" 라벨로 색 옵션과 시각 구분. value="" → nil 정규화(원복). %>
+        <label class="relative cursor-pointer" title="기본값 사용">
+          <input type="radio" name="account[avatar_color]" value="" class="peer sr-only" aria-label="기본값 사용"
+                 <%= "checked" if raw_avatar_color.blank? %>>
+          <span class="flex h-8 w-8 items-center justify-center rounded-full ring-2 ring-transparent ring-offset-2 transition peer-checked:ring-cooa"
+                style="background:<%= current_account.avatar_color %>">
+            <span class="text-caption font-bold leading-none text-white">기본</span>
+          </span>
+        </label>
         <% Account::AVATAR_SWATCHES.each do |hex| %>
           <% cname = avatar_color_names[hex.downcase] || hex %>
           <label class="relative cursor-pointer">
             <input type="radio" name="account[avatar_color]" value="<%= hex %>" class="peer sr-only" aria-label="<%= cname %>"
-                   <%= "checked" if current_account.avatar_color.to_s.casecmp?(hex) %>>
+                   <%= "checked" if raw_avatar_color.to_s.casecmp?(hex) %>>
             <span class="block h-8 w-8 rounded-full ring-2 ring-transparent ring-offset-2 transition peer-checked:ring-cooa"
                   style="background:<%= hex %>" title="<%= cname %>"></span>
           </label>

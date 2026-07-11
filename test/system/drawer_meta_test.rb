@@ -94,6 +94,20 @@ class DrawerMetaTest < ApplicationSystemTestCase
     assert_equal n - 1, l.reload.product_members.count, "삭제된 행은 저장 시 제거"
   end
 
+  test "직접 진입 후 Escape로 닫으면 포커스가 body로 낙하하지 않는다 (직접-진입 포커스 복원 — 리뷰 F2)" do
+    l = leaf
+    visit product_path(l) # 직접/리로드 진입 → _trigger 없이 트랩만 활성
+    assert_selector "[data-detail-drawer-target='panel']", wait: 10
+    assert_text "구성요소", wait: 10 # 드로어 콘텐츠 로드(열림 확정)
+    sleep 0.3
+    find("body").send_keys(:escape)
+    # 드로어 닫힘 = URL 대시보드(/)로 정리(replaceState).
+    assert_equal "/", URI.parse(current_url).path, "Escape 후 URL은 대시보드(/)"
+    # 포커스가 body로 낙하하지 않아야 한다(키보드 사용자 표류 방지) — 폴백 체인이 트리 행 링크로 복원.
+    tag = page.evaluate_script("document.activeElement && document.activeElement.tagName")
+    assert tag && tag.downcase != "body", "포커스가 body가 아니어야 함(실제=#{tag.inspect})"
+  end
+
   test "무변경 인라인 클릭은 저장·리렌더 없음(깜빡임 방지)" do
     l = leaf
     visit_drawer(l)
