@@ -32,6 +32,10 @@
     <% if @eligible %>
       <div class="mt-8 border-t border-line-soft pt-5">
         <h2 class="mb-3 text-section font-bold text-ink">리뷰어 미배정 <span class="font-medium text-muted">— 내가 맡을 수 있는 리뷰</span></h2>
+        <%# 상한 초과 안내(컨트롤러 UNASSIGNED_CAP 절단) — 가장 오래된 순 상위만 렌더 중임을 명시. %>
+        <% if @unassigned_overflow %>
+          <div class="mb-3 rounded-md bg-tint px-3 py-2 text-meta text-muted">가장 오래된 <%= ReviewsController::UNASSIGNED_CAP %>건 표시 중 — 브랜드 필터로 좁혀 주세요.</div>
+        <% end %>
         <% if @inbox.any? %>
           <%# 브랜드(루트 제품) 필터 %>
           <div class="mb-3 flex flex-wrap items-center gap-1.5 text-meta">

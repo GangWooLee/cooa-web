@@ -4,6 +4,12 @@ class ReviewsController < ApplicationController
   skip_after_action :verify_authorized, only: :index
   after_action :verify_policy_scoped, only: :index
 
+  # Segment B(미배정 풀) 렌더 상한 — 앱 내 유일한 무경계 렌더였던 풀을 절단(테넌트-와이드 approver의 풀은
+  # 실사용선 수백~수천으로 선형 증가·행당 claim 폼 DOM 비용). 가장 오래된 순(requested_at ASC) 상위 CAP건만
+  # 렌더하고 초과 시 안내(브랜드 필터 칩이 이미 존재하는 좁히기 수단). RLS·policy_scope·SoD 술어 불변
+  # (상한은 가시집합 하위 절단일 뿐).
+  UNASSIGNED_CAP = 40
+
   def index
     # Segment A: reviewer_id=me. 유니크 인덱스 → 요청당 조인 1행이라 .distinct 불요.
     @assigned = policy_scope(ApprovalRequest)
@@ -31,7 +37,11 @@ class ReviewsController < ApplicationController
                    .where(component_version_id: ComponentVersion.where(component_id: Component.where(product_id: visible_products.select(:id))))
                    .includes({ submitter: :account }, component_version: { component: :product })
                    .order(requested_at: :asc)
-    @inbox = ReviewInboxPresenter.new(unassigned: unassigned,
+                   .limit(UNASSIGNED_CAP + 1) # CAP+1 로드 → 초과 여부 판정 후 CAP로 절단
+    rows = unassigned.to_a
+    @unassigned_overflow = rows.size > UNASSIGNED_CAP
+    rows = rows.first(UNASSIGNED_CAP)
+    @inbox = ReviewInboxPresenter.new(unassigned: rows,
                                       products: visible_products, brand_filter: params[:brand])
   end
 end

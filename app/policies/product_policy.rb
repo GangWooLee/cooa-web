@@ -19,10 +19,16 @@ class ProductPolicy < ApplicationPolicy
       actor = context.actor
       return nil unless actor.is_a?(Account)     # demo/User path (DemoResolver) → all (unchanged)
 
-      grants = RoleAssignment.active.where(account_id: actor.id)
-      return nil if grants.tenant_wide.exists?   # any tenant-wide grant → sees everything (no-op)
-
-      visible_product_ids(grants)                # [] → fail-closed (no grant); else the visible id set
+      # Route through the request-scoped memo on AccessContext so A/B/C/D share ONE computation (the id set
+      # is a pure function of the actor's grants — same result regardless of the scope relation passed in).
+      context.visible_product_ids_or_all do
+        grants = RoleAssignment.active.where(account_id: actor.id)
+        if grants.tenant_wide.exists?            # any tenant-wide grant → sees everything (no-op)
+          nil
+        else
+          visible_product_ids(grants)            # [] → fail-closed (no grant); else the visible id set
+        end
+      end
     end
 
     private

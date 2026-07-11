@@ -56,13 +56,15 @@ module Authz
     # dashboard 렌더(제안 목록)와 membership 컨트롤러의 분기가 같은 관계를 공유해 "동료면 즉시 추가"가 표시·서버
     # 판정에서 코드로 일치한다(UI-서버 드리프트 불가). :all=전 조직 · Array(scoped admin)=자기 서브트리 스코프
     # 멤버만(가시 범위 내 — 리크 없음) · nil=권한 없음(none). N+1 없음(배치).
-    def addable_accounts_for(account, workspace)
+    # subtree_ids: 호출부(컨트롤러)가 요청-스코프로 이미 계산한 이 작업실의 서브트리 id를 주입하면
+    # member_account_ids_for_workspace의 중복 subtree 확장을 재사용한다(nil이면 내부 재계산 — 하위호환).
+    def addable_accounts_for(account, workspace, subtree_ids: nil)
       base = case (scope = self.for(account))
       when :all  then Account.all
       when Array then Account.where(id: scoped_member_account_ids(Product.subtree_ids(scope.map(&:id))))
       else return Account.none
       end
-      exclude = member_account_ids_for_workspace(workspace).to_set |
+      exclude = member_account_ids_for_workspace(workspace, subtree_ids: subtree_ids).to_set |
                 RoleAssignment.active.tenant_wide.distinct.pluck(:account_id).to_set
       base.includes(:user).where.not(id: exclude.to_a).order(:created_at)
     end
@@ -71,8 +73,8 @@ module Authz
     # 제외. 빈 작업실(서브트리 0)도 workspace grant 멤버를 표면화한다 — 제품 파생 scoped_member_account_ids는
     # product_ids가 비면 조기반환([])이라 workspace grant를 놓치므로, 작업실을 직접 받는 이 진입점이 W3 멤버 요약·
     # 패널 멤버셋(빈 작업실 포함)의 단일 출처. N+1 없음(배치 쿼리).
-    def member_account_ids_for_workspace(workspace)
-      subtree_ids = Product.subtree_ids(workspace.products.pluck(:id))
+    def member_account_ids_for_workspace(workspace, subtree_ids: nil)
+      subtree_ids ||= Product.subtree_ids(workspace.products.pluck(:id))
       base = RoleAssignment.active
       scoped = base.where(scope_workspace_id: workspace.id)
       if subtree_ids.any?

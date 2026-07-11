@@ -19,7 +19,9 @@ class ReviewPanelPresenter
     "미반영 피드백 #{open_feedback_count}개가 있습니다. 그래도 검토 확인하시겠습니까?" if open_feedback?
   end
 
-  def confirmed_step = request&.approval_steps&.find_by(decision: "confirmed")
+  # 유니크 인덱스(tenant_id, approval_request_id)로 요청당 스텝 ≤1행이라, 프리로드된 컬렉션에서 인메모리
+  # find로 선택(find_by의 2차 쿼리 회피 — 컨트롤러가 approval_steps.approver를 배치 프리로드).
+  def confirmed_step = request&.approval_steps&.find { |s| s.decision == "confirmed" }
 
   def requested_reviewers = request&.requested_reviewers || []
 

@@ -12,11 +12,16 @@ class ComponentVersionsController < ApplicationController
     @prev      = idx&.positive? ? @siblings[idx - 1] : nil
     @next      = idx && idx < @siblings.size - 1 ? @siblings[idx + 1] : nil
     # 어노테이션 created_by·댓글 author는 표시 리졸버(account-우선)를 타므로 :account까지 프리로드(R5).
-    @annotations = @version.annotations.ordered.includes({ created_by: :account }, comments: { author: :account })
+    # 반영완료(resolved) 어노테이션은 뷰에서 resolved_in_version.vlabel을 읽으므로 그 버전도 프리로드
+    # (누락 시 반영건당 component_versions 단건 N+1).
+    @annotations = @version.annotations.ordered.includes({ created_by: :account }, :resolved_in_version, comments: { author: :account })
     # 버전 리뷰 패널: 리뷰는 버전에 앵커(스크리닝 비의존) — RA가 검토 중 스크리닝 수행. 스크리닝 링크는
     # 무조건 렌더되므로 latest_run 프리로드 불요(죽은 쿼리 제거).
-    # 요청자(submitter)·지정 리뷰어는 리뷰 패널에서 표시 리졸버(account-우선)를 타므로 :account까지 프리로드(R5).
-    @approval_request = ApprovalRequest.includes({ requested_reviewers: :account }, submitter: :account)
+    # 요청자(submitter)·지정 리뷰어·검토 확인 승인자(approval_steps.approver)는 리뷰 패널에서 표시 리졸버
+    # (account-우선)를 타므로 :account까지 프리로드(R5). approver 누락 시 reviewed 버전 상세에서 승인자 신원의
+    # users/accounts 단건 N+1 — 이 배치 프리로드로 흡수(presenter#confirmed_step는 인메모리 find로 전환).
+    @approval_request = ApprovalRequest.includes({ requested_reviewers: :account }, { submitter: :account },
+                                                 { approval_steps: { approver: :account } })
                                        .find_by(component_version_id: @version.id)
     @review = ReviewPanelPresenter.new(version: @version, request: @approval_request,
                                        open_feedback_count: @annotations.count(&:open?))

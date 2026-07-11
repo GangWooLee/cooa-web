@@ -168,4 +168,18 @@ class ApprovalWorkflowTest < ActionDispatch::IntegrationTest
     assert_no_n_plus_one { get comparison_path(from_id: @v.id, to_id: v6.id) }
     assert_response :success
   end
+
+  # 반영 어노테이션 버전 프리로드 게이트(perf 발견 7): 버전 상세는 반영완료(resolved) 어노테이션마다
+  # resolved_in_version.vlabel을 렌더한다 — 컨트롤러 includes에서 :resolved_in_version이 빠지면 반영건마다
+  # `component_versions WHERE id=N` 단건 재쿼리 → Prosopite raise. 시드는 반영 4건이 전부 v6 귀속이라
+  # 재쿼리가 쿼리캐시로 1회만 실발화해 미검출 — 한 건을 v4로 재귀속해 서로 다른 두 버전이 게이트를
+  # 실제로 물게 한다(load-bearing).
+  test "버전 상세의 반영완료 어노테이션 렌더는 component_versions 단건 반복이 없음" do
+    v4 = @v.component.component_versions.find_by!(version_number: 4)
+    @v.annotations.where(status: "resolved").order(:seq).first.update!(resolved_in_version: v4)
+
+    assert_no_n_plus_one { get component_version_path(@v) }
+    assert_response :success
+    assert_match "에서 반영 확인", response.body # resolved 표기가 실제 렌더됨(게이트 load-bearing)
+  end
 end

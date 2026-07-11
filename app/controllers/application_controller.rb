@@ -27,7 +27,12 @@ class ApplicationController < ActionController::Base
   private
 
   # Pundit "user" = role-resolution context: the authenticated Account (roles via AssignmentResolver).
-  def pundit_user = Authz::AccessContext.new(actor: Current.account)
+  # Request-memoized: Pundit only captures pundit_user once, but visible_product_id_set (below) calls it
+  # directly — without memoization that path built a SECOND AccessContext/AssignmentResolver and re-ran the
+  # visibility computation. Sharing ONE instance unifies the AccessContext memo (roles_on cache, tenant_wide/
+  # scoped role plucks) across the whole request. Actor is fixed once by the auth before_action (no swap), so
+  # no pundit_reset! is needed. Request-scoped ivar → R7-safe (new controller instance per request).
+  def pundit_user = @pundit_user ||= Authz::AccessContext.new(actor: Current.account)
 
   def current_organization = Organization.find(Current.tenant_id)
 
@@ -195,14 +200,37 @@ class ApplicationController < ActionController::Base
   # 현재 작업실의 유출 차단 표시명(사이드바 헤더·작업실 페이지 헤더 공용).
   def current_workspace_label = workspace_label(current_workspace)
 
-  # 컨텍스트 있음 사이드바의 트리 = **현재 작업실의 모든 가시 루트**(복수 루트 수용). 가시 전체를 :children
-  # 프리로드로 1회 로드(하위 children 프리로드 → _tree_node 재귀 N+1 0건) 그중 현재 작업실 소속 표시 루트만 렌더.
+  # 컨텍스트 있음 사이드바의 트리 = **현재 작업실의 모든 가시 루트**(복수 루트 수용). 가시 제품 전체를 1회
+  # 로드해 parent_id 그룹으로 각 노드의 :children를 인메모리 프리셋(association target + loaded!) → _tree_node의
+  # node.children 재귀가 depth와 무관하게 0쿼리. (includes(:children)는 루트의 직속 자식 1레벨만 프리로드해
+  # depth≥2에서 `products WHERE parent_id=N` 재쿼리가 남았다 — 그 잔존 재귀 N+1을 제거.)
+  # 자식은 가시집합(policy_scope)으로 클리핑된다: 테넌트-와이드/데모(가시=전체)는 완전 동일(무회귀), 스코프
+  # 계정은 비가시 자식이 트리에 새지 않는 D3 강화(의도된 동작 변경).
   def context_tree_roots
     ws = current_workspace
     return [] unless ws
 
-    @context_tree_roots ||= visible_roots(Product.includes(:children, :parent, :workspace))
-                            .select { |r| workspace_of_root(r)&.id == ws.id }
+    @context_tree_roots ||= begin
+      visible = policy_scope(Product.includes(:parent, :workspace)).to_a
+      by_parent = visible.group_by(&:parent_id)
+      in_set = visible.map(&:id).to_set
+      # 각 노드의 :children를 가시집합 내 정렬(position, id)된 자식으로 프리셋. loaded! 필수 — 프리셋 컬렉션을
+      # "이미 로드됨"으로 표시해 node.children 접근이 재쿼리하지 않게 한다. 형제 정렬은 has_many :children
+      # (order :position, :id)와 동일(시드는 position 전부 지정 → 순서 무회귀). 자식의 :parent 타깃도 같은
+      # 인메모리 인스턴스로 프리셋(tree_preorder와 동형) — node_path_label의 self_and_ancestors 조상 walk가
+      # includes(:parent)의 분리 인스턴스를 타고 재쿼리하지 않게 한다(구 :children 프리로드의 inverse_of 체인 대체).
+      visible.each do |node|
+        kids = (by_parent[node.id] || []).sort_by { |c| [ c.position || 0, c.id ] }
+        kids.each { |c| c.association(:parent).target = node }
+        assoc = node.association(:children)
+        assoc.target = kids
+        assoc.loaded!
+      end
+      # 표시 루트 = 부모가 비가시(또는 nil)인 노드, 정렬 후 현재 작업실 소속만(visible_roots 규칙 내포).
+      visible.select { |p| p.parent_id.nil? || in_set.exclude?(p.parent_id) }
+             .sort_by { |p| [ p.position || 0, p.id ] }
+             .select { |r| workspace_of_root(r)&.id == ws.id }
+    end
   end
 
   # 표시 루트 = 가시 제품 중 부모가 비가시(또는 nil)인 노드 (Stage 2 D3). 테넌트-와이드 액터면 Product.roots와
@@ -236,33 +264,32 @@ class ApplicationController < ActionController::Base
 
   def nav_ready? = ActiveRecord::Base.connection.schema_cache.data_source_exists?("products")
 
-  # 사이드바 배지: 내가 지정 리뷰어인 pending 리뷰 수(RLS 테넌트 스코프). 요청당 1회 메모이즈.
-  # reviewer_id로 필터 + 유니크 인덱스(tenant_id, approval_request_id, reviewer_id)라 요청당 조인 1행 →
-  # .distinct 불요(정렬/해시 dedup 제거 = 매 인증 페이지 COUNT 비용 절감).
-  def pending_review_count
-    @pending_review_count ||= if nav_ready? && Current.tenant_id && current_user
-      ApprovalRequest.where(status: "pending").joins(:approval_request_reviewers)
-                     .where(approval_request_reviewers: { reviewer_id: current_user.id }).count
+  # 사이드바 배지 카운트(pending + overdue)를 조건부 집계 단일 쿼리로 통합(인증 페이지당 JOIN COUNT 2→1).
+  # 동일 JOIN·동일 스코프(내가 지정 리뷰어인 pending = Segment A)에서 overdue(due_at < now)는 pending의
+  # 부분집합이라 COUNT(*) FILTER로 한 패스에 집계한다. reviewer_id 필터 + 유니크 인덱스
+  # (tenant_id, approval_request_id, reviewer_id)라 요청당 조인 1행 → .distinct 불요. Time.current 기준
+  # 시각은 이 쿼리 1회에 한 번만. 요청당 1회 메모이즈(0도 캐시되게 해시 반환·||= 가드).
+  def review_badge_counts
+    @review_badge_counts ||= if nav_ready? && Current.tenant_id && current_user
+      now = Time.current
+      overdue_filter = Arel.sql("COUNT(*) FILTER (WHERE due_at < #{ApprovalRequest.connection.quote(now)})")
+      total, overdue = ApprovalRequest.where(status: "pending")
+                                      .joins(:approval_request_reviewers)
+                                      .where(approval_request_reviewers: { reviewer_id: current_user.id })
+                                      .pick(Arel.sql("COUNT(*)"), overdue_filter)
+      { pending: total || 0, overdue: overdue || 0 }
     else
-      0
+      { pending: 0, overdue: 0 }
     end
   end
 
-  # overdue 배지(warn 병기): pending_review_count와 동일 스코프(내가 지정 리뷰어인 pending = Segment A)에
-  # `due_at < now`만 얹은 부분집합(overdue ≤ pending). 배지 정책(REF L493)은 pending 카운트를 불변으로 두고,
-  # overdue는 별도 warn 배지로만 병기한다 — **개인 액션어블·bounded**하게 내 Segment A로 한정(Segment B는
-  # 여전히 완전 미배지, 인박스 행 강조로만 노출). 요청당 1회 메모이즈(0도 캐시되게 defined? 가드).
-  def overdue_review_count
-    return @overdue_review_count if defined?(@overdue_review_count)
+  # pending 배지: 내가 지정 리뷰어인 pending 리뷰 수(RLS 테넌트 스코프). 통합 메모에서 읽음(시그니처 보존).
+  def pending_review_count = review_badge_counts[:pending]
 
-    @overdue_review_count = if nav_ready? && Current.tenant_id && current_user
-      ApprovalRequest.where(status: "pending").where("due_at < ?", Time.current)
-                     .joins(:approval_request_reviewers)
-                     .where(approval_request_reviewers: { reviewer_id: current_user.id }).count
-    else
-      0
-    end
-  end
+  # overdue 배지(warn 병기): pending과 동일 스코프에 `due_at < now`만 얹은 부분집합(overdue ≤ pending). 배지
+  # 정책(REF L493)은 pending 카운트를 불변으로 두고, overdue는 별도 warn 배지로만 병기한다 — **개인 액션어블·
+  # bounded**하게 내 Segment A로 한정(Segment B는 미배지, 인박스 행 강조로만). 통합 메모에서 읽음.
+  def overdue_review_count = review_badge_counts[:overdue]
 
   # 대시보드 셸의 제품 트리 행 (대시보드 index / 상세 풀요청 공용). 표시 루트는 가시집합 기준(D3).
   # 가시 제품 전체를 프리로드와 함께 1회 로드 → tree_preorder가 parent_id 그룹핑으로 preorder를 만든다.
@@ -270,29 +297,40 @@ class ApplicationController < ActionController::Base
   # tree_preorder가 내포하므로 visible_roots를 거치지 않는다(:children 프리로드도 불요 — .children 미접근).
   # workspace(WS-track /workspaces/:id): 가시집합을 그 작업실의 모든 루트 서브트리로 좁혀 작업실 페이지 트리를
   # 만든다(가시성과 교집합이라 스코프 계정도 안전). 반환값 = 필터 전 가시 배열(작업실 가시성 판정용 — dashboard#index).
-  def load_dashboard_rows(workspace: nil)
-    # 트리 행의 담당자 아바타(pm.user)는 표시 리졸버(account-우선)를 타므로 :account까지 프리로드(R5).
-    visible = policy_scope(Product.includes(:parent, :owner, :workspace, { product_members: { user: :account } },
-                                            { components: :component_versions })).to_a
-    rows_source = visible
-    if workspace
-      keep = workspace_subtree_ids(workspace).to_set
-      rows_source = visible.select { |p| keep.include?(p.id) }
+  def load_dashboard_rows(workspace: nil, cards_only: false)
+    # 홈 카드/가드 경로(cards_only) = 셸 트리를 렌더하지 않으므로 워크스페이스 도출용 최소셋만 프리로드하고
+    # @rows(tree_preorder) 빌드를 건너뛴다(visible_display_roots가 이미 검증한 [:parent, :workspace] 충분셋).
+    # 셸 경로(cards_only:false)는 트리 행의 담당자 아바타(pm.user·표시 리졸버 account-우선)까지 프리로드(R5).
+    includes = if cards_only
+      [ :parent, :workspace ]
+    else
+      [ :parent, :owner, :workspace, { product_members: { user: :account } }, { components: :component_versions } ]
     end
-    @rows = Product.tree_preorder(rows_source)
+    visible = policy_scope(Product.includes(*includes)).to_a
+    unless cards_only
+      rows_source = visible
+      if workspace
+        keep = workspace_subtree_ids(workspace).to_set
+        rows_source = visible.select { |p| keep.include?(p.id) }
+      end
+      @rows = Product.tree_preorder(rows_source)
+    end
     visible
   end
 
   # 작업실의 모든 루트 서브트리 id(멤버 요약·pending·회수 필터 공용). workspace.products = 그 작업실 루트들.
+  # 요청-스코프 메모(workspace.id 키): 한 요청에서 load_dashboard_rows·load_workspace_member_admin·
+  # workspace_member_accounts가 같은 작업실로 여러 번 호출해도 subtree 확장(Product Pluck ×2)을 1회로 접는다.
+  # id 배열만 캐시 → R7 무저촉(요청 간 비유지). 빈 작업실은 [] 캐시(truthy라 재계산 안 됨).
   def workspace_subtree_ids(workspace)
-    Product.subtree_ids(workspace.products.pluck(:id))
+    (@workspace_subtree_cache ||= {})[workspace.id] ||= Product.subtree_ids(workspace.products.pluck(:id))
   end
 
   # 작업실 페이지의 멤버 요약 = 그 작업실에 스코프 grant를 가진 계정(tenant-wide 제외 — 전역 멤버는 작업실
   # 소속이 아님). member_account_ids_for_workspace(작업실 grant + 서브트리 p/c grant)는 빈 작업실도 workspace grant
   # 멤버를 표면화한다(제품 파생 scoped_member_account_ids의 빈-집합 조기반환 우회 — D3).
   def workspace_member_accounts(workspace)
-    ids = Authz::AdminScope.member_account_ids_for_workspace(workspace)
+    ids = Authz::AdminScope.member_account_ids_for_workspace(workspace, subtree_ids: workspace_subtree_ids(workspace))
     Account.includes(:user, role_assignments: [ :scope_workspace, :scope_product, :scope_component ])
            .where(id: ids).order(:created_at)
   end

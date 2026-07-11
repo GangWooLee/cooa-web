@@ -154,4 +154,32 @@ class ReviewClaimTest < ActionDispatch::IntegrationTest
     assert_no_n_plus_one { get reviews_path }
     assert_response :success
   end
+
+  # 배지 단일 쿼리 게이트(perf 발견 5): 사이드바 리뷰 배지(pending+overdue)는 인증 페이지 렌더당
+  # approval_requests ⋈ approval_request_reviewers JOIN COUNT **정확히 1회**여야 한다(COUNT(*) FILTER
+  # 조건부 집계 통합). pending/overdue 별도 COUNT 2회로 되돌리면 2가 세어져 RED. Prosopite 관례로는
+  # 표현 불가(대상이 '유사쿼리 반복'이 아니라 '정확한 횟수'이고, WHERE가 다른 두 COUNT는 유사쿼리로
+  # 안 묶임) → sql.active_record 구독 카운터로 타협(사유 명기).
+  test "사이드바 배지는 인증 페이지당 approval_requests JOIN COUNT 정확히 1회" do
+    sign_in_as(Account.find_by!(email: "lee@cooa.dev")) # 시드: kim이 CO0000 v5를 lee에게 요청 → pending ≥1
+    count = count_badge_count_queries { get root_path }
+    assert_response :success
+    assert_operator sidebar_badge, :>=, 1, "pending 배지가 실제 렌더돼야 게이트가 문다"
+    assert_equal 1, count, "배지 COUNT 쿼리는 페이지당 정확히 1회(조건부 집계 통합)여야 한다"
+  end
+
+  # approval_requests ⋈ approval_request_reviewers COUNT 발화 횟수(쿼리캐시 히트 제외) 집계.
+  def count_badge_count_queries
+    n = 0
+    sub = ActiveSupport::Notifications.subscribe("sql.active_record") do |_name, _s, _f, _id, payload|
+      next if payload[:cached] || payload[:name] == "CACHE"
+
+      sql = payload[:sql].to_s
+      n += 1 if sql.match?(/\ASELECT COUNT/i) && sql.include?("approval_requests") && sql.include?("approval_request_reviewers")
+    end
+    yield
+    n
+  ensure
+    ActiveSupport::Notifications.unsubscribe(sub)
+  end
 end

@@ -69,7 +69,10 @@ module Authentication
     return require_login if session[:account_id].blank? || Current.tenant_id.blank?
 
     # Unscoped read (NO .active): must SEE a suspended/deprovisioned row to detect the revocation transition.
-    account = Account.find_by(id: session[:account_id])
+    # Preload :user — the sidebar renders current_account.name on every authenticated page and Account#name
+    # falls back to the linked user's name (display_name mostly NULL), so eager-load it here to avoid a
+    # per-request `users WHERE id=N` single-row lazy load. Revocation checks read account columns only.
+    account = Account.includes(:user).find_by(id: session[:account_id])
     return reset_and_require_login unless live_session_for?(account)
 
     Current.account = account

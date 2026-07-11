@@ -53,4 +53,27 @@ class DashboardTreeTest < ActionDispatch::IntegrationTest
     assert_includes table_ids, root_a.id.to_s
     assert_includes table_ids, root_b.id.to_s
   end
+
+  # 사이드바 트리 재귀 게이트(perf 발견 2): 컨텍스트 사이드바 _tree_node 재귀는 depth 2+에서도
+  # `products WHERE parent_id=N` 재쿼리 0건이어야 한다(context_tree_roots가 flat 가시집합 1회 로드 후
+  # :children를 인메모리 프리셋). 구방식(includes(:children) — 루트 직속 1레벨만 프리로드)으로 되돌리면
+  # depth-1 폴더 2개(프리로드 분리 인스턴스)가 각각 children를 재쿼리 → Prosopite raise.
+  # 형제 폴더 2개+각 리프 구성이 게이트를 실제로 물게 한다(폴더 1개면 유사쿼리 반복 미달로 미검출 — 구
+  # 시드 트리에서 이 잔존 N+1이 안 잡혔던 이유).
+  test "사이드바 컨텍스트 트리 렌더는 depth 2+ children 재쿼리가 없음" do
+    ws = Workspace.create!(name: "사이드바 게이트 작업실", position: 8)
+    root = Product.create!(name: "게이트루트", kind: "folder", workspace: ws, position: 0)
+    f_a = Product.create!(name: "폴더A", kind: "folder", parent: root, position: 0)
+    f_b = Product.create!(name: "폴더B", kind: "folder", parent: root, position: 1)
+    Product.create!(name: "리프A", parent: f_a, code: "GSA1", country: "JP", position: 0)
+    Product.create!(name: "리프B", parent: f_b, code: "GSB1", country: "US", position: 0)
+
+    sign_in_as(Account.find_by!(email: "kim@cooa.dev"))
+    assert_no_n_plus_one { get workspace_path(ws) }
+    assert_response :success
+    # depth-2 리프가 사이드바 트리에 실제 렌더됨(게이트 load-bearing — 얕은 트리로 위장 안 됨).
+    sidebar_names = css_select("aside#app-sidebar [data-node-id]").map { |n| n["data-node-name"] }
+    assert_includes sidebar_names, "리프A"
+    assert_includes sidebar_names, "리프B"
+  end
 end

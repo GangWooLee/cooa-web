@@ -8,7 +8,8 @@ class DashboardController < ApplicationController
   # 테넌트·비가시) 또는 404(RecordNotFound·타 테넌트/미존재).
   def index
     ws = resolve_index_workspace
-    visible = load_dashboard_rows(workspace: ws) # policy_scope 항상 호출(verify_policy_scoped 충족)
+    # ws.nil?(홈 카드/가드 경로)이면 cards_only=라이트 프리로드+@rows 스킵, ws 존재(작업실 셸)면 현행 heavy 유지.
+    visible = load_dashboard_rows(workspace: ws, cards_only: ws.nil?) # policy_scope 항상 호출(verify_policy_scoped 충족)
 
     if params[:id].present? && ws.nil? # 명시적 작업실 진입인데 비가시/부재
       raise ActiveRecord::RecordNotFound unless Workspace.exists?(id: params[:id]) # 타 테넌트/미존재 → 404
@@ -65,7 +66,8 @@ class DashboardController < ApplicationController
     @workspace_pending = subtree_invitations.pending.order(created_at: :desc)
     # 모달 "사람 추가" 제안 = addable 동료(ⓐ · 즉시 추가) + 과거 초대 재발급 후보(ⓑ). addable 관계는
     # membership 컨트롤러의 즉시추가 분기와 동일 규율(AdminScope.addable_accounts_for) — 표시·서버 판정 일치.
-    @workspace_addable = Authz::AdminScope.addable_accounts_for(current_account, workspace)
+    # 이미 계산한 subtree_ids를 주입해 내부 member_account_ids_for_workspace의 중복 subtree 확장을 재사용.
+    @workspace_addable = Authz::AdminScope.addable_accounts_for(current_account, workspace, subtree_ids: subtree_ids)
     # 제안도 pending과 동일 서브트리 관할로 스코프 — 무-스코프면 스코프 admin에게 형제 브랜드 초대 이메일이 노출된다.
     @workspace_invite_suggestions = Invitation.suggestion_emails(subtree_invitations)
   end
@@ -131,7 +133,10 @@ class DashboardController < ApplicationController
     return map if member_ids.empty?
 
     ws_of_product = product_workspace_map(visible, by_id) # 제품 id → 작업실 id(in-memory 루트 walk)
-    accounts = Account.includes(:user, role_assignments: [ :scope_workspace, :scope_product, :scope_component ]).where(id: member_ids)
+    # 아래 루프는 ra.scope_workspace_id·ra.scope_product_id(자체 컬럼)와 ra.scope_component&.product_id만 읽으므로
+    # (스코프명 미렌더) :scope_component만 프리로드하면 충분 — :scope_workspace/:scope_product IN-배치 2건 제거.
+    # (셸 멤버 관리 패널의 workspace_member_accounts는 스코프 라벨을 렌더할 수 있어 그쪽 프리로드는 유지.)
+    accounts = Account.includes(:user, role_assignments: :scope_component).where(id: member_ids)
     accounts.each do |acc|
       ws_ids = acc.role_assignments.filter_map do |ra|
         next unless ra.active? && !ra.tenant_wide?
