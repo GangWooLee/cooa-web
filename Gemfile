@@ -82,6 +82,10 @@ group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
 
+  # 데모 dieline(단상자 전개도) PDF 생성기 전용 — dev only. 프로덕션 슬림 유지를 위해 development 그룹에 둔다.
+  # 순수 Ruby(네이티브 확장 없음). db/demo/dieline.rb 가 사용, `bin/rails demo:assets` 로만 실행.
+  gem "prawn", "~> 2.5"
+
   # N+1 쿼리 감지 — dev에서 브라우저/로그로 즉시 노출(R5). prosopite(test)와 짝.
   gem "bullet"
 end

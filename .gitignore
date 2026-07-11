@@ -40,3 +40,7 @@
 /app/assets/builds/*
 !/app/assets/builds/.keep
 .gstack/
+
+# 데모 dieline 산출물(로컬 전용). `bin/rails demo:assets`가 생성하는 PDF는 폰트 서브셋을 임베드하므로
+# 공개 repo로 재배포하지 않는다(라이선스·용량). 생성기 코드(db/demo/dieline.rb)만 커밋 대상.
+/db/demo/assets/

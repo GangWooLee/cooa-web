@@ -116,4 +116,25 @@ namespace :demo do
       DemoTasks.print_report("demo:bulk:clear 완료 — 시드 기준선 카운트", nil)
     end
   end
+
+  # 파라메트릭 단상자 dieline PDF 24종을 db/demo/assets/ 로 생성 → demo:bulk 의 히어로 아트워크 소스가 된다.
+  # DB 무접촉(순수 PDF 산출)이라 owner 가드 불필요 — production abort 만.
+  desc "데모 dieline(단상자 전개도) PDF 24종 생성 (dev 전용 · db/demo/assets/ · DB 무접촉)"
+  task assets: :environment do
+    abort "[demo] production 환경에서는 실행할 수 없습니다." if Rails.env.production?
+
+    load Rails.root.join("db/demo/dieline.rb")
+    result = Demo::Dieline.generate!(rng: Random.new(20260710)) # 고정 시드 = 결정적
+
+    puts
+    puts "── demo:assets 완료 — dieline PDF 생성 ─────────────────────────────────"
+    puts format("  생성 수     %d개", result[:count])
+    puts format("  출력 경로   %s", result[:dir])
+    if result[:font_path]
+      puts format("  한글 폰트   %s", result[:font_path])
+    else
+      puts "  한글 폰트   없음 — Helvetica 폴백(라벨 영문·code)"
+    end
+    puts
+  end
 end
