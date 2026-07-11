@@ -52,6 +52,10 @@ Rails.application.routes.draw do
       get  :screening,     to: "screenings#screening"      # ④ 인허가 스크리닝 화면
       post :run_screening, to: "screenings#run_screening"  # 스크리닝 실행(룰엔진)
       # 승인은 Phase 3c에서 approval_requests로 이전(레거시 approve_screening 은퇴)
+      # 도안 텍스트 추출 PoC — GET=후보 렌더(무영속) / POST=확정(행 생성). URL 재사용(as: :extraction는 GET만,
+      # POST는 method로 분기 — routes.rb 워크스페이스 관례와 동형: 헬퍼명 충돌 회피).
+      get  :extraction, to: "label_extractions#show"
+      post :extraction, to: "label_extractions#create", as: nil
     end
     resources :annotations, only: [ :create ]                        # 바운딩박스 피드백 생성
   end

@@ -1,0 +1,83 @@
+<% content_for :title, "도안 텍스트 추출 · #{@component.display_name} #{@version.vlabel} · #{@product.code}" %>
+<div class="flex h-full flex-col">
+  <%# 헤더 — 버전 상세로 돌아가는 링크 세그먼트 + 현재 단계(스크리닝 화면 헤더 관례와 동형) %>
+  <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-6 py-3">
+    <div class="text-note"><%= node_breadcrumb(@product,
+          trailing_link: [ "#{@component.display_name} #{@version.vlabel}", component_version_path(@version) ],
+          trailing: "도안 텍스트 추출") %></div>
+    <div class="text-meta text-muted">휴리스틱 추출 · 사람이 확정한 항목만 저장됩니다.</div>
+  </div>
+
+  <div class="min-h-0 flex-1 overflow-auto">
+    <div class="mx-auto max-w-2xl p-6">
+      <% case @candidates[:status] %>
+      <% when :ok %>
+        <div class="rounded-xl border border-line bg-white p-5">
+          <div class="mb-4">
+            <h2 class="text-section font-bold text-ink">도안에서 추출한 후보</h2>
+            <p class="mt-1 text-meta text-muted">확정할 항목을 선택하세요. 체크한 후보만 이 버전에 저장되어 스크리닝 입력이 됩니다. 이미 있는 항목은 자동으로 건너뜁니다.</p>
+          </div>
+          <%= form_with url: extraction_component_version_path(@version), method: :post, class: "space-y-5" do %>
+            <%# 전성분 후보 — 참조 구현 _review_panel 체크박스 목록(max-h-64 스크롤·label 래핑·check_box_tag "…[]") %>
+            <section>
+              <h3 class="mb-2 text-note font-bold text-ink">전성분 후보 <span class="font-normal text-muted">(<%= @candidates[:ingredients].size %>)</span></h3>
+              <% if @candidates[:ingredients].any? %>
+                <div class="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-line-soft p-2">
+                  <% @candidates[:ingredients].each_with_index do |ing, i| %>
+                    <label class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-meta hover:bg-tint">
+                      <%= check_box_tag "ingredient_ids[]", i, true, class: "accent-cooa" %>
+                      <%= hidden_field_tag "ingredients[#{i}][inci_name]", ing[:inci_name] %>
+                      <%= hidden_field_tag "ingredients[#{i}][inci_canonical]", ing[:inci_canonical] %>
+                      <span class="font-medium text-ink"><%= ing[:inci_name] %></span>
+                      <span class="ml-auto text-caption text-muted"><%= ing[:inci_canonical] %></span>
+                    </label>
+                  <% end %>
+                </div>
+              <% else %>
+                <p class="text-caption text-muted">성분 후보가 없습니다.</p>
+              <% end %>
+            </section>
+
+            <%# 라벨 후보 — text_type은 전부 "label"(광고/필수항목 세분류는 PoC 밖) %>
+            <section>
+              <h3 class="mb-2 text-note font-bold text-ink">라벨 문구 후보 <span class="font-normal text-muted">(<%= @candidates[:labels].size %>)</span></h3>
+              <% if @candidates[:labels].any? %>
+                <div class="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-line-soft p-2">
+                  <% @candidates[:labels].each_with_index do |lbl, j| %>
+                    <label class="flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-meta hover:bg-tint">
+                      <%= check_box_tag "label_ids[]", j, true, class: "mt-0.5 accent-cooa" %>
+                      <%= hidden_field_tag "labels[#{j}][content]", lbl[:content] %>
+                      <span class="text-ink"><%= lbl[:content] %></span>
+                    </label>
+                  <% end %>
+                </div>
+              <% else %>
+                <p class="text-caption text-muted">라벨 후보가 없습니다.</p>
+              <% end %>
+            </section>
+
+            <div class="flex items-center justify-end gap-2 border-t border-line-soft pt-4">
+              <%= ui_button "취소", variant: :ghost, href: component_version_path(@version) %>
+              <%= ui_button "선택 항목 확정", type: "submit", variant: :primary %>
+            </div>
+          <% end %>
+        </div>
+
+      <% else %>
+        <%# 추출 불가/빈 상태 — 상황별 친절 문구(각 status는 컨트롤러 extract_candidates에서 도출) %>
+        <% message = {
+             no_artwork:  "이 버전에는 도안 파일이 첨부되어 있지 않습니다. 먼저 PDF 도안을 업로드하세요.",
+             not_pdf:     "이미지 도안은 텍스트 추출을 지원하지 않습니다(텍스트 레이어가 있는 PDF 전용).",
+             unavailable: "서버에 pdftotext(poppler)가 설치되어 있지 않아 추출을 건너뜁니다.",
+             failed:      "도안에서 텍스트를 열 수 없습니다(손상되었거나 시간이 초과되었습니다).",
+             empty:       "도안에서 추출된 후보가 없습니다. 텍스트 레이어가 없는(스캔·래스터) 도안이거나 인식 가능한 패턴이 없을 수 있습니다."
+           }[@candidates[:status]] %>
+        <div class="flex flex-col items-center gap-3 rounded-xl border border-dashed border-line bg-tint-2 p-10 text-center text-muted">
+          <%= ui_icon "doc", size: 32, klass: "text-muted" %>
+          <p class="max-w-md text-body"><%= message %></p>
+          <%= ui_button "버전으로 돌아가기", variant: :secondary, size: :sm, href: component_version_path(@version) %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

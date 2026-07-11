@@ -90,6 +90,15 @@
           <% end %>
         </dl>
       </div>
+      <%# 도안 텍스트 추출 진입(PoC) — PDF 도안이 있고 업로드 권한자에게만 노출. 후보 검토 후 확정 페이지로. %>
+      <% if @version.artwork_pdf? && policy(@version).upload_version? %>
+        <div class="border-b border-line-soft p-3">
+          <%= ui_button variant: :secondary, size: :sm, href: extraction_component_version_path(@version), class: "w-full" do %>
+            <%= ui_icon "doc", size: 14 %> 도안에서 텍스트 추출
+          <% end %>
+          <p class="mt-1.5 text-caption text-muted">PDF 도안의 전성분·라벨 문구를 추출해 검토 후 확정합니다.</p>
+        </div>
+      <% end %>
       </div>
 
       <%# 피드백 패널(기본 표시) — 리스트/상세/새폼(data-target·data-seq·문구 불변, 위치만 패널 안) %>
