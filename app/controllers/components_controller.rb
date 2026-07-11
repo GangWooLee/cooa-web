@@ -59,8 +59,7 @@ class ComponentsController < ApplicationController
   # 파괴 감사(allow) — workspaces#audit_workspace! 패턴. resource_id = 파괴된 구성요소 id(객체는 destroy 후에도
   # id 보유). after = 파괴 요약(이름 + 연쇄 삭제된 버전 수).
   def audit_destroy!(component, versions)
-    AuditLog.record!(action: "component.destroy", resource_type: "Component", resource_id: component.id,
-                     outcome: "allow", after: { name: component.name, versions: versions },
-                     request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
+    audit!(action: "component.destroy", resource_type: "Component", resource_id: component.id,
+           outcome: "allow", after: { name: component.name, versions: versions })
   end
 end

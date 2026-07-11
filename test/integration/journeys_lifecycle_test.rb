@@ -7,8 +7,6 @@ require "test_helper"
 #   J8 설정 멀티세션: 프로필 편집 관통 → sign_out_all(token_version bump) → 다른 기기 세션 즉시 폐기 → 재로그인
 #      복구. (edge_session은 token_version을 직접 bump — 여기는 실제 sign_out_all 엔드포인트 + 두 번째 세션.)
 class JourneysLifecycleTest < ActionDispatch::IntegrationTest
-  def fresh_artwork = fixture_file_upload("box.jpg", "image/jpeg")
-
   # ── J1: owner(kim) 제네시스 풀 체인 ─────────────────────────────────────────
   test "J1 owner 제네시스: 작업실→폴더→리프→구성요소→버전업로드→JP스크리닝→피드백→리뷰요청→lee 확인" do
     lee_acc  = Account.find_by!(email: "lee@cooa.dev")   # ra_reviewer+approver(tenant-wide) = 리뷰어 후보

@@ -131,26 +131,30 @@ module UiHelper
     end
   end
 
+  # 알약 공용 몸통(3중 신호: 아이콘 + 라벨 + 색) — decision_pill/annotation_status_pill이 위임. 두 알약은
+  # 크기 클래스(gap·padding·text)와 아이콘 size/stroke만 다르고, text_color 폴백·색 스타일 3속성·내부 아이콘
+  # span 구조는 동일하다. base_classes는 완성된 클래스 토큰열을 그대로 받아(분해 안 함) 렌더 HTML을 바이트 동일
+  # 유지한다(extra=nil이면 .compact.join이 원문 문자열과 같음).
+  private def _pill(meta, base_classes:, icon_size:, icon_stroke:, extra: nil)
+    text_color = meta[:text] || meta[:color]
+    content_tag :span, class: [ base_classes, extra ].compact.join(" "),
+                       style: "color:#{text_color};background:#{meta[:bg]};border-color:#{meta[:color]}" do
+      concat content_tag(:span, ui_icon(meta[:icon], size: icon_size, stroke: icon_stroke), style: "color:#{meta[:color]}")
+      concat meta[:label]
+    end
+  end
+
   # 4-enum 판정 알약
   def decision_pill(decision)
     m = Decidable::DECISIONS[decision] || Decidable::DECISIONS["unable"]
-    text_color = m[:text] || m[:color]
-    content_tag :span, class: "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-body font-bold",
-                       style: "color:#{text_color};background:#{m[:bg]};border-color:#{m[:color]}" do
-      concat content_tag(:span, ui_icon(m[:icon], size: 15, stroke: 2.2), style: "color:#{m[:color]}")
-      concat m[:label]
-    end
+    _pill(m, base_classes: "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-body font-bold",
+             icon_size: 15, icon_stroke: 2.2)
   end
 
   # 피드백 상태 알약 (3중 신호: 아이콘 + 라벨 + 색). decision_pill과 동형. extra로 정렬 유틸(ml-auto 등) 흡수.
   def annotation_status_pill(annotation, extra: nil)
-    m = annotation.status_meta
-    text_color = m[:text] || m[:color]
-    content_tag :span, class: [ "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-bold", extra ].compact.join(" "),
-                       style: "color:#{text_color};background:#{m[:bg]};border-color:#{m[:color]}" do
-      concat content_tag(:span, ui_icon(m[:icon], size: 11, stroke: 2.4), style: "color:#{m[:color]}")
-      concat m[:label]
-    end
+    _pill(annotation.status_meta, extra: extra, icon_size: 11, icon_stroke: 2.4,
+          base_classes: "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-bold")
   end
 
   # ── 표준 버튼 (단일 진실원) ────────────────────────────────────────────────
@@ -236,12 +240,15 @@ module UiHelper
 
   IMG_RATIO = 2048.0 / 1118.0 # 박스 전개도 가로/세로 비
 
+  # 박스 채움색 — 테두리색의 12% 틴트(color-mix). annotation/finding 박스 배열과 뷰어 폴백의 단일 출처.
+  def box_fill(color) = "color-mix(in srgb, #{color} 12%, transparent)"
+
   # 어노테이션 → 아트워크 뷰어 박스 배열. aria = 오버레이 박스·핀의 접근 이름(a11y-9: 색만으로 판정을
   # 구분하던 박스에 라벨·카테고리를 SR로 전달, 시각 변화 없음).
   def annotation_boxes(annotations)
     annotations.map do |a|
       { seq: a.seq, x: a.box_x, y: a.box_y, w: a.box_w, h: a.box_h, color: a.box_color,
-        fill: "color-mix(in srgb, #{a.box_color} 12%, transparent)", label: a.seq,
+        fill: box_fill(a.box_color), label: a.seq,
         aria: "피드백 #{a.seq}: #{a.category}" }
     end
   end
@@ -251,7 +258,7 @@ module UiHelper
     findings.select(&:boxed?).each_with_index.map do |f, i|
       color = f.decision_meta[:color]
       { seq: i + 1, finding_id: f.id, x: f.box_x, y: f.box_y, w: f.box_w, h: f.box_h,
-        color:, fill: "color-mix(in srgb, #{color} 12%, transparent)", label: i + 1,
+        color:, fill: box_fill(color), label: i + 1,
         aria: "#{f.decision_meta[:label]}: #{f.subject}" }
     end
   end

@@ -358,8 +358,11 @@ export default class extends Controller {
     })
     this.element.querySelectorAll(".av-seq").forEach((btn) => {
       const on = btn.dataset.seq == seq
-      btn.style.background = on ? btn.style.borderColor : "transparent"
-      btn.style.color = on ? "#fff" : btn.style.borderColor
+      // border-color가 var(--color-*) 기반이면 구형 WebKit은 style.borderColor를 ""로 반환 → 칩이 흰-투명으로
+      // 비가시. 빈 값이면 계산값(rgb)으로 폴백(Chromium/모던 WebKit은 인라인값 그대로라 동작 무변).
+      const bc = btn.style.borderColor || getComputedStyle(btn).borderColor
+      btn.style.background = on ? bc : "transparent"
+      btn.style.color = on ? "#fff" : bc
     })
     this.element.querySelectorAll(".av-thumb").forEach((t) => {
       const on = t.dataset.seq == seq

@@ -15,8 +15,6 @@ class JourneysReviewMembershipTest < ActionDispatch::IntegrationTest
     OmniAuth.config.test_mode = false
   end
 
-  def fresh_artwork = fixture_file_upload("box.jpg", "image/jpeg")
-
   def google_login(uid:, email:, verified: true, name: "신규 협력자")
     OmniAuth.config.mock_auth[:google_oauth2] = OmniAuth::AuthHash.new(
       provider: "google_oauth2", uid: uid, info: { email: email, name: name },

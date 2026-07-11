@@ -7,8 +7,6 @@ require "test_helper"
 #   J4 viewer(yu): 대시보드→작업실→제품→버전→스크리닝→비교 읽기 순회 전부 200 · 대표 쓰기 2건 deny.
 #   J5 assignee(han): 트리 편집(manage_product/upload_version) O · 멤버 관리 deny · 리뷰 라운드트립 참여(요청받음=확인).
 class JourneysRolesTest < ActionDispatch::IntegrationTest
-  def fresh_artwork = fixture_file_upload("box.jpg", "image/jpeg")
-
   # ── J3: external_collaborator(choi @ CO0200) ────────────────────────────────
   test "J3 external(choi): CO0200 열람·업로드·피드백 O · 조상/타제품 비가시 · 스크리닝 deny · 리뷰요청 O(route_for_review)" do
     choi   = Account.find_by!(email: "choi@partner.example")

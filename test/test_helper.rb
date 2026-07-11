@@ -46,6 +46,9 @@ class ActionDispatch::IntegrationTest
     delete session_path
   end
 
+  # 실 아트워크 업로드 픽스처(box.jpg) — 버전 업로드를 거치는 저니/매트릭스 통합 테스트 공용(1회 정의).
+  def fresh_artwork = fixture_file_upload("box.jpg", "image/jpeg")
+
   # critical path의 N+1 게이트. 블록 내 요청이 유사쿼리를 반복하면 Prosopite가 raise → 실패.
   def assert_no_n_plus_one
     Prosopite.scan

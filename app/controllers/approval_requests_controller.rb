@@ -17,7 +17,7 @@ class ApprovalRequestsController < ApplicationController
                                           due_at: normalized_due_at)
     # L1: 이미 검토 확인된(terminal) 버전에 직접 POST → no-op. 오해소지 audit/notice 방지.
     return redirect_back(fallback_location: root_path, status: :see_other, notice: "이미 검토 확인된 버전입니다.") if req.reviewed?
-    audit!(req, action: "submit_for_approval", before: nil)
+    audit_transition!(req, action: "submit_for_approval", before: nil)
     redirect_back fallback_location: root_path, status: :see_other, notice: submit_notice(req)
   rescue ActiveRecord::RecordNotUnique # 동시 요청 → 멱등, 500 아님
     redirect_back fallback_location: root_path, status: :see_other, notice: "이미 리뷰 요청된 버전입니다."
@@ -36,7 +36,7 @@ class ApprovalRequestsController < ApplicationController
     rescue ActiveRecord::RecordNotUnique # 동시 처리 → 이미 결정됨, 500 아님
       return redirect_back fallback_location: root_path, status: :see_other, notice: "이미 처리된 리뷰입니다."
     end
-    audit!(req, action: "confirm_review", before: before)
+    audit_transition!(req, action: "confirm_review", before: before)
     redirect_back fallback_location: root_path, status: :see_other, notice: "검토 확인되었습니다."
   end
 
@@ -55,12 +55,11 @@ class ApprovalRequestsController < ApplicationController
       Rails.logger.info("[idempotent] duplicate claim ignored req=#{req.id} account=#{current_account.id}")
       return redirect_back fallback_location: reviews_path, status: :see_other, notice: "이미 맡으신 리뷰입니다."
     end
-    # confirm/submit의 audit! 헬퍼는 status before/after 전용이라 claim은 직접 record!(after=배정 reviewer).
+    # confirm/submit의 audit_transition! 래퍼는 status before/after 전용이라 claim은 공용 audit!로 직접(after=배정 reviewer).
     # action 키 "claim"은 정책 query(claim?)명과 일치 — deny 감사(application_controller pundit 경로)도 같은
     # 키를 유도하므로 allow·deny를 한 action으로 상관 가능(confirm_review/submit_for_approval와 동일 불변식).
-    AuditLog.record!(action: "claim", resource_type: "ApprovalRequest", resource_id: req.id,
-                     outcome: "allow", before: nil, after: { "reviewer_id" => current_account.user_id },
-                     request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
+    audit!(action: "claim", resource_type: "ApprovalRequest", resource_id: req.id,
+           outcome: "allow", before: nil, after: { "reviewer_id" => current_account.user_id })
     redirect_back fallback_location: reviews_path, status: :see_other,
                   notice: "리뷰를 맡았습니다 — '내게 요청된 리뷰'에 추가되었습니다."
   end
@@ -68,17 +67,15 @@ class ApprovalRequestsController < ApplicationController
   private
 
   # 전이 → 감사(allow). 요청 tenant tx와 원자: 실패 시 전이도 롤백(감사 없는 리뷰 없음). action 키
-  # (submit_for_approval/confirm_review)는 정책 query명과 일치 — deny 감사도 같은 키.
-  def audit!(req, action:, before:)
-    AuditLog.record!(action: action, resource_type: "ApprovalRequest", resource_id: req.id, outcome: "allow",
-                     before: (before ? { "status" => before } : nil), after: { "status" => req.status },
-                     request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
+  # (submit_for_approval/confirm_review)는 정책 query명과 일치 — deny 감사도 같은 키. 요청 메타는 공용 audit!.
+  def audit_transition!(req, action:, before:)
+    audit!(action: action, resource_type: "ApprovalRequest", resource_id: req.id, outcome: "allow",
+           before: (before ? { "status" => before } : nil), after: { "status" => req.status })
   end
 
   def audit_stale(req)
-    AuditLog.record!(action: "confirm_review", resource_type: "ApprovalRequest", resource_id: req.id,
-                     outcome: "deny", denial_reason: "stale_reviewed_tuple",
-                     request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
+    audit!(action: "confirm_review", resource_type: "ApprovalRequest", resource_id: req.id,
+           outcome: "deny", denial_reason: "stale_reviewed_tuple")
   end
 
   # 마감일은 그날의 끝까지 유효 — date 입력(YYYY-MM-DD)을 해당 날짜의 end_of_day 인스턴트로 저장(표시·강조

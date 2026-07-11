@@ -74,8 +74,6 @@ class WorkspacesController < ApplicationController
   def audit_workspace!(action, workspace, member_count: nil)
     after = { name: workspace.name }
     after[:member_count] = member_count if member_count
-    AuditLog.record!(action: action, resource_type: "Workspace", resource_id: workspace.id, outcome: "allow",
-                     after: after, request_id: request.request_id, source_ip: request.remote_ip,
-                     user_agent: request.user_agent)
+    audit!(action: action, resource_type: "Workspace", resource_id: workspace.id, outcome: "allow", after: after)
   end
 end

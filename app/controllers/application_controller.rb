@@ -90,16 +90,24 @@ class ApplicationController < ActionController::Base
     # Re-establish it in a fresh tenant tx — otherwise the INSERT fails RLS WITH CHECK under cooa_app and
     # the deny is silently lost in production (P2 M-1). Still best-effort (a failure must not 500 a 403).
     TenantContext.with_tenant(Current.tenant_id) do
-      AuditLog.record!(
+      audit!(
         action: exception.query.to_s.delete_suffix("?"),
         resource_type: klass.name,
         resource_id: (record.try(:id) unless record.is_a?(Class)),
-        outcome: "deny", denial_reason: "pundit",
-        request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent
+        outcome: "deny", denial_reason: "pundit"
       )
     end
   rescue => e
     Rails.logger.error("[audit] deny logging failed: #{e.class}: #{e.message}")
+  end
+
+  # 감사 로그 단일 진입점(E4) — 요청 메타 트리플(request_id/source_ip/user_agent)을 한 곳에서 채우고 나머지
+  # kwargs는 AuditLog.record! 시그니처 그대로 위임한다. 8+ 호출처(deny·리뷰 전이·멤버 관리·파괴)가 이 헬퍼를
+  # 경유해 감사 메타 계약이 사이트마다 드리프트하지 않는다. request가 필요해 컨트롤러 인스턴스 메서드 —
+  # 서브클래스/concern의 도메인 감사 래퍼(audit_transition!·audit_workspace!·record_member_audit! 등)가 경유한다.
+  protected def audit!(**attrs)
+    AuditLog.record!(**attrs, request_id: request.request_id,
+                     source_ip: request.remote_ip, user_agent: request.user_agent)
   end
 
   # ── 작업실(Workspace) 컨텍스트 (WS-track, 2026-07-05) ─────────────────────────

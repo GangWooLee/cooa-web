@@ -120,7 +120,6 @@ module MemberAdministration
   # 멤버 관리 감사(초대/grant 발급·회수 공용). resource_id=nil 관례(bigint 도메인 공간 — uuid PK는 after로).
   # 도메인 액터 없는 계정은 AuditLog.record!가 fail-closed raise → 각 액션이 before_action :require_domain_actor로 선차단.
   def record_member_audit!(action, resource_type, **after)
-    AuditLog.record!(action: action, resource_type: resource_type, resource_id: nil, outcome: "allow", after: after,
-                     request_id: request.request_id, source_ip: request.remote_ip, user_agent: request.user_agent)
+    audit!(action: action, resource_type: resource_type, resource_id: nil, outcome: "allow", after: after)
   end
 end

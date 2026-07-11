@@ -182,8 +182,7 @@ class ProductsController < ApplicationController
 
   # 파괴 감사(allow) — workspaces#audit_workspace! 패턴. resource_id = 파괴된 제품 id(객체는 destroy 후에도 id 보유).
   def audit_destroy!(product, summary)
-    AuditLog.record!(action: "product.destroy", resource_type: "Product", resource_id: product.id, outcome: "allow",
-                     after: summary, request_id: request.request_id, source_ip: request.remote_ip,
-                     user_agent: request.user_agent)
+    audit!(action: "product.destroy", resource_type: "Product", resource_id: product.id, outcome: "allow",
+           after: summary)
   end
 end
