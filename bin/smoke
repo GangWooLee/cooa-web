@@ -43,8 +43,13 @@ sess = ActionDispatch::Integration::Session.new(Rails.application)
 sess.host = "localhost"
 
 # 0) 로그인 페이지 렌더 + account_id 확보(button_to 히든 필드에서 스크레이프)
+#    kim(시드 owner)을 명시 선택 — 픽커는 order(:id)=uuid 정렬이라 첫 계정이 재시드마다 무작위이고,
+#    viewer 등 약한 역할이 첫 자리에 오면 아래 쓰기 왕복(구성요소 생성)이 인가로 막혀 스모크가
+#    비결정적으로 깨진다. kim 폼이 없을 때만 기존 첫-계정 폴백(시드 구조 변경에도 스모크 생존).
 body       = check(sess, fails, "로그인 페이지", "/session/new")
-account_id = body[/name="account_id"[^>]*value="(#{uuid})"/, 1] || body[uuid]
+kim_form   = body.split(/<form/).find { |f| f.include?("kim@cooa.dev") }
+account_id = kim_form&.[](/name="account_id"[^>]*value="(#{uuid})"/, 1) ||
+             body[/name="account_id"[^>]*value="(#{uuid})"/, 1] || body[uuid]
 
 if account_id.nil?
   fails << "로그인: /session/new에서 account_id 미발견 (dev DB 시드 필요?)"
