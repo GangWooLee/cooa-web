@@ -17,22 +17,25 @@ class ScreeningService
     @country = country
   end
 
-  # 판정만 계산 (미저장)
+  # 판정만 계산 (미저장). LLM 보조판정은 assign_boxes 이후·worst_decision 이전에 끼워
+  # 종합 판정이 refined 결과를 반영하게 한다. 키 없으면 refine이 findings를 그대로 돌려줘 무변경.
   def call
     findings = ingredient_findings + ad_findings + label_findings
     assign_boxes(findings)
+    findings = LlmScreeningJudge.refine(findings, version: @version, country: @country)
     decision = ScreeningFinding.worst_decision(findings.map { |f| f[:decision] })
     Result.new(decision, findings, build_summary(findings, decision))
   end
 
-  # ScreeningRun + ScreeningFinding 영속화
+  # ScreeningRun + ScreeningFinding 영속화. :ai_refined는 표기·집계용 transient 키(스키마 컬럼 아님) →
+  # create! 전에 제거해 UnknownAttribute를 막는다.
   def run!(requested_by:)
     result = call
     run = @version.screening_runs.create!(
       country: @country, requested_by: requested_by, status: "completed",
       decision: result.decision, summary: result.summary
     )
-    result.findings.each_with_index { |f, i| run.screening_findings.create!(f.merge(position: i)) }
+    result.findings.each_with_index { |f, i| run.screening_findings.create!(f.except(:ai_refined).merge(position: i)) }
     run
   end
 
@@ -155,7 +158,9 @@ class ScreeningService
   def build_summary(findings, decision)
     c = findings.group_by { |f| f[:decision] }.transform_values(&:size)
     label = (Decidable::DECISIONS[decision] || Decidable::DECISIONS["unable"])[:label]
-    "#{ApplicationRecord.country_label(@country)} 기준 종합 #{label} · " \
+    base = "#{ApplicationRecord.country_label(@country)} 기준 종합 #{label} · " \
       "위반 #{c['violation'].to_i} · 위험 #{c['warning'].to_i} · 판단불가 #{c['unable'].to_i} · 적합 #{c['ok'].to_i}"
+    ai = findings.count { |f| f[:ai_refined] } # 하이브리드 활성 식별(run에 engine 컬럼 없음 → summary 표기)
+    ai.positive? ? "#{base} (AI 보조판정 #{ai}건)" : base
   end
 end
